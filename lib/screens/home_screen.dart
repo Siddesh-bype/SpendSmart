@@ -12,6 +12,7 @@ import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 import 'pending_screen.dart';
 import 'transactions_screen.dart';
 import 'notifications_screen.dart';
@@ -68,7 +69,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final uncategorized = expenses.where((e) => e.isUncategorized).toList();
     final now = DateTime.now();
     final monthlyExpenses = expenses.where(
-      (e) => e.date.month == now.month && e.date.year == now.year && !e.isUncategorized
+      (e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth) && !e.isUncategorized
     ).toList();
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
     final savings = settings.monthlyIncome - totalSpent;

@@ -15,10 +15,21 @@ class SupabaseService {
     }
   }
 
-  // ── Anonymous user ID set in main.dart ──
-  static String _userId = 'anonymous';
-  static void setUserId(String id) => _userId = id;
-  static String get userId => _userId;
+  // ── Authentication ──
+  static User? get currentUser => _db?.auth.currentUser;
+  static String get userId => currentUser?.id ?? '';
+
+  static Future<AuthResponse> signUp(String email, String password) async {
+    return await _db!.auth.signUp(email: email, password: password);
+  }
+
+  static Future<AuthResponse> signIn(String email, String password) async {
+    return await _db!.auth.signInWithPassword(email: email, password: password);
+  }
+
+  static Future<void> signOut() async {
+    await _db?.auth.signOut();
+  }
 
   // ═══════════════════════════════════════
   //  EXPENSES

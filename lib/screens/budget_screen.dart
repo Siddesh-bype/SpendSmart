@@ -3,9 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/budget_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 
 class BudgetScreen extends ConsumerWidget {
   const BudgetScreen({super.key});
@@ -14,8 +16,9 @@ class BudgetScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgets = ref.watch(budgetProvider);
     final expenses = ref.watch(expenseProvider).where((e) => !e.isUncategorized).toList();
+    final settings = ref.watch(appSettingsProvider);
     final now = DateTime.now();
-    final monthlyExpenses = expenses.where((e) => e.date.month == now.month && e.date.year == now.year).toList();
+    final monthlyExpenses = expenses.where((e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth)).toList();
 
     return Scaffold(
       appBar: AppBar(

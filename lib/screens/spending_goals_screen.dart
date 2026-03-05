@@ -7,6 +7,7 @@ import '../providers/spending_goal_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 
 class SpendingGoalsScreen extends ConsumerStatefulWidget {
   const SpendingGoalsScreen({super.key});
@@ -31,7 +32,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     final expenses = ref.watch(expenseProvider).where((e) => !e.isUncategorized).toList();
     final now = DateTime.now();
     final monthlyExpenses = expenses.where(
-      (e) => e.date.month == now.month && e.date.year == now.year,
+      (e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth),
     ).toList();
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
 

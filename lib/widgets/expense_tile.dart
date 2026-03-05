@@ -94,8 +94,7 @@ class ExpenseTile extends ConsumerWidget {
                 color: AppColors.primary,
               ),
             ),
-            const SizedBox(width: 4),
-            // Visible edit button — essential for web where swipe doesn't work
+            // Edit button
             IconButton(
               icon: const Icon(Icons.edit_outlined,
                   size: 18, color: AppColors.secondary),
@@ -103,6 +102,18 @@ class ExpenseTile extends ConsumerWidget {
               onPressed: () {
                 HapticFeedback.lightImpact();
                 onEdit?.call();
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            ),
+            // Delete button
+            IconButton(
+              icon: Icon(Icons.delete_outline,
+                  size: 18, color: Colors.red.shade400),
+              tooltip: 'Delete',
+              onPressed: () {
+                HapticFeedback.mediumImpact();
+                onDelete?.call();
               },
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 30, minHeight: 30),

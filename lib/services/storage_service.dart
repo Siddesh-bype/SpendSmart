@@ -84,4 +84,11 @@ class StorageService {
   List<Budget> getAllBudgets() {
     return budgetBox.values.toList();
   }
+
+  // Clear all data (on logout)
+  Future<void> clearAll() async {
+    await expenseBox.clear();
+    await budgetBox.clear();
+    await merchantBox.clear();
+  }
 }

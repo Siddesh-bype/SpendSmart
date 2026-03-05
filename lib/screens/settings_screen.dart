@@ -9,10 +9,12 @@ import '../providers/budget_provider.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/supabase_service.dart';
+import '../providers/service_provider.dart';
 import '../utils/constants.dart';
 import 'pdf_import_screen.dart';
 import 'insights_screen.dart';
 import 'spending_goals_screen.dart';
+import 'auth_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -31,10 +33,11 @@ class SettingsScreen extends ConsumerWidget {
             decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
             child: const Icon(Icons.person, size: 44, color: AppColors.primary),
           ),
-          const SizedBox(height: 8),
-          const Text('SpendSmart User', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Text(SupabaseService.currentUser?.email ?? 'SpendSmart User', 
+               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text('v1.0.0', style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          const Text('v2.0.0', style: TextStyle(color: Colors.grey, fontSize: 13)),
         ])),
         const SizedBox(height: 24),
 
@@ -47,6 +50,11 @@ class SettingsScreen extends ConsumerWidget {
           icon: Icons.account_balance_wallet, title: 'Monthly Income',
           subtitle: '${settings.currency}${settings.monthlyIncome.toStringAsFixed(0)}',
           onTap: () => _editIncome(context, ref, settings.monthlyIncome),
+        ),
+        _tile(
+          icon: Icons.calendar_month_outlined, title: 'Starting Day of Month',
+          subtitle: 'Starts on the ${settings.startingDayOfMonth}${_ordinal(settings.startingDayOfMonth)}',
+          onTap: () => _editStartingDay(context, ref, settings.startingDayOfMonth),
         ),
 
         const SizedBox(height: 16),
@@ -106,9 +114,23 @@ class SettingsScreen extends ConsumerWidget {
         ),
 
         const SizedBox(height: 16),
-        _sectionTitle('About'),
-        _tile(icon: Icons.info_outline, title: 'Version', subtitle: '1.0.0', onTap: null),
-        _tile(icon: Icons.star_outline, title: 'Rate the App', onTap: () {}),
+        _sectionTitle('About & Account'),
+        _tile(icon: Icons.info_outline, title: 'Version', subtitle: '2.0.0', onTap: null),
+        const SizedBox(height: 16),
+        
+        ElevatedButton.icon(
+          onPressed: () => _handleLogout(context, ref),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red.shade50,
+            foregroundColor: Colors.red.shade700,
+            elevation: 0,
+            minimumSize: const Size.fromHeight(50),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+          icon: const Icon(Icons.logout),
+          label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
+        ),
+        const SizedBox(height: 32),
       ]),
     );
   }
@@ -213,15 +235,12 @@ class SettingsScreen extends ConsumerWidget {
       await ref.read(budgetProvider.notifier).syncFromSupabase();
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('✅ Sync complete!'),
-          backgroundColor: Colors.green.shade600,
-          behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: const Text('✅ Sync complete!'),
+      backgroundColor: Colors.green.shade600,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ));
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -262,6 +281,30 @@ class SettingsScreen extends ConsumerWidget {
     ));
   }
 
+  void _editStartingDay(BuildContext context, WidgetRef ref, int current) {
+    showDialog(context: context, builder: (_) => AlertDialog(
+      title: const Text('Starting Day of Month'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: 200,
+        child: ListView.builder(
+          itemCount: 28, // Max safe day
+          itemBuilder: (context, index) {
+            final day = index + 1;
+            return ListTile(
+              title: Text('Day $day'),
+              trailing: day == current ? const Icon(Icons.check, color: AppColors.primary) : null,
+              onTap: () {
+                ref.read(appSettingsProvider.notifier).updateStartingDay(day);
+                Navigator.pop(context);
+              },
+            );
+          },
+        ),
+      ),
+    ));
+  }
+
   void _editTheme(BuildContext context, WidgetRef ref, String current) {
     showDialog(context: context, builder: (_) => AlertDialog(
       title: const Text('Select Theme'),
@@ -280,5 +323,52 @@ class SettingsScreen extends ConsumerWidget {
           ),
       ]),
     ));
+  }
+
+  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Log Out?'),
+        content: const Text('This will clear local data. Your data remains safely backed up in the cloud.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true), 
+            child: const Text('Log Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
+          ),
+        ],
+      )
+    ) ?? false;
+
+    if (!confirm || !context.mounted) return;
+
+    HapticFeedback.heavyImpact();
+    
+    // 1. Sign out from Supabase
+    await SupabaseService.signOut();
+    
+    // 2. Clear entirely from local Hive boxes
+    final storage = ref.read(storageServiceProvider);
+    await storage.clearAll();
+
+    // 3. Navigate straight back to Auth
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthScreen()),
+        (route) => false,
+      );
+    }
+  }
+
+  String _ordinal(int number) {
+    if (number >= 11 && number <= 13) return 'th';
+    switch (number % 10) {
+      case 1:  return 'st';
+      case 2:  return 'nd';
+      case 3:  return 'rd';
+      default: return 'th';
+    }
   }
 }

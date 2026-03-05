@@ -15,8 +15,9 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     return AppSettings(
       currency: prefs.getString('currency') ?? '₹',
       monthlyIncome: prefs.getDouble('monthlyIncome') ?? 0.0,
-      theme: prefs.getString('theme') ?? 'light',
+      theme: prefs.getString('theme') ?? 'system',
       onboardingDone: prefs.getBool('onboardingDone') ?? false,
+      startingDayOfMonth: prefs.getInt('startingDayOfMonth') ?? 1,
     );
   }
 
@@ -33,6 +34,11 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   Future<void> updateTheme(String theme) async {
     await ref.read(sharedPreferencesProvider).setString('theme', theme);
     state = state.copyWith(theme: theme);
+  }
+
+  Future<void> updateStartingDay(int day) async {
+    await ref.read(sharedPreferencesProvider).setInt('startingDayOfMonth', day);
+    state = state.copyWith(startingDayOfMonth: day);
   }
 
   Future<void> completeOnboarding() async {

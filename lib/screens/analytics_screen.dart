@@ -7,6 +7,7 @@ import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
@@ -46,13 +47,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     final now = DateTime.now();
 
     final monthlyExpenses = expenses.where(
-      (e) => e.date.month == _selectedMonth.month && e.date.year == _selectedMonth.year,
+      (e) => e.date.isTargetCustomMonth(_selectedMonth.month, _selectedMonth.year, settings.startingDayOfMonth),
     ).toList();
 
     // Previous month for MoM comparison
     final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
     final prevExpenses = expenses.where(
-      (e) => e.date.month == prevMonth.month && e.date.year == prevMonth.year,
+      (e) => e.date.isTargetCustomMonth(prevMonth.month, prevMonth.year, settings.startingDayOfMonth),
     ).toList();
 
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
