@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
+import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/supabase_service.dart';
 import '../providers/service_provider.dart';
