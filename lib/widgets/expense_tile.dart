@@ -83,13 +83,31 @@ class ExpenseTile extends ConsumerWidget {
           DateFormat('MMM dd, yyyy  h:mm a').format(expense.date),
           style: const TextStyle(fontSize: 11, color: Colors.grey),
         ),
-        trailing: Text(
-          '$cur${NumberFormat('#,##0.##').format(expense.amount)}',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-            color: AppColors.primary,
-          ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '$cur${NumberFormat('#,##0.##').format(expense.amount)}',
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 4),
+            // Visible edit button — essential for web where swipe doesn't work
+            IconButton(
+              icon: const Icon(Icons.edit_outlined,
+                  size: 18, color: AppColors.secondary),
+              tooltip: 'Edit',
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                onEdit?.call();
+              },
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 30, minHeight: 30),
+            ),
+          ],
         ),
         onTap: () {
           HapticFeedback.selectionClick();

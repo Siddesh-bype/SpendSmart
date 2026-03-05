@@ -8,6 +8,7 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/category_grid.dart';
+import '../widgets/edit_expense_sheet.dart';
 import '../utils/constants.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
@@ -281,7 +282,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (sheetCtx) => _EditExpenseSheet(expense: expense),
+      builder: (_) => EditExpenseSheet(expense: expense),
     );
   }
 }

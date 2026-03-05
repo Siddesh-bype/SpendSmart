@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
@@ -9,16 +10,56 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
+import '../widgets/edit_expense_sheet.dart';
 import '../utils/constants.dart';
 import 'pending_screen.dart';
 import 'transactions_screen.dart';
 import 'notifications_screen.dart';
 
-class HomeScreen extends ConsumerWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends ConsumerState<HomeScreen> {
+  // Delete+undo handled here — ref is always valid in StatefulWidget
+  void _handleDelete(Expense expense) {
+    HapticFeedback.mediumImpact();
+    ref.read(expenseProvider.notifier).deleteExpense(expense.id);
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Deleted "${expense.title}"'),
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        action: SnackBarAction(
+          label: 'UNDO',
+          textColor: AppColors.accent,
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            ref.read(expenseProvider.notifier).addExpense(expense);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _showEditSheet(Expense expense) {
+    HapticFeedback.lightImpact();
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => EditExpenseSheet(expense: expense),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final expenses = ref.watch(expenseProvider);
     final settings = ref.watch(appSettingsProvider);
     final budgets = ref.watch(budgetProvider);
@@ -206,7 +247,11 @@ class HomeScreen extends ConsumerWidget {
             else
               SliverList(
                 delegate: SliverChildBuilderDelegate(
-                  (_, i) => ExpenseTile(expense: recentExpenses[i]),
+                  (_, i) => ExpenseTile(
+                    expense: recentExpenses[i],
+                    onEdit: () => _showEditSheet(recentExpenses[i]),
+                    onDelete: () => _handleDelete(recentExpenses[i]),
+                  ),
                   childCount: recentExpenses.length,
                 ),
               ),
