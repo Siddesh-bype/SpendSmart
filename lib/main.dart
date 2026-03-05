@@ -9,7 +9,6 @@ import 'services/supabase_service.dart';
 import 'utils/supabase_config.dart';
 import 'utils/theme.dart';
 import 'screens/splash_screen.dart';
-import 'screens/auth_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,9 +58,7 @@ class SpendSmartApp extends ConsumerWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,
-      home: SupabaseService.currentUser == null
-          ? const AuthScreen()
-          : const SplashScreen(),
+      home: const SplashScreen(),
     );
   }
 }

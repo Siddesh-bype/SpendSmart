@@ -6,7 +6,6 @@ import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
-import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/supabase_service.dart';
 import '../providers/service_provider.dart';
@@ -34,7 +33,7 @@ class SettingsScreen extends ConsumerWidget {
             child: const Icon(Icons.person, size: 44, color: AppColors.primary),
           ),
           const SizedBox(height: 12),
-          Text(SupabaseService.currentUser?.email ?? 'SpendSmart User', 
+          Text(SupabaseService.currentUser?.email ?? 'Guest (Offline)', 
                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           const Text('v2.0.0', style: TextStyle(color: Colors.grey, fontSize: 13)),
@@ -87,9 +86,15 @@ class SettingsScreen extends ConsumerWidget {
         ),
         _tile(
           icon: Icons.cloud_sync_rounded, title: 'Sync to Cloud',
-          subtitle: 'Upload all data to Supabase & pull remote',
+          subtitle: SupabaseService.currentUser == null ? 'Log in to securely backup data' : 'Upload and pull remote data',
           color: AppColors.secondary,
-          onTap: () => _syncCloud(context, ref),
+          onTap: () {
+            if (SupabaseService.currentUser == null) {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen()));
+            } else {
+              _syncCloud(context, ref);
+            }
+          },
         ),
 
         const SizedBox(height: 16),
@@ -118,18 +123,32 @@ class SettingsScreen extends ConsumerWidget {
         _tile(icon: Icons.info_outline, title: 'Version', subtitle: '2.0.0', onTap: null),
         const SizedBox(height: 16),
         
-        ElevatedButton.icon(
-          onPressed: () => _handleLogout(context, ref),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.red.shade50,
-            foregroundColor: Colors.red.shade700,
-            elevation: 0,
-            minimumSize: const Size.fromHeight(50),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        if (SupabaseService.currentUser != null)
+          ElevatedButton.icon(
+            onPressed: () => _handleLogout(context, ref),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red.shade50,
+              foregroundColor: Colors.red.shade700,
+              elevation: 0,
+              minimumSize: const Size.fromHeight(50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.logout),
+            label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
+          )
+        else
+          ElevatedButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen())),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+              foregroundColor: AppColors.primary,
+              elevation: 0,
+              minimumSize: const Size.fromHeight(50),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.login),
+            label: const Text('Log In to Sync', style: TextStyle(fontWeight: FontWeight.bold)),
           ),
-          icon: const Icon(Icons.logout),
-          label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-        ),
         const SizedBox(height: 32),
       ]),
     );
