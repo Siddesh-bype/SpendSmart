@@ -5,8 +5,10 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/budget_provider.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
+import '../services/supabase_service.dart';
 import '../utils/constants.dart';
 import 'pdf_import_screen.dart';
 import 'insights_screen.dart';
@@ -74,6 +76,12 @@ class SettingsScreen extends ConsumerWidget {
           subtitle: 'Set and track your monthly budget goal',
           color: AppColors.primary,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SpendingGoalsScreen())),
+        ),
+        _tile(
+          icon: Icons.cloud_sync_rounded, title: 'Sync to Cloud',
+          subtitle: 'Upload all data to Supabase & pull remote',
+          color: AppColors.secondary,
+          onTap: () => _syncCloud(context, ref),
         ),
 
         const SizedBox(height: 16),
@@ -186,6 +194,41 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
+  Future<void> _syncCloud(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('☁️ Syncing to Supabase...'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+    try {
+      final expenses = ref.read(expenseProvider);
+      final budgets = ref.read(budgetProvider);
+      // Upload all local data
+      await SupabaseService.uploadAllExpenses(expenses);
+      await SupabaseService.uploadAllBudgets(budgets);
+      // Pull any remote data not yet local
+      await ref.read(expenseProvider.notifier).syncFromSupabase();
+      await ref.read(budgetProvider.notifier).syncFromSupabase();
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('✅ Sync complete!'),
+          backgroundColor: Colors.green.shade600,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        ),
+      );
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
 
   void _editCurrency(BuildContext context, WidgetRef ref, String current) {
     showDialog(context: context, builder: (_) => AlertDialog(

@@ -27,6 +27,7 @@ dependencies:
   shared_preferences: ^2.5.4
   syncfusion_flutter_pdf: ^32.2.6
   share_plus: ^10.1.4
+  supabase_flutter: ^2.8.4
   telephony: ^0.2.0
   uuid: ^4.5.3
 
