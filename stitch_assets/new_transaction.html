@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>New Transaction Detected</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#180df2",
+                        "background-light": "#f6f5f8",
+                        "background-dark": "#111022",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<div class="relative flex h-screen w-full flex-col bg-background-light dark:bg-background-dark group/design-root overflow-x-hidden">
+<div class="flex-1 p-4 flex flex-col items-center justify-center opacity-30">
+<h1 class="text-2xl font-bold mb-4">Expense Tracker Dashboard</h1>
+<div class="w-full max-w-md h-32 bg-slate-200 dark:bg-slate-800 rounded-lg mb-4"></div>
+<div class="w-full max-w-md h-64 bg-slate-200 dark:bg-slate-800 rounded-lg"></div>
+</div>
+<div class="flex absolute top-0 left-0 h-full w-full flex-col justify-end items-stretch bg-slate-900/40 dark:bg-black/60 z-50">
+<div class="flex flex-col items-stretch bg-background-light dark:bg-slate-900 rounded-t-xl shadow-2xl">
+<button aria-label="Drag handle" class="flex h-6 w-full items-center justify-center py-2">
+<div class="h-1.5 w-12 rounded-full bg-slate-300 dark:bg-slate-600"></div>
+</button>
+<div class="flex-1 pb-safe">
+<div class="px-4 py-3 flex items-center gap-2">
+<div class="relative flex h-3 w-3">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3 w-3 bg-green-500"></span>
+</div>
+<span class="text-sm font-medium text-slate-600 dark:text-slate-400">New Payment Detected via SMS</span>
+</div>
+<div class="flex items-center gap-4 px-4 min-h-[72px] py-2 justify-between border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-4">
+<div class="text-primary flex items-center justify-center rounded-lg bg-primary/10 shrink-0 size-12">
+<span class="material-symbols-outlined text-2xl">account_balance_wallet</span>
+</div>
+<div class="flex flex-col justify-center">
+<p class="text-slate-900 dark:text-slate-100 text-2xl font-bold leading-normal tracking-tight line-clamp-1">₹200.00</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal line-clamp-2 uppercase tracking-wide">RAMESH KUMAR</p>
+</div>
+</div>
+<div class="shrink-0 text-slate-400">
+<span class="material-symbols-outlined">upi_pay</span>
+</div>
+</div>
+<h2 class="text-slate-900 dark:text-slate-100 text-lg font-bold leading-tight px-4 text-left pb-2 pt-5">Select Category</h2>
+<div class="grid grid-cols-3 sm:grid-cols-4 gap-3 p-4">
+<button class="flex flex-col gap-2 rounded-lg border-2 border-primary bg-primary/5 p-3 items-center justify-center transition-colors">
+<div class="text-primary bg-white dark:bg-slate-800 rounded-full p-2 shadow-sm">
+<span class="material-symbols-outlined">restaurant</span>
+</div>
+<span class="text-primary text-sm font-bold leading-tight text-center">Food</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">directions_car</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Transport</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">local_mall</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Shopping</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">receipt_long</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Bills</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">movie</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Entertainment</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">shopping_basket</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Groceries</span>
+</button>
+<button class="flex flex-col gap-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-3 items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
+<div class="text-slate-600 dark:text-slate-300 rounded-full p-2 bg-slate-100 dark:bg-slate-900">
+<span class="material-symbols-outlined">more_horiz</span>
+</div>
+<span class="text-slate-700 dark:text-slate-300 text-sm font-medium leading-tight text-center">Other</span>
+</button>
+</div>
+<div class="px-4 py-3">
+<div class="flex items-center justify-between bg-slate-100 dark:bg-slate-800 rounded-lg p-3">
+<div class="flex items-center gap-3">
+<div class="text-slate-500 dark:text-slate-400 flex items-center justify-center rounded-full bg-white dark:bg-slate-700 shrink-0 size-8 shadow-sm">
+<span class="material-symbols-outlined text-xl">person_add</span>
+</div>
+<div class="flex flex-col">
+<p class="text-slate-900 dark:text-slate-100 text-sm font-semibold leading-tight">Remember Merchant</p>
+<p class="text-slate-500 dark:text-slate-400 text-xs mt-0.5">Auto-categorize RAMESH KUMAR</p>
+</div>
+</div>
+<div class="shrink-0">
+<label class="relative flex h-7 w-12 cursor-pointer items-center rounded-full border-none bg-slate-300 dark:bg-slate-600 p-0.5 has-[:checked]:justify-end has-[:checked]:bg-primary transition-all">
+<div class="h-6 w-6 rounded-full bg-white shadow-sm transition-transform"></div>
+<input checked="" class="invisible absolute" type="checkbox"/>
+</label>
+</div>
+</div>
+</div>
+<div class="flex gap-3 px-4 py-4 mt-2 border-t border-slate-200 dark:border-slate-800">
+<button class="flex-1 py-3.5 px-4 rounded-xl font-bold text-slate-700 dark:text-slate-300 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors">
+                            Skip
+                        </button>
+<button class="flex-[2] py-3.5 px-4 rounded-xl font-bold text-white bg-primary hover:bg-primary/90 transition-colors shadow-md shadow-primary/20">
+                            Save Expense
+                        </button>
+</div>
+</div>
+<div class="h-6"></div>
+</div>
+</div>
+</div>
+</body></html>

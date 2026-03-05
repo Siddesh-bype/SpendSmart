@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Transaction History</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#6961ff",
+                        "background-light": "#f5f5f8",
+                        "background-dark": "#100f23",
+                        "surface-light": "#ffffff",
+                        "surface-dark": "#1a1936",
+                        "neutral-light": "#eaeaef",
+                        "neutral-dark": "#2a294d",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Manrope', sans-serif; }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen flex flex-col font-display selection:bg-primary/30">
+<!-- Header -->
+<header class="sticky top-0 z-10 bg-background-light dark:bg-background-dark/90 backdrop-blur-md pt-12 pb-2 px-4 border-b border-neutral-light dark:border-neutral-dark">
+<div class="flex items-center justify-between mb-4">
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-neutral-light dark:hover:bg-neutral-dark transition-colors text-slate-900 dark:text-slate-100">
+<span class="material-symbols-outlined text-2xl">arrow_back</span>
+</button>
+<h1 class="text-xl font-bold flex-1 text-center">All Transactions</h1>
+<button class="flex items-center justify-center w-10 h-10 rounded-full hover:bg-neutral-light dark:hover:bg-neutral-dark transition-colors text-slate-900 dark:text-slate-100">
+<span class="material-symbols-outlined text-2xl">file_download</span>
+</button>
+</div>
+<!-- Search Bar -->
+<div class="mb-4">
+<div class="flex items-center bg-surface-light dark:bg-surface-dark rounded-xl border border-neutral-light dark:border-neutral-dark overflow-hidden focus-within:ring-2 focus-within:ring-primary/50 transition-shadow">
+<span class="material-symbols-outlined text-slate-400 pl-3">search</span>
+<input class="w-full bg-transparent border-none py-3 px-3 text-sm focus:ring-0 placeholder-slate-400 dark:placeholder-slate-500 text-slate-900 dark:text-slate-100" placeholder="Search by merchant or category..." type="text"/>
+</div>
+</div>
+<!-- Filter & Month -->
+<div class="flex items-center gap-3 mb-2">
+<div class="relative min-w-[120px]">
+<select class="appearance-none w-full bg-surface-light dark:bg-surface-dark border border-neutral-light dark:border-neutral-dark rounded-lg py-2 pl-3 pr-8 text-sm font-medium focus:ring-2 focus:ring-primary/50 focus:border-primary text-slate-900 dark:text-slate-100 cursor-pointer">
+<option>October 2023</option>
+<option>September 2023</option>
+<option>August 2023</option>
+</select>
+<span class="material-symbols-outlined absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none text-xl">expand_more</span>
+</div>
+<div class="flex-1 overflow-x-auto hide-scrollbar flex gap-2 py-1">
+<button class="px-4 py-1.5 rounded-full bg-primary text-white text-sm font-medium whitespace-nowrap shrink-0">All</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-light dark:bg-surface-dark border border-neutral-light dark:border-neutral-dark text-slate-600 dark:text-slate-300 text-sm font-medium whitespace-nowrap shrink-0 hover:bg-neutral-light dark:hover:bg-neutral-dark">Food</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-light dark:bg-surface-dark border border-neutral-light dark:border-neutral-dark text-slate-600 dark:text-slate-300 text-sm font-medium whitespace-nowrap shrink-0 hover:bg-neutral-light dark:hover:bg-neutral-dark">Transport</button>
+<button class="px-4 py-1.5 rounded-full bg-surface-light dark:bg-surface-dark border border-neutral-light dark:border-neutral-dark text-slate-600 dark:text-slate-300 text-sm font-medium whitespace-nowrap shrink-0 hover:bg-neutral-light dark:hover:bg-neutral-dark">Shopping</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto pb-24 px-4 pt-4">
+<!-- Transaction Group: Today -->
+<div class="mb-6">
+<h2 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 pl-1">Today</h2>
+<div class="space-y-3">
+<!-- Transaction Item 1 -->
+<div class="group relative flex items-center bg-surface-light dark:bg-surface-dark p-3 rounded-xl shadow-sm border border-neutral-light/50 dark:border-neutral-dark/50 overflow-hidden">
+<!-- Swipe Hint Background (visual only) -->
+<div class="absolute inset-y-0 right-0 w-16 bg-red-500 flex items-center justify-center translate-x-full opacity-0">
+<span class="material-symbols-outlined text-white">delete</span>
+</div>
+<div class="flex-1 flex items-center gap-3 relative z-10 bg-surface-light dark:bg-surface-dark w-full">
+<div class="w-12 h-12 rounded-full bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-orange-600 dark:text-orange-400">restaurant</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-semibold text-base truncate">Zomato Order</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sms</span> Auto-detected • UPI
+                            </p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-bold text-base">-₹450</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">01:24 PM</p>
+</div>
+</div>
+</div>
+<!-- Transaction Item 2 -->
+<div class="group relative flex items-center bg-surface-light dark:bg-surface-dark p-3 rounded-xl shadow-sm border border-neutral-light/50 dark:border-neutral-dark/50">
+<div class="flex-1 flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-blue-600 dark:text-blue-400">directions_car</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-semibold text-base truncate">Uber Ride</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">Credit Card • Transport</p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-bold text-base">-₹220</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">09:15 AM</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Transaction Group: Yesterday -->
+<div class="mb-6">
+<h2 class="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3 pl-1">Yesterday, 14 Oct</h2>
+<div class="space-y-3">
+<!-- Transaction Item 3 -->
+<div class="group relative flex items-center bg-surface-light dark:bg-surface-dark p-3 rounded-xl shadow-sm border border-neutral-light/50 dark:border-neutral-dark/50">
+<div class="flex-1 flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-green-600 dark:text-green-400">shopping_bag</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-semibold text-base truncate">Amazon India</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate">UPI • Shopping</p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-bold text-base">-₹1,299</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">08:45 PM</p>
+</div>
+</div>
+</div>
+<!-- Transaction Item 4 -->
+<div class="group relative flex items-center bg-surface-light dark:bg-surface-dark p-3 rounded-xl shadow-sm border border-neutral-light/50 dark:border-neutral-dark/50">
+<div class="flex-1 flex items-center gap-3">
+<div class="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-purple-600 dark:text-purple-400">bolt</span>
+</div>
+<div class="flex-1 min-w-0">
+<h3 class="font-semibold text-base truncate">Bescom Electricity Bill</h3>
+<p class="text-xs text-slate-500 dark:text-slate-400 truncate flex items-center gap-1">
+<span class="material-symbols-outlined text-[14px]">sms</span> Auto-detected • UPI
+                            </p>
+</div>
+<div class="text-right shrink-0">
+<p class="font-bold text-base">-₹850</p>
+<p class="text-xs text-slate-500 dark:text-slate-400">10:30 AM</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full bg-surface-light dark:bg-surface-dark border-t border-neutral-light dark:border-neutral-dark pb-safe pt-2 px-4 z-20">
+<div class="flex justify-around items-center h-14 max-w-md mx-auto">
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">list_alt</span>
+<span class="text-[10px] font-medium">History</span>
+</a>
+<!-- FAB -->
+<div class="relative -top-5">
+<button class="w-12 h-12 bg-primary text-white rounded-full flex items-center justify-center shadow-lg shadow-primary/30 hover:bg-primary/90 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-2xl">add</span>
+</button>
+</div>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">pie_chart</span>
+<span class="text-[10px] font-medium">Budgets</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors" href="#">
+<span class="material-symbols-outlined">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</div>
+<div class="h-safe"></div> <!-- For iOS safe area -->
+</nav>
+</body></html>

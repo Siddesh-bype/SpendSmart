@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dashboard Home</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#180df2",
+                        "background-light": "#f6f5f8",
+                        "background-dark": "#111022",
+                        "surface": "#ffffff",
+                        "surface-dark": "#1a192f",
+                        "text-main": "#1e1d32",
+                        "text-muted": "#6b6a8a",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light font-display text-text-main antialiased selection:bg-primary/20">
+<div class="relative flex min-h-screen w-full flex-col overflow-x-hidden pb-24">
+<!-- Top Bar -->
+<div class="sticky top-0 z-10 flex items-center justify-between bg-background-light/80 p-4 pb-2 backdrop-blur-md">
+<div class="flex size-12 shrink-0 items-center">
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10 ring-2 ring-primary/20" data-alt="Portrait photo of a young woman" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDPDmocpEGyB98rfC42mWFcGzOSGQN0LcWyJuL1FDvn20X0i_FRWrtIpkWgQXFBQt1DehKjOZMS4d1wtLTN0LJ6dccnliA5Xo4B4EwS4x1y4HRIHZ_aYozUvach8SiH5mCYwNmMpzfmH4y1JiOQ7iPF9kNhEP5Il5E7Yqg_hZ7jpGeRlVCpMnpBE-kC25uhi2op1OPLU9cXWyxol7ttJTvEJ4Pwlxn2aFqgdzzc85yEpbY2rPic7ghxgr-uAWc3_qsF4nWwIpozXUy_");'></div>
+</div>
+<h2 class="text-text-main flex-1 text-center text-lg font-bold leading-tight tracking-tight">September</h2>
+<div class="flex size-12 items-center justify-end">
+<button class="relative flex size-10 cursor-pointer items-center justify-center rounded-full bg-surface text-text-main shadow-sm transition-colors hover:bg-primary/5 active:scale-95">
+<span class="material-symbols-outlined text-2xl">notifications</span>
+<span class="absolute right-2 top-2 size-2 rounded-full bg-red-500 ring-2 ring-surface"></span>
+</button>
+</div>
+</div>
+<!-- Main Content -->
+<div class="flex flex-col gap-6 px-4 pt-2">
+<!-- Warning Banner -->
+<div class="flex items-center gap-3 rounded-lg bg-orange-50 p-3 text-orange-800 ring-1 ring-orange-200">
+<span class="material-symbols-outlined text-orange-500">warning</span>
+<p class="text-sm font-medium">You have 2 uncategorized UPI expenses.</p>
+<button class="ml-auto text-sm font-bold text-orange-600 hover:text-orange-700">Review</button>
+</div>
+<!-- Hero Card (Total Spent) -->
+<div class="flex items-center justify-between gap-4 rounded-xl bg-primary p-6 text-white shadow-lg shadow-primary/30">
+<div class="flex flex-col gap-2">
+<p class="text-primary-100 text-sm font-medium opacity-80">Total Spent</p>
+<p class="text-3xl font-bold tracking-tight">₹8,450</p>
+<div class="mt-2 flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-1 w-max">
+<span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+<span class="text-xs font-semibold">12% vs last month</span>
+</div>
+</div>
+<!-- Circular Progress (Simulated with SVG) -->
+<div class="relative flex size-24 shrink-0 items-center justify-center">
+<svg class="size-full -rotate-90" viewbox="0 0 36 36">
+<path class="text-white/20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="100, 100" stroke-width="4"></path>
+<path class="text-white" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="currentColor" stroke-dasharray="65, 100" stroke-linecap="round" stroke-width="4"></path>
+</svg>
+<div class="absolute inset-0 flex flex-col items-center justify-center">
+<span class="text-sm font-bold">65%</span>
+<span class="text-[10px] opacity-80">Limit</span>
+</div>
+</div>
+</div>
+<!-- Mini Stat Cards -->
+<div class="flex flex-wrap gap-4">
+<div class="flex flex-1 flex-col gap-2 rounded-xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/50">
+<div class="flex items-center gap-2">
+<div class="flex size-8 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+<span class="material-symbols-outlined text-lg">trending_up</span>
+</div>
+<p class="text-text-muted text-xs font-medium uppercase tracking-wider">Income</p>
+</div>
+<p class="text-text-main text-xl font-bold">₹35,000</p>
+</div>
+<div class="flex flex-1 flex-col gap-2 rounded-xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/50">
+<div class="flex items-center gap-2">
+<div class="flex size-8 items-center justify-center rounded-full bg-primary/10 text-primary">
+<span class="material-symbols-outlined text-lg">savings</span>
+</div>
+<p class="text-text-muted text-xs font-medium uppercase tracking-wider">Savings</p>
+</div>
+<p class="text-text-main text-xl font-bold">₹26,550</p>
+</div>
+</div>
+<!-- Category Spending -->
+<div>
+<div class="mb-4 flex items-center justify-between">
+<h3 class="text-text-main text-lg font-bold tracking-tight">Category Spending</h3>
+<a class="text-sm font-semibold text-primary hover:underline" href="#">See All</a>
+</div>
+<div class="flex flex-col gap-4 rounded-xl bg-surface p-4 shadow-sm ring-1 ring-slate-200/50">
+<!-- Category 1 -->
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-lg bg-orange-100 text-orange-600">
+<span class="material-symbols-outlined text-xl">restaurant</span>
+</div>
+<div>
+<p class="font-semibold">Food &amp; Dining</p>
+<p class="text-text-muted text-xs font-medium">₹3,200 / ₹5,000</p>
+</div>
+</div>
+<p class="font-bold">64%</p>
+</div>
+<div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full rounded-full bg-orange-500" style="width: 64%"></div>
+</div>
+</div>
+<!-- Category 2 -->
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+<span class="material-symbols-outlined text-xl">commute</span>
+</div>
+<div>
+<p class="font-semibold">Transport</p>
+<p class="text-text-muted text-xs font-medium">₹1,800 / ₹2,000</p>
+</div>
+</div>
+<p class="font-bold">90%</p>
+</div>
+<div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full rounded-full bg-blue-500" style="width: 90%"></div>
+</div>
+</div>
+<!-- Category 3 -->
+<div class="flex flex-col gap-2 pt-2">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-lg bg-purple-100 text-purple-600">
+<span class="material-symbols-outlined text-xl">shopping_bag</span>
+</div>
+<div>
+<p class="font-semibold">Shopping</p>
+<p class="text-text-muted text-xs font-medium">₹2,450 / ₹4,000</p>
+</div>
+</div>
+<p class="font-bold">61%</p>
+</div>
+<div class="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+<div class="h-full rounded-full bg-purple-500" style="width: 61%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- Recent Transactions -->
+<div>
+<div class="mb-4 flex items-center justify-between">
+<h3 class="text-text-main text-lg font-bold tracking-tight">Recent Transactions</h3>
+<a class="text-sm font-semibold text-primary hover:underline" href="#">See All</a>
+</div>
+<div class="flex flex-col gap-0 rounded-xl bg-surface shadow-sm ring-1 ring-slate-200/50">
+<!-- Transaction 1 -->
+<div class="flex items-center justify-between border-b border-slate-100 p-4">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-full bg-slate-100">
+<span class="material-symbols-outlined text-text-muted text-xl">local_cafe</span>
+</div>
+<div>
+<p class="font-semibold">Starbucks</p>
+<p class="text-text-muted text-xs font-medium">Today, 09:41 AM • UPI</p>
+</div>
+</div>
+<p class="font-bold text-slate-800">-₹350</p>
+</div>
+<!-- Transaction 2 -->
+<div class="flex items-center justify-between border-b border-slate-100 p-4">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-full bg-slate-100">
+<span class="material-symbols-outlined text-text-muted text-xl">shopping_cart</span>
+</div>
+<div>
+<p class="font-semibold">Blinkit Groceries</p>
+<p class="text-text-muted text-xs font-medium">Yesterday, 06:20 PM • Card</p>
+</div>
+</div>
+<p class="font-bold text-slate-800">-₹1,240</p>
+</div>
+<!-- Transaction 3 -->
+<div class="flex items-center justify-between p-4">
+<div class="flex items-center gap-3">
+<div class="flex size-10 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+<span class="material-symbols-outlined text-xl">payments</span>
+</div>
+<div>
+<p class="font-semibold">Salary Credit</p>
+<p class="text-text-muted text-xs font-medium">Sept 01, 10:00 AM • Bank</p>
+</div>
+</div>
+<p class="font-bold text-emerald-600">+₹35,000</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Floating Action Button -->
+<button class="fixed bottom-24 right-4 z-20 flex size-14 items-center justify-center rounded-full bg-primary text-white shadow-lg shadow-primary/40 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-3xl">add</span>
+</button>
+<!-- Bottom Navigation -->
+<div class="fixed bottom-0 left-0 right-0 z-30 flex justify-around border-t border-slate-200/60 bg-surface/90 px-2 pb-6 pt-3 backdrop-blur-lg">
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-primary" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-2xl" style="font-variation-settings: 'FILL' 1;">home</span>
+</div>
+<p class="text-[11px] font-semibold">Home</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-text-muted hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-2xl">bar_chart</span>
+</div>
+<p class="text-[11px] font-medium">Analytics</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-text-muted hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-2xl">account_balance_wallet</span>
+</div>
+<p class="text-[11px] font-medium">Budgets</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-end gap-1 text-text-muted hover:text-primary transition-colors" href="#">
+<div class="flex h-8 items-center justify-center">
+<span class="material-symbols-outlined text-2xl">person</span>
+</div>
+<p class="text-[11px] font-medium">Profile</p>
+</a>
+</div>
+</div>
+</body></html>

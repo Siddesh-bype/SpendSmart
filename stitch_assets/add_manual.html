@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Add Manual Expense</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#1e13ec",
+                        "background-light": "#f6f6f8",
+                        "background-dark": "#111022",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        /* Hide scrollbar for category chips but allow scrolling */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;  /* IE and Edge */
+            scrollbar-width: none;  /* Firefox */
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="font-display bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 antialiased selection:bg-primary/30">
+<div class="relative mx-auto flex h-auto min-h-screen w-full max-w-md flex-col overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="flex items-center justify-between p-4 pb-2 sticky top-0 z-10 bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md">
+<button class="flex size-10 items-center justify-center rounded-full bg-slate-200/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined" style="font-size: 24px;">close</span>
+</button>
+<h2 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center">Add Expense</h2>
+<div class="w-10"></div> <!-- Spacer for centering -->
+</header>
+<main class="flex-1 flex flex-col px-4 pb-24">
+<!-- Large Amount Input -->
+<div class="flex flex-col items-center justify-center py-10">
+<p class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Amount</p>
+<div class="flex items-center justify-center gap-1">
+<span class="text-4xl font-bold text-slate-400 dark:text-slate-500">₹</span>
+<input class="w-full max-w-[200px] bg-transparent border-none text-center text-5xl font-bold focus:ring-0 focus:outline-none p-0 text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-700" inputmode="decimal" placeholder="0" type="number" value="450"/>
+</div>
+</div>
+<div class="flex flex-col gap-6">
+<!-- Merchant / Title Field -->
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300 px-1">Merchant / Title</label>
+<div class="relative flex items-center bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 focus-within:border-primary dark:focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined absolute left-4 text-slate-400">storefront</span>
+<input class="w-full bg-transparent border-none focus:ring-0 text-base font-medium py-4 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400" placeholder="e.g. Swiggy, Uber" type="text"/>
+</div>
+</div>
+<!-- Category Chips -->
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300 px-1">Category</label>
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-1 -mx-4 px-4">
+<!-- Active Category -->
+<button class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 shadow-sm shadow-primary/20 transition-transform active:scale-95">
+<span class="material-symbols-outlined text-white" style="font-size: 20px;">restaurant</span>
+<span class="text-sm font-bold text-white">Food</span>
+</button>
+<!-- Inactive Categories -->
+<button class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-5 py-3 text-slate-600 dark:text-slate-400 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">commute</span>
+<span class="text-sm font-medium">Transport</span>
+</button>
+<button class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-5 py-3 text-slate-600 dark:text-slate-400 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">shopping_bag</span>
+<span class="text-sm font-medium">Shopping</span>
+</button>
+<button class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-5 py-3 text-slate-600 dark:text-slate-400 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">receipt_long</span>
+<span class="text-sm font-medium">Bills</span>
+</button>
+<button class="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-5 py-3 text-slate-600 dark:text-slate-400 transition-all active:scale-95">
+<span class="material-symbols-outlined" style="font-size: 20px;">movie</span>
+<span class="text-sm font-medium">Entertainment</span>
+</button>
+</div>
+</div>
+<!-- Date & Time Row -->
+<div class="flex gap-4">
+<div class="flex-1 flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300 px-1">Date</label>
+<button class="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400" style="font-size: 20px;">calendar_today</span>
+<span class="text-base font-medium text-slate-900 dark:text-white">Today</span>
+</div>
+</button>
+</div>
+<div class="flex-1 flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300 px-1">Time</label>
+<button class="flex items-center justify-between bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 w-full">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-slate-400" style="font-size: 20px;">schedule</span>
+<span class="text-base font-medium text-slate-900 dark:text-white">08:45 PM</span>
+</div>
+</button>
+</div>
+</div>
+<!-- Note Field -->
+<div class="flex flex-col gap-2">
+<label class="text-sm font-semibold text-slate-700 dark:text-slate-300 px-1">Note (Optional)</label>
+<div class="relative flex items-start bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 focus-within:border-primary dark:focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined absolute left-4 top-4 text-slate-400">description</span>
+<textarea class="w-full bg-transparent border-none focus:ring-0 text-base font-medium py-4 pl-12 pr-4 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none min-h-[100px]" placeholder="Add any details..."></textarea>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Action Bar -->
+<div class="fixed bottom-0 left-0 right-0 p-4 bg-background-light dark:bg-background-dark border-t border-slate-200 dark:border-slate-800 sm:relative sm:border-t-0 sm:bg-transparent sm:pb-8">
+<div class="mx-auto max-w-md">
+<button class="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-white rounded-xl py-4 text-lg font-bold shadow-lg shadow-primary/30 transition-all active:scale-[0.98]">
+<span class="material-symbols-outlined">check_circle</span>
+                    Save Expense
+                </button>
+</div>
+</div>
+</div>
+</body></html>

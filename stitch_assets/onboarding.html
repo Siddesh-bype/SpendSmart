@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>SpendSmart Onboarding</title>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#2f25f4",
+                        "background-light": "#f6f5f8",
+                        "background-dark": "#111022",
+                    },
+                    fontFamily: {
+                        "display": ["Poppins", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-slate-100 flex justify-center min-h-screen">
+<div class="relative flex h-screen w-full max-w-[400px] flex-col overflow-x-hidden shadow-xl bg-white dark:bg-slate-900">
+<!-- Top App Bar -->
+<div class="flex items-center p-4 pb-2 justify-between shrink-0">
+<button class="flex size-12 items-center text-slate-900 dark:text-slate-100 cursor-pointer">
+<span class="material-symbols-outlined text-2xl">close</span>
+</button>
+<h2 class="text-lg font-bold leading-tight tracking-[-0.015em] flex-1 text-center pr-12 text-primary">SpendSmart</h2>
+</div>
+<!-- Carousel Content Area -->
+<div class="flex-1 flex flex-col items-center justify-center p-6 text-center">
+<!-- Illustration / Image Area -->
+<div class="w-full max-w-[280px] aspect-square mb-8 bg-primary/10 rounded-full flex items-center justify-center">
+<div class="w-48 h-48 bg-center bg-no-repeat bg-cover rounded-xl" data-alt="Phone scanning UPI payment SMS" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuD1-5hGCwFhTRDPcM8WLaKJyBvhIjuO2qn-M7XYL-nac9ffmSLZIdXu0rxV6wRFzny1UWLcRXArfxuXG9O2XkqrhSKhZpeKFmhBznZ5j8CxX8EqyN-4jdJSggE7MlnWarTnMAd-Kfi76aiaXPItydD5G9GhW_hmoq15amOdYSRcUK2QoExXng76v8r-by1DLB8txCBziKPBlTvv_3zSo80QtheRxv2dBc-1wnrq6xzYenPv6Dg2NEEQuNtzAs4FzjGuFHCa0aWrIGBl");'></div>
+</div>
+<!-- Text Content -->
+<div class="space-y-4 max-w-sm">
+<h1 class="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">Auto-detect UPI Payments</h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm leading-relaxed px-4">
+                    Instantly read SMS for UPI transactions and automatically log your expenses without lifting a finger.
+                </p>
+</div>
+</div>
+<!-- Bottom Controls Area -->
+<div class="shrink-0 pb-8 pt-4 px-6 flex flex-col gap-8 bg-white dark:bg-slate-900">
+<!-- Progress Dots -->
+<div class="flex w-full flex-row items-center justify-center gap-3">
+<div class="h-2 w-8 rounded-full bg-primary transition-all duration-300"></div>
+<div class="h-2 w-2 rounded-full bg-primary/20 dark:bg-primary/40 transition-all duration-300"></div>
+<div class="h-2 w-2 rounded-full bg-primary/20 dark:bg-primary/40 transition-all duration-300"></div>
+</div>
+<!-- Action Button -->
+<div class="flex w-full">
+<button class="flex w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl h-14 px-5 bg-primary hover:bg-primary/90 active:bg-primary/80 transition-colors text-white text-base font-semibold shadow-lg shadow-primary/30">
+<span class="truncate">Next</span>
+<span class="material-symbols-outlined ml-2 text-xl">arrow_forward</span>
+</button>
+</div>
+<div class="flex justify-center -mt-4">
+<button class="text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors py-2">Skip Tour</button>
+</div>
+</div>
+</div>
+</body></html>

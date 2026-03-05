@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Pending Categorization</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#6961ff",
+                        "background-light": "#f5f5f8",
+                        "background-dark": "#100f23",
+                    },
+                    fontFamily: {
+                        "display": ["Manrope", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "0.5rem", "lg": "1rem", "xl": "1.5rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 font-display antialiased min-h-screen">
+<div class="relative flex min-h-screen w-full flex-col max-w-md mx-auto bg-white dark:bg-slate-900 overflow-x-hidden shadow-xl">
+<!-- Header -->
+<header class="flex items-center p-4 justify-between sticky top-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md z-10 border-b border-slate-200 dark:border-slate-800">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+<span class="material-symbols-outlined text-slate-900 dark:text-slate-100">arrow_back</span>
+</button>
+<h1 class="text-lg font-bold leading-tight flex-1 text-center pr-10">Pending Categorization</h1>
+</header>
+<!-- Main Content -->
+<main class="flex-1 overflow-y-auto pb-24">
+<!-- Item 1 -->
+<div class="border-b border-slate-100 dark:border-slate-800 last:border-0">
+<div class="flex gap-4 px-4 py-4 justify-between">
+<div class="flex items-start gap-4">
+<div class="bg-primary/10 dark:bg-primary/20 flex items-center justify-center rounded-lg size-[56px] text-primary">
+<span class="material-symbols-outlined text-3xl">restaurant</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-base font-bold leading-normal">₹450 at Swiggy</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal">Categorize this expense</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-slate-400 text-[14px]">account_balance_wallet</span>
+<p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">UPI Payment</p>
+</div>
+</div>
+</div>
+<div class="shrink-0">
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold leading-normal">Today, 2:30 PM</p>
+</div>
+</div>
+<!-- Category Picker 1 -->
+<div class="@container px-4 pb-4">
+<div class="flex gap-3 overflow-x-auto snap-x hide-scrollbar pb-2">
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-primary text-white p-3 transition-transform group-active:scale-95 shadow-md shadow-primary/20">
+<span class="material-symbols-outlined text-[24px]">fastfood</span>
+</div>
+<p class="text-xs font-semibold mt-1">Food</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">shopping_cart</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Shopping</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">local_gas_station</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Fuel</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">movie</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Ent.</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Other</p>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="border-b border-slate-100 dark:border-slate-800 last:border-0">
+<div class="flex gap-4 px-4 py-4 justify-between">
+<div class="flex items-start gap-4">
+<div class="bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center rounded-lg size-[56px] text-orange-600 dark:text-orange-400">
+<span class="material-symbols-outlined text-3xl">storefront</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-base font-bold leading-normal">₹1,200 at Dmart</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal">Categorize this expense</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-slate-400 text-[14px]">account_balance_wallet</span>
+<p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">UPI Payment</p>
+</div>
+</div>
+</div>
+<div class="shrink-0">
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold leading-normal">Yesterday</p>
+</div>
+</div>
+<!-- Category Picker 2 -->
+<div class="@container px-4 pb-4">
+<div class="flex gap-3 overflow-x-auto snap-x hide-scrollbar pb-2">
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">fastfood</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Food</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">shopping_cart</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Shopping</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">home</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Groceries</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">checkroom</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Clothing</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Other</p>
+</button>
+</div>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="border-b border-slate-100 dark:border-slate-800 last:border-0">
+<div class="flex gap-4 px-4 py-4 justify-between">
+<div class="flex items-start gap-4">
+<div class="bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center rounded-lg size-[56px] text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined text-3xl">directions_car</span>
+</div>
+<div class="flex flex-1 flex-col justify-center">
+<p class="text-base font-bold leading-normal">₹350 at Uber</p>
+<p class="text-slate-500 dark:text-slate-400 text-sm font-medium leading-normal">Categorize this expense</p>
+<div class="flex items-center gap-1 mt-1">
+<span class="material-symbols-outlined text-slate-400 text-[14px]">account_balance_wallet</span>
+<p class="text-slate-400 dark:text-slate-500 text-xs font-semibold uppercase tracking-wider">UPI Payment</p>
+</div>
+</div>
+</div>
+<div class="shrink-0">
+<p class="text-slate-500 dark:text-slate-400 text-xs font-semibold leading-normal">Mon, 12 Oct</p>
+</div>
+</div>
+<!-- Category Picker 3 -->
+<div class="@container px-4 pb-4">
+<div class="flex gap-3 overflow-x-auto snap-x hide-scrollbar pb-2">
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">commute</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Transport</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">flight</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Travel</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">local_gas_station</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Fuel</p>
+</button>
+<button class="snap-start flex flex-col items-center gap-1 min-w-[72px] group">
+<div class="rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 p-3 transition-transform group-active:scale-95 group-hover:bg-slate-200 dark:group-hover:bg-slate-700">
+<span class="material-symbols-outlined text-[24px]">more_horiz</span>
+</div>
+<p class="text-xs font-medium text-slate-600 dark:text-slate-400 mt-1">Other</p>
+</button>
+</div>
+</div>
+</div>
+<!-- Empty State (Hidden by default in this layout, but included for completeness) -->
+<!--
+            <div class="flex flex-col items-center justify-center py-20 px-6 text-center">
+                <div class="size-32 bg-primary/10 rounded-full flex items-center justify-center mb-6">
+                    <span class="material-symbols-outlined text-6xl text-primary">done_all</span>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">All caught up! 🎉</h3>
+                <p class="text-slate-500 dark:text-slate-400">You have no pending transactions to categorize.</p>
+                <button class="mt-8 bg-primary hover:bg-primary/90 text-white px-6 py-3 rounded-full font-semibold transition-colors">
+                    View Insights
+                </button>
+            </div>
+            -->
+</main>
+<!-- Bottom Navigation -->
+<nav class="fixed bottom-0 w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 px-4 pb-safe pt-2 z-20">
+<div class="flex gap-2 justify-between pb-2">
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors py-2" href="#">
+<span class="material-symbols-outlined text-[24px]">home</span>
+<p class="text-[10px] font-semibold">Home</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors py-2" href="#">
+<span class="material-symbols-outlined text-[24px]">receipt_long</span>
+<p class="text-[10px] font-semibold">Activity</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-primary py-2 relative" href="#">
+<div class="absolute -top-1 right-3 size-2 bg-red-500 rounded-full"></div>
+<span class="material-symbols-outlined text-[24px] icon-filled" style="font-variation-settings: 'FILL' 1;">pending_actions</span>
+<p class="text-[10px] font-bold">Pending</p>
+</a>
+<a class="flex flex-1 flex-col items-center justify-center gap-1 text-slate-500 dark:text-slate-400 hover:text-primary transition-colors py-2" href="#">
+<span class="material-symbols-outlined text-[24px]">person</span>
+<p class="text-[10px] font-semibold">Profile</p>
+</a>
+</div>
+</nav>
+<style>
+            /* Hide scrollbar for Chrome, Safari and Opera */
+            .hide-scrollbar::-webkit-scrollbar {
+                display: none;
+            }
+            /* Hide scrollbar for IE, Edge and Firefox */
+            .hide-scrollbar {
+                -ms-overflow-style: none;  /* IE and Edge */
+                scrollbar-width: none;  /* Firefox */
+            }
+            /* iOS Safe Area */
+            .pb-safe {
+                padding-bottom: env(safe-area-inset-bottom, 20px);
+            }
+        </style>
+</div>
+</body></html>
