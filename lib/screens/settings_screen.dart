@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
+import '../providers/lending_provider.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/supabase_service.dart';
@@ -48,9 +49,9 @@ class SettingsScreen extends ConsumerWidget {
           onTap: () => _editCurrency(context, ref, settings.currency),
         ),
         _tile(
-          icon: Icons.account_balance_wallet, title: 'Monthly Income',
-          subtitle: '${settings.currency}${settings.monthlyIncome.toStringAsFixed(0)}',
-          onTap: () => _editIncome(context, ref, settings.monthlyIncome),
+          icon: Icons.account_balance_wallet, title: 'Monthly Budget',
+          subtitle: '${settings.currency}${settings.monthlyBudget.toStringAsFixed(0)}',
+          onTap: () => _editBudget(context, ref, settings.monthlyBudget),
         ),
         _tile(
           icon: Icons.calendar_month_outlined, title: 'Starting Day of Month',
@@ -128,7 +129,7 @@ class SettingsScreen extends ConsumerWidget {
 
         const SizedBox(height: 16),
         _sectionTitle('About & Account'),
-        _tile(icon: Icons.info_outline, title: 'Version', subtitle: '2.0.0', onTap: null),
+        _tile(icon: Icons.info_outline, title: 'Version', subtitle: '2.1.0', onTap: null),
         const SizedBox(height: 16),
         
         if (SupabaseService.currentUser != null)
@@ -288,24 +289,37 @@ class SettingsScreen extends ConsumerWidget {
     ));
   }
 
-  void _editIncome(BuildContext context, WidgetRef ref, double current) {
-    final ctrl = TextEditingController(text: current.toStringAsFixed(0));
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: const Text('Monthly Income'),
-      content: TextField(controller: ctrl, keyboardType: TextInputType.number,
-        decoration: const InputDecoration(hintText: 'Enter amount', prefixText: '₹ ')),
-      actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-        ElevatedButton(
-          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-          onPressed: () {
-            ref.read(appSettingsProvider.notifier).updateIncome(double.tryParse(ctrl.text) ?? 0);
-            Navigator.pop(context);
-          },
-          child: const Text('Save', style: TextStyle(color: Colors.white)),
+  Future<void> _editBudget(BuildContext context, WidgetRef ref, double current) async {
+    final ctrl = TextEditingController(text: current > 0 ? current.toStringAsFixed(0) : '');
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Monthly Budget'),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: 'Total monthly budget',
+            prefixText: '${ref.read(appSettingsProvider).currency} ',
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
         ),
-      ],
-    ));
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            onPressed: () {
+              final val = double.tryParse(ctrl.text) ?? 0;
+              HapticFeedback.mediumImpact();
+              ref.read(appSettingsProvider.notifier).updateBudget(val);
+              Navigator.pop(context);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    ).whenComplete(() => ctrl.dispose());
   }
 
   void _editStartingDay(BuildContext context, WidgetRef ref, int current) {
@@ -379,7 +393,12 @@ class SettingsScreen extends ConsumerWidget {
     final storage = ref.read(storageServiceProvider);
     await storage.clearAll();
 
-    // 3. Navigate straight back to Auth
+    // 3. Clear in-memory state
+    ref.invalidate(expenseProvider);
+    ref.invalidate(budgetProvider);
+    ref.invalidate(lendingProvider);
+
+    // 4. Navigate straight back to Auth
     if (context.mounted) {
       Navigator.pushAndRemoveUntil(
         context,

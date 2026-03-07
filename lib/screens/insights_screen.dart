@@ -5,6 +5,7 @@ import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
+import '../utils/date_extension.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -16,11 +17,14 @@ class InsightsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final now = DateTime.now();
 
-    final thisMonth = expenses.where((e) => e.date.month == now.month && e.date.year == now.year).toList();
-    final lastMonth = expenses.where((e) {
-      final lm = DateTime(now.year, now.month - 1);
-      return e.date.month == lm.month && e.date.year == lm.year;
-    }).toList();
+    final thisMonth = expenses.where(
+      (e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth),
+    ).toList();
+    
+    final lmDate = DateTime(now.year, now.month - 1);
+    final lastMonth = expenses.where(
+      (e) => e.date.isTargetCustomMonth(lmDate.month, lmDate.year, settings.startingDayOfMonth),
+    ).toList();
 
     final thisTotal = thisMonth.fold(0.0, (a, b) => a + b.amount);
     final lastTotal = lastMonth.fold(0.0, (a, b) => a + b.amount);
@@ -234,21 +238,21 @@ class InsightsScreen extends ConsumerWidget {
       });
     }
 
-    if (settings.monthlyIncome > 0) {
-      final savingsRate = (settings.monthlyIncome - thisTotal) / settings.monthlyIncome;
+    if (settings.monthlyBudget > 0) {
+      final savingsRate = (settings.monthlyBudget - thisTotal) / settings.monthlyBudget;
       if (savingsRate > 0.3) {
         tips.add({
           'icon': Icons.savings,
           'color': Colors.green,
-          'title': 'Strong Savings Rate',
-          'body': 'You\'re saving ${(savingsRate * 100).toStringAsFixed(0)}% of your income this month — well above the recommended 20%!',
+          'title': 'Strong Budget Management',
+          'body': 'You have ${(savingsRate * 100).toStringAsFixed(0)}% of your budget left this month. Awesome job!',
         });
       } else if (savingsRate < 0.1 && savingsRate > 0) {
         tips.add({
           'icon': Icons.savings,
           'color': Colors.orange,
-          'title': 'Low Savings Rate',
-          'body': 'Try to save at least 20% of your income. Consider reducing spending on non-essentials.',
+          'title': 'Approaching Budget Limit',
+          'body': 'You have less than 10% of your total budget remaining. Consider reducing spending on non-essentials.',
         });
       }
     }

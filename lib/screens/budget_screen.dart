@@ -72,7 +72,13 @@ class BudgetScreen extends ConsumerWidget {
         const SizedBox(height: 12),
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(value: pct, backgroundColor: Colors.white24, color: Colors.white, minHeight: 8)),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: pct),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, _) => LinearProgressIndicator(value: val, backgroundColor: Colors.white24, color: Colors.white, minHeight: 8),
+          ),
+        ),
         const SizedBox(height: 6),
         Text('${(pct * 100).toStringAsFixed(0)}% used',
           style: const TextStyle(color: Colors.white70, fontSize: 12)),
@@ -119,11 +125,16 @@ class BudgetScreen extends ConsumerWidget {
             const SizedBox(height: 8),
             ClipRRect(
               borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: pct,
-                backgroundColor: Colors.grey.shade200,
-                color: isOverBudget ? Colors.red : (pct > 0.8 ? Colors.orange : cat.color),
-                minHeight: 8,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween<double>(begin: 0, end: pct),
+                duration: const Duration(milliseconds: 800),
+                curve: Curves.easeOutCubic,
+                builder: (context, val, _) => LinearProgressIndicator(
+                  value: val,
+                  backgroundColor: Colors.grey.shade200,
+                  color: isOverBudget ? Colors.red : (pct > 0.8 ? Colors.orange : cat.color),
+                  minHeight: 8,
+                ),
               ),
             ),
           ],
@@ -189,6 +200,9 @@ class BudgetScreen extends ConsumerWidget {
           const SizedBox(height: 16),
         ]),
       ),
-    );
+    ).whenComplete(() {
+      amountController.dispose();
+      catController.dispose();
+    });
   }
 }

@@ -190,12 +190,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 const SizedBox(height: 10),
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(4),
-                                  child: LinearProgressIndicator(
-                                    value: pct,
-                                    backgroundColor:
-                                        Theme.of(context).colorScheme.surfaceContainerHighest,
-                                    color: e.key.color,
-                                    minHeight: 8,
+                                  child: TweenAnimationBuilder<double>(
+                                    tween: Tween<double>(begin: 0, end: pct),
+                                    duration: const Duration(milliseconds: 800),
+                                    curve: Curves.easeOutCubic,
+                                    builder: (context, val, _) => LinearProgressIndicator(
+                                      value: val,
+                                      backgroundColor:
+                                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                                      color: e.key.color,
+                                      minHeight: 8,
+                                    ),
                                   ),
                                 ),
                               ]),

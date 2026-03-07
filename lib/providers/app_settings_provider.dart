@@ -14,7 +14,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     final prefs = ref.watch(sharedPreferencesProvider);
     return AppSettings(
       currency: prefs.getString('currency') ?? '₹',
-      monthlyIncome: prefs.getDouble('monthlyIncome') ?? 0.0,
+      monthlyBudget: prefs.getDouble('monthlyBudget') ?? prefs.getDouble('monthlyIncome') ?? 0.0,
       theme: prefs.getString('theme') ?? 'system',
       onboardingDone: prefs.getBool('onboardingDone') ?? false,
       startingDayOfMonth: prefs.getInt('startingDayOfMonth') ?? 1,
@@ -26,9 +26,9 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(currency: currency);
   }
 
-  Future<void> updateIncome(double income) async {
-    await ref.read(sharedPreferencesProvider).setDouble('monthlyIncome', income);
-    state = state.copyWith(monthlyIncome: income);
+  Future<void> updateBudget(double budget) async {
+    await ref.read(sharedPreferencesProvider).setDouble('monthlyBudget', budget);
+    state = state.copyWith(monthlyBudget: budget);
   }
 
   Future<void> updateTheme(String theme) async {

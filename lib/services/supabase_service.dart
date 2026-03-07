@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/expense.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
+import '../models/lending.dart';
 
 /// Remote sync service wrapping Supabase.
 /// Local Hive is the source of truth. Supabase = cloud backup + multi-device sync.
@@ -19,11 +20,19 @@ class SupabaseService {
   static User? get currentUser => _db?.auth.currentUser;
   static String get userId => currentUser?.id ?? '';
 
+  static void _requireClient() {
+    if (_db == null) {
+      throw Exception('Cloud sync is not configured. The app is running in offline mode.');
+    }
+  }
+
   static Future<AuthResponse> signUp(String email, String password) async {
+    _requireClient();
     return await _db!.auth.signUp(email: email, password: password);
   }
 
   static Future<AuthResponse> signIn(String email, String password) async {
+    _requireClient();
     return await _db!.auth.signInWithPassword(email: email, password: password);
   }
 
@@ -37,7 +46,7 @@ class SupabaseService {
 
   static Future<void> upsertExpense(Expense expense) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null || userId.isEmpty) return;
     try {
       await db.from('expenses').upsert({
         'id': expense.id,
@@ -56,7 +65,7 @@ class SupabaseService {
 
   static Future<void> deleteExpense(String id) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null || userId.isEmpty) return;
     try {
       await db.from('expenses').delete().eq('id', id).eq('user_id', userId);
     } catch (_) {}
@@ -64,7 +73,7 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> fetchExpenses() async {
     final db = _db;
-    if (db == null) return [];
+    if (db == null || userId.isEmpty) return [];
     try {
       final data = await db
           .from('expenses')
@@ -83,7 +92,7 @@ class SupabaseService {
 
   static Future<void> upsertBudget(Budget budget) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null || userId.isEmpty) return;
     try {
       await db.from('budgets').upsert({
         'user_id': userId,
@@ -96,7 +105,7 @@ class SupabaseService {
 
   static Future<void> deleteBudgetByCategory(String categoryName) async {
     final db = _db;
-    if (db == null) return;
+    if (db == null || userId.isEmpty) return;
     try {
       await db
           .from('budgets')
@@ -108,12 +117,56 @@ class SupabaseService {
 
   static Future<List<Map<String, dynamic>>> fetchBudgets() async {
     final db = _db;
-    if (db == null) return [];
+    if (db == null || userId.isEmpty) return [];
     try {
       final data = await db
           .from('budgets')
           .select()
           .eq('user_id', userId);
+      return List<Map<String, dynamic>>.from(data);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // ═══════════════════════════════════════
+  //  LENDINGS
+  // ═══════════════════════════════════════
+
+  static Future<void> upsertLending(Lending lending) async {
+    final db = _db;
+    if (db == null || userId.isEmpty) return;
+    try {
+      await db.from('lendings').upsert({
+        'id': lending.id,
+        'user_id': userId,
+        'friend_name': lending.friendName,
+        'amount': lending.amount,
+        'is_i_gave': lending.isIGave,
+        'date': lending.date.toIso8601String(),
+        'note': lending.note,
+        'is_settled': lending.isSettled,
+      });
+    } catch (_) {}
+  }
+
+  static Future<void> deleteLending(String id) async {
+    final db = _db;
+    if (db == null || userId.isEmpty) return;
+    try {
+      await db.from('lendings').delete().eq('id', id).eq('user_id', userId);
+    } catch (_) {}
+  }
+
+  static Future<List<Map<String, dynamic>>> fetchLendings() async {
+    final db = _db;
+    if (db == null || userId.isEmpty) return [];
+    try {
+      final data = await db
+          .from('lendings')
+          .select()
+          .eq('user_id', userId)
+          .order('date', ascending: false);
       return List<Map<String, dynamic>>.from(data);
     } catch (_) {
       return [];
@@ -146,7 +199,7 @@ class SupabaseService {
   /// Upload ALL local expenses to Supabase in one batch.
   static Future<void> uploadAllExpenses(List<Expense> expenses) async {
     final db = _db;
-    if (db == null || expenses.isEmpty) return;
+    if (db == null || userId.isEmpty || expenses.isEmpty) return;
     try {
       final rows = expenses.map((e) => {
         'id': e.id,
@@ -167,7 +220,7 @@ class SupabaseService {
   /// Upload ALL local budgets to Supabase in one batch.
   static Future<void> uploadAllBudgets(List<Budget> budgets) async {
     final db = _db;
-    if (db == null || budgets.isEmpty) return;
+    if (db == null || userId.isEmpty || budgets.isEmpty) return;
     try {
       final rows = budgets.map((b) => {
         'user_id': userId,
@@ -176,6 +229,37 @@ class SupabaseService {
         'alert_at': b.alertAt,
       }).toList();
       await db.from('budgets').upsert(rows, onConflict: 'user_id, category');
+    } catch (_) {}
+  }
+
+  static Lending rowToLending(Map<String, dynamic> row) {
+    return Lending(
+      id: row['id'],
+      friendName: row['friend_name'],
+      amount: (row['amount'] as num).toDouble(),
+      isIGave: row['is_i_gave'],
+      date: DateTime.parse(row['date']),
+      note: row['note'],
+      isSettled: row['is_settled'],
+    );
+  }
+
+  /// Upload ALL local lendings to Supabase in one batch.
+  static Future<void> uploadAllLendings(List<Lending> lendings) async {
+    final db = _db;
+    if (db == null || userId.isEmpty || lendings.isEmpty) return;
+    try {
+      final rows = lendings.map((l) => {
+        'id': l.id,
+        'user_id': userId,
+        'friend_name': l.friendName,
+        'amount': l.amount,
+        'is_i_gave': l.isIGave,
+        'date': l.date.toIso8601String(),
+        'note': l.note,
+        'is_settled': l.isSettled,
+      }).toList();
+      await db.from('lendings').upsert(rows);
     } catch (_) {}
   }
 }

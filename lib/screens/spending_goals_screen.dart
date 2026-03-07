@@ -176,11 +176,16 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
         const SizedBox(height: 14),
         ClipRRect(
           borderRadius: BorderRadius.circular(6),
-          child: LinearProgressIndicator(
-            value: pct,
-            backgroundColor: Colors.white24,
-            color: isOver ? Colors.orange.shade300 : Colors.white,
-            minHeight: 10,
+          child: TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0, end: pct),
+            duration: const Duration(milliseconds: 800),
+            curve: Curves.easeOutCubic,
+            builder: (context, val, _) => LinearProgressIndicator(
+              value: val,
+              backgroundColor: Colors.white24,
+              color: isOver ? Colors.orange.shade300 : Colors.white,
+              minHeight: 10,
+            ),
           ),
         ),
         const SizedBox(height: 10),
@@ -237,11 +242,16 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
           const SizedBox(height: 4),
           ClipRRect(
             borderRadius: BorderRadius.circular(3),
-            child: LinearProgressIndicator(
-              value: portion,
-              backgroundColor: Colors.grey.shade200,
-              color: cat.color,
-              minHeight: 6,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: portion),
+              duration: const Duration(milliseconds: 800),
+              curve: Curves.easeOutCubic,
+              builder: (context, val, _) => LinearProgressIndicator(
+                value: val,
+                backgroundColor: Colors.grey.shade200,
+                color: cat.color,
+                minHeight: 6,
+              ),
             ),
           ),
         ])),

@@ -5,6 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/expense_provider.dart';
 import '../services/supabase_service.dart';
 import '../utils/constants.dart';
+import '../providers/budget_provider.dart';
+import '../providers/lending_provider.dart';
 import 'main_scaffold.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
@@ -19,6 +21,13 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _passCtrl = TextEditingController();
   bool _isLogin = true;
   bool _isLoading = false;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
+    super.dispose();
+  }
 
   void _submit() async {
     final email = _emailCtrl.text.trim();
@@ -46,7 +55,11 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
 
       if (mounted) {
         // Sync this user's data from Supabase before navigating
-        await ref.read(expenseProvider.notifier).syncFromSupabase();
+        await Future.wait([
+          ref.read(expenseProvider.notifier).syncFromSupabase(),
+          ref.read(budgetProvider.notifier).syncFromSupabase(),
+          ref.read(lendingProvider.notifier).syncFromSupabase(),
+        ]);
         if (mounted) {
           Navigator.pushReplacement(
             context,

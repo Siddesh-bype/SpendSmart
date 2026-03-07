@@ -6,6 +6,9 @@ import '../utils/constants.dart';
 import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/expense_provider.dart';
+import '../providers/budget_provider.dart';
+import '../providers/lending_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -32,14 +35,22 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void _navigate() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
+    
+    final container = ProviderScope.containerOf(context);
+    
     // If the user already has a Supabase session, go straight to the app
     if (SupabaseService.currentUser != null) {
+      // Background sync so returning users have fresh data
+      container.read(expenseProvider.notifier).syncFromSupabase();
+      container.read(budgetProvider.notifier).syncFromSupabase();
+      container.read(lendingProvider.notifier).syncFromSupabase();
+      
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const MainScaffold()),
       );
       return;
     }
-    final container = ProviderScope.containerOf(context);
+    
     final settings = container.read(appSettingsProvider);
     if (!mounted) return;
     Navigator.of(context).pushReplacement(

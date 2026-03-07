@@ -72,7 +72,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       (e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth) && !e.isUncategorized
     ).toList();
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
-    final savings = settings.monthlyIncome - totalSpent;
+    final savings = settings.monthlyBudget - totalSpent;
     final recentExpenses = expenses.where((e) => !e.isUncategorized).take(5).toList();
 
     // Auto-check budgets when data changes
@@ -185,21 +185,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       ]),
                     ]),
                     const SizedBox(height: 16),
-                    if (settings.monthlyIncome > 0) ...[
+                    if (settings.monthlyBudget > 0) ...[
                       ClipRRect(
                         borderRadius: BorderRadius.circular(6),
-                        child: LinearProgressIndicator(
-                          value: settings.monthlyIncome > 0 ? (totalSpent / settings.monthlyIncome).clamp(0.0, 1.0) : 0.0,
-                          backgroundColor: Colors.white24,
-                          color: Colors.white,
-                          minHeight: 6,
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: settings.monthlyBudget > 0 ? (totalSpent / settings.monthlyBudget).clamp(0.0, 1.0) : 0.0),
+                          duration: const Duration(milliseconds: 800),
+                          curve: Curves.easeOutCubic,
+                          builder: (context, val, _) => LinearProgressIndicator(
+                            value: val,
+                            backgroundColor: Colors.white24,
+                            color: Colors.white,
+                            minHeight: 6,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 10),
                     ],
                     Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                      _chip('Income', '${settings.currency}${NumberFormat('#,##0').format(settings.monthlyIncome)}'),
-                      _chip('Spent', '${(settings.monthlyIncome > 0 ? (totalSpent / settings.monthlyIncome * 100) : 0).toStringAsFixed(0)}%'),
+                      _chip('Budget', '${settings.currency}${NumberFormat('#,##0').format(settings.monthlyBudget)}'),
+                      _chip('Spent', '${(settings.monthlyBudget > 0 ? (totalSpent / settings.monthlyBudget * 100) : 0).toStringAsFixed(0)}%'),
                     ]),
                   ]),
                 ),
@@ -312,11 +317,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   const SizedBox(height: 6),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: pct,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      color: pct > 0.85 ? Colors.red : cat.color,
-                      minHeight: 8,
+                    child: TweenAnimationBuilder<double>(
+                      tween: Tween<double>(begin: 0, end: pct),
+                      duration: const Duration(milliseconds: 800),
+                      curve: Curves.easeOutCubic,
+                      builder: (context, val, _) => LinearProgressIndicator(
+                        value: val,
+                        backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        color: pct > 0.85 ? Colors.red : cat.color,
+                        minHeight: 8,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 2),

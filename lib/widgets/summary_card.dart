@@ -4,6 +4,7 @@ import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 
 class SummaryCard extends ConsumerWidget {
   const SummaryCard({super.key});
@@ -14,16 +15,15 @@ class SummaryCard extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     
     final cur = settings.currency;
-    final income = settings.monthlyIncome;
+    final budget = settings.monthlyBudget;
     
-    final currentMonth = DateTime.now().month;
-    final currentYear = DateTime.now().year;
+    final now = DateTime.now();
     
-    final monthlyExpenses = expenses.where((e) => e.date.month == currentMonth && e.date.year == currentYear && e.category != Category.other).toList();
+    final monthlyExpenses = expenses.where((e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth) && e.category != Category.other).toList();
     final totalSpent = monthlyExpenses.fold(0.0, (sum, item) => sum + item.amount);
     
-    final remaining = income - totalSpent;
-    final progress = income > 0 ? (totalSpent / income).clamp(0.0, 1.0) : 0.0;
+    final remaining = budget - totalSpent;
+    final progress = budget > 0 ? (totalSpent / budget).clamp(0.0, 1.0) : 0.0;
 
     return Card(
       color: AppColors.primary,
@@ -65,7 +65,7 @@ class SummaryCard extends ConsumerWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildSubValue('Income', '$cur${income.toStringAsFixed(2)}'),
+                _buildSubValue('Budget', '$cur${budget.toStringAsFixed(2)}'),
                 _buildSubValue('Remaining', '$cur${remaining.toStringAsFixed(2)}'),
               ],
             ),
