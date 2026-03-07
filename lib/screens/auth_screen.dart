@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../providers/expense_provider.dart';
 import '../services/supabase_service.dart';
 import '../utils/constants.dart';
 import 'main_scaffold.dart';
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _emailCtrl = TextEditingController();
   final _passCtrl = TextEditingController();
   bool _isLogin = true;
@@ -43,10 +45,14 @@ class _AuthScreenState extends State<AuthScreen> {
       }
 
       if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const MainScaffold()),
-        );
+        // Sync this user's data from Supabase before navigating
+        await ref.read(expenseProvider.notifier).syncFromSupabase();
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const MainScaffold()),
+          );
+        }
       }
     } on AuthException catch (e) {
       if (mounted) {
@@ -67,8 +73,10 @@ class _AuthScreenState extends State<AuthScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final surfaceColor = theme.colorScheme.surface;
+    final onSurfaceColor = theme.colorScheme.onSurface;
     return Scaffold(
-      backgroundColor: AppColors.backgroundLight,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -118,12 +126,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 TextField(
                   controller: _emailCtrl,
                   keyboardType: TextInputType.emailAddress,
-                  style: const TextStyle(color: Colors.black87),
+                  style: TextStyle(color: onSurfaceColor),
                   decoration: InputDecoration(
                     labelText: 'Email',
+                    labelStyle: TextStyle(color: onSurfaceColor.withValues(alpha: 0.7)),
                     hintText: 'Enter your email',
+                    hintStyle: TextStyle(color: onSurfaceColor.withValues(alpha: 0.4)),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: surfaceColor,
                     prefixIcon: const Icon(Icons.email_outlined, color: AppColors.primary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
@@ -132,12 +142,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 TextField(
                   controller: _passCtrl,
                   obscureText: true,
-                  style: const TextStyle(color: Colors.black87),
+                  style: TextStyle(color: onSurfaceColor),
                   decoration: InputDecoration(
                     labelText: 'Password',
+                    labelStyle: TextStyle(color: onSurfaceColor.withValues(alpha: 0.7)),
                     hintText: 'Enter your password',
+                    hintStyle: TextStyle(color: onSurfaceColor.withValues(alpha: 0.4)),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: surfaceColor,
                     prefixIcon: const Icon(Icons.lock_outline, color: AppColors.primary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),

@@ -14,6 +14,7 @@ dependencies:
     sdk: flutter
   flutter_background_service: ^5.0.7
   flutter_notification_listener: ^1.4.0
+  notification_listener_service: ^0.3.5
   flutter_riverpod: ^3.2.1
   flutter_slidable: ^4.0.3
   font_awesome_flutter: ^10.12.0

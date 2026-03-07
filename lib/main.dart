@@ -5,9 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/service_provider.dart';
 import 'services/storage_service.dart';
-import 'services/supabase_service.dart';
 import 'utils/supabase_config.dart';
 import 'utils/theme.dart';
+import 'utils/globals.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
@@ -55,6 +55,7 @@ class SpendSmartApp extends ConsumerWidget {
     return MaterialApp(
       title: 'SpendSmart',
       debugShowCheckedModeBanner: false,
+      navigatorKey: navigatorKey,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,

@@ -5,6 +5,7 @@ import 'analytics_screen.dart';
 import 'budget_screen.dart';
 import 'settings_screen.dart';
 import 'add_expense_screen.dart';
+import 'lending_screen.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
 
@@ -25,6 +26,7 @@ class _MainScaffoldState extends State<MainScaffold> with TickerProviderStateMix
     HomeScreen(),
     AnalyticsScreen(),
     BudgetScreen(),
+    LendingScreen(),
     SettingsScreen(),
   ];
 
@@ -160,7 +162,8 @@ class _MainScaffoldState extends State<MainScaffold> with TickerProviderStateMix
                 _navItem(1, Icons.pie_chart_rounded, Icons.pie_chart_outline_rounded, 'Analytics'),
                 const SizedBox(width: 56),
                 _navItem(2, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Budget'),
-                _navItem(3, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
+                _navItem(3, Icons.handshake_rounded, Icons.handshake_outlined, 'Friends'),
+                _navItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile'),
               ],
             ),
           ),

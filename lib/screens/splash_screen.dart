@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/supabase_service.dart';
 import '../utils/constants.dart';
 import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
@@ -31,6 +32,13 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void _navigate() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
+    // If the user already has a Supabase session, go straight to the app
+    if (SupabaseService.currentUser != null) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const MainScaffold()),
+      );
+      return;
+    }
     final container = ProviderScope.containerOf(context);
     final settings = container.read(appSettingsProvider);
     if (!mounted) return;

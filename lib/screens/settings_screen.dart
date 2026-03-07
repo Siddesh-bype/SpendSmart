@@ -9,6 +9,7 @@ import '../providers/budget_provider.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../services/supabase_service.dart';
+import '../services/notification_service.dart';
 import '../providers/service_provider.dart';
 import '../utils/constants.dart';
 import 'pdf_import_screen.dart';
@@ -78,6 +79,12 @@ class SettingsScreen extends ConsumerWidget {
           subtitle: 'Smart tips and spending analysis',
           color: Colors.purple,
           onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InsightsScreen())),
+        ),
+        _tile(
+          icon: Icons.notifications_active_rounded, title: 'Enable Notification Tracking',
+          subtitle: 'Auto-detect transactions from banking app notifications',
+          color: Colors.deepPurple,
+          onTap: () => _enableNotificationTracking(context, ref),
         ),
         _tile(
           icon: Icons.track_changes_rounded, title: 'Spending Goals',
@@ -380,6 +387,27 @@ class SettingsScreen extends ConsumerWidget {
         (route) => false,
       );
     }
+  }
+
+  Future<void> _enableNotificationTracking(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.lightImpact();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Requesting notification access…')),
+    );
+    final granted = await ref.read(notificationServiceProvider).init();
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(
+        granted
+            ? '✅ Notification tracking enabled. Banking alerts will auto-create expenses.'
+            : '❌ Permission denied. Open Android Settings → Notification Access to grant it.',
+      ),
+      backgroundColor: granted ? Colors.green.shade600 : Colors.red.shade600,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 4),
+    ));
   }
 
   String _ordinal(int number) {

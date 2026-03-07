@@ -3,11 +3,13 @@ import '../models/expense.dart';
 import '../models/merchant_memory.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
+import '../models/lending.dart';
 
 class StorageService {
   static const String expenseBoxName = 'expenses';
   static const String merchantBoxName = 'merchants';
   static const String budgetBoxName = 'budgets';
+  static const String lendingBoxName = 'lendings';
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -17,11 +19,13 @@ class StorageService {
     if (!Hive.isAdapterRegistered(1)) Hive.registerAdapter(ExpenseAdapter());
     if (!Hive.isAdapterRegistered(2)) Hive.registerAdapter(MerchantMemoryAdapter());
     if (!Hive.isAdapterRegistered(3)) Hive.registerAdapter(BudgetAdapter());
+    if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(LendingAdapter());
 
     // Open Boxes
     await Hive.openBox<Expense>(expenseBoxName);
     await Hive.openBox<MerchantMemory>(merchantBoxName);
     await Hive.openBox<Budget>(budgetBoxName);
+    await Hive.openBox<Lending>(lendingBoxName);
   }
 
   // Expenses
@@ -85,10 +89,26 @@ class StorageService {
     return budgetBox.values.toList();
   }
 
+  // Lendings
+  Box<Lending> get lendingBox => Hive.box<Lending>(lendingBoxName);
+
+  Future<void> saveLending(Lending lending) async {
+    await lendingBox.put(lending.id, lending);
+  }
+
+  Future<void> deleteLending(String id) async {
+    await lendingBox.delete(id);
+  }
+
+  List<Lending> getAllLendings() {
+    return lendingBox.values.toList()..sort((a, b) => b.date.compareTo(a.date));
+  }
+
   // Clear all data (on logout)
   Future<void> clearAll() async {
     await expenseBox.clear();
     await budgetBox.clear();
     await merchantBox.clear();
+    await lendingBox.clear();
   }
 }

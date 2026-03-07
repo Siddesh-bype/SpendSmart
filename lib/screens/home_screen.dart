@@ -314,7 +314,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
                       value: pct,
-                      backgroundColor: Colors.grey.shade200,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                       color: pct > 0.85 ? Colors.red : cat.color,
                       minHeight: 8,
                     ),
