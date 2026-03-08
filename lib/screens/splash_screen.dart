@@ -1,14 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../services/supabase_service.dart';
 import '../utils/constants.dart';
 import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
 import '../providers/app_settings_provider.dart';
-import '../providers/expense_provider.dart';
-import '../providers/budget_provider.dart';
-import '../providers/lending_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -17,7 +13,8 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderStateMixin {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _anim;
   late Animation<double> _scale;
   late Animation<double> _fade;
@@ -25,9 +22,12 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   @override
   void initState() {
     super.initState();
-    _anim = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
-    _scale = Tween<double>(begin: 0.6, end: 1.0).animate(CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
-    _fade = Tween<double>(begin: 0, end: 1).animate(CurvedAnimation(parent: _anim, curve: Curves.easeIn));
+    _anim = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1200));
+    _scale = Tween<double>(begin: 0.6, end: 1.0).animate(
+        CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
+    _fade = Tween<double>(begin: 0, end: 1).animate(
+        CurvedAnimation(parent: _anim, curve: Curves.easeIn));
     _anim.forward();
     _navigate();
   }
@@ -35,27 +35,16 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
   void _navigate() async {
     await Future.delayed(const Duration(seconds: 2));
     if (!mounted) return;
-    
+
     final container = ProviderScope.containerOf(context);
-    
-    // If the user already has a Supabase session, go straight to the app
-    if (SupabaseService.currentUser != null) {
-      // Background sync so returning users have fresh data
-      container.read(expenseProvider.notifier).syncFromSupabase();
-      container.read(budgetProvider.notifier).syncFromSupabase();
-      container.read(lendingProvider.notifier).syncFromSupabase();
-      
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const MainScaffold()),
-      );
-      return;
-    }
-    
     final settings = container.read(appSettingsProvider);
+
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(
-        builder: (_) => settings.onboardingDone ? const MainScaffold() : const OnboardingScreen(),
+        builder: (_) => settings.onboardingDone
+            ? const MainScaffold()
+            : const OnboardingScreen(),
       ),
     );
   }
@@ -79,35 +68,40 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
-                  width: 100, height: 100,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(24),
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
+                    borderRadius: BorderRadius.circular(28),
                     boxShadow: [
                       BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.4),
-                        blurRadius: 24,
+                        color: AppColors.primary.withValues(alpha: 0.5),
+                        blurRadius: 32,
+                        spreadRadius: 4,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.account_balance_wallet_rounded, color: Colors.white, size: 52),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(28),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      width: 110,
+                      height: 110,
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text(
                   'SpendSmart',
                   style: GoogleFonts.poppins(
-                    fontSize: 36, fontWeight: FontWeight.bold, color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Your personal expense tracker',
-                  style: GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
+                  style:
+                      GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
                 ),
               ],
             ),

@@ -11,7 +11,8 @@ import '../widgets/edit_expense_sheet.dart';
 import '../utils/constants.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
-  const TransactionsScreen({super.key});
+  final Category? initialCategory;
+  const TransactionsScreen({super.key, this.initialCategory});
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -22,6 +23,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   String _searchQuery = '';
   String _sortBy = 'date';
   DateTimeRange? _dateRange;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.initialCategory;
+  }
 
   // === DELETE + UNDO at parent level (ref is always valid here) ===
   void _handleDelete(Expense expense) {

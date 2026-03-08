@@ -1,29 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/service_provider.dart';
 import 'services/storage_service.dart';
-import 'utils/supabase_config.dart';
 import 'utils/theme.dart';
 import 'utils/globals.dart';
 import 'screens/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // ── Supabase Init ──────────────────────────────────────
-  if (SupabaseConfig.url.isNotEmpty && SupabaseConfig.anonKey.isNotEmpty) {
-    try {
-      await Supabase.initialize(
-        url: SupabaseConfig.url,
-        anonKey: SupabaseConfig.anonKey,
-      );
-    } catch (e) {
-      debugPrint('Supabase Init Error: $e');
-    }
-  }
 
   // ── Local Storage Init ─────────────────────────────────
   final prefs = await SharedPreferences.getInstance();

@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import '../services/pdf_import_service.dart';
 import '../providers/expense_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
@@ -177,6 +178,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
 
   Widget _buildTransactionList() {
     final byMonth = <String, List<Expense>>{};
+    final currency = ref.read(appSettingsProvider).currency;
     for (final e in _parsed) {
       final key = DateFormat('MMMM yyyy').format(e.date);
       byMonth.putIfAbsent(key, () => []).add(e);
@@ -218,7 +220,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                   Text(month, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 13)),
-                  Text('₹${NumberFormat('#,##0').format(monthTotal)}',
+                  Text('$currency${NumberFormat('#,##0').format(monthTotal)}',
                     style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
                 ]),
               ),
@@ -253,7 +255,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                     ),
                   ]),
                 ),
-                secondary: Text('₹${NumberFormat('#,##0.##').format(e.amount)}',
+                secondary: Text('$currency${NumberFormat('#,##0.##').format(e.amount)}',
                   style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
               )),
             ]);

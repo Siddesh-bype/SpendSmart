@@ -1,22 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
-import '../providers/budget_provider.dart';
-import '../providers/lending_provider.dart';
+import '../services/csv_import_service.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
-import '../services/supabase_service.dart';
-import '../services/notification_service.dart';
-import '../providers/service_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/glass_container.dart';
 import 'pdf_import_screen.dart';
 import 'insights_screen.dart';
 import 'spending_goals_screen.dart';
-import 'auth_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -26,184 +23,319 @@ class SettingsScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text('Profile & Settings',
+            style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
       body: ListView(padding: const EdgeInsets.all(16), children: [
-        // Profile
-        Center(child: Column(children: [
-          Container(
-            width: 80, height: 80,
-            decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.15), shape: BoxShape.circle),
-            child: const Icon(Icons.person, size: 44, color: AppColors.primary),
-          ),
-          const SizedBox(height: 12),
-          Text(SupabaseService.currentUser?.email ?? 'Guest (Offline)', 
-               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 4),
-          const Text('v2.0.0', style: TextStyle(color: Colors.grey, fontSize: 13)),
-        ])),
+        // ── App info card ──────────────────────────────────────────
+        const _AppInfoCard(),
         const SizedBox(height: 24),
 
         _sectionTitle('Preferences'),
         _tile(
-          icon: Icons.currency_rupee, title: 'Currency', subtitle: settings.currency,
+          icon: Icons.currency_rupee,
+          title: 'Currency',
+          subtitle: settings.currency,
           onTap: () => _editCurrency(context, ref, settings.currency),
         ),
         _tile(
-          icon: Icons.account_balance_wallet, title: 'Monthly Budget',
-          subtitle: '${settings.currency}${settings.monthlyBudget.toStringAsFixed(0)}',
+          icon: Icons.account_balance_wallet,
+          title: 'Monthly Budget',
+          subtitle:
+              '${settings.currency}${settings.monthlyBudget.toStringAsFixed(0)}',
           onTap: () => _editBudget(context, ref, settings.monthlyBudget),
         ),
         _tile(
-          icon: Icons.calendar_month_outlined, title: 'Starting Day of Month',
-          subtitle: 'Starts on the ${settings.startingDayOfMonth}${_ordinal(settings.startingDayOfMonth)}',
-          onTap: () => _editStartingDay(context, ref, settings.startingDayOfMonth),
+          icon: Icons.calendar_month_outlined,
+          title: 'Starting Day of Month',
+          subtitle:
+              'Starts on the ${settings.startingDayOfMonth}${_ordinal(settings.startingDayOfMonth)}',
+          onTap: () =>
+              _editStartingDay(context, ref, settings.startingDayOfMonth),
         ),
 
         const SizedBox(height: 16),
         _sectionTitle('Appearance'),
         _tile(
-          icon: Icons.palette_outlined, title: 'Theme',
-          subtitle: settings.theme == 'light' ? '☀️ Light' : settings.theme == 'dark' ? '🌙 Dark' : '⚙️ System',
+          icon: Icons.palette_outlined,
+          title: 'Theme',
+          subtitle: settings.theme == 'light'
+              ? '☀️ Light'
+              : settings.theme == 'dark'
+                  ? '🌙 Dark'
+                  : '⚙️ System',
           onTap: () => _editTheme(context, ref, settings.theme),
         ),
 
         const SizedBox(height: 16),
         _sectionTitle('Data & Import'),
         _tile(
-          icon: Icons.picture_as_pdf, title: 'Import Bank Statement (PDF)',
+          icon: Icons.picture_as_pdf,
+          title: 'Import Bank Statement (PDF)',
           subtitle: 'Auto-import transactions from your bank PDF',
           color: Colors.red,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const PdfImportScreen())),
+          onTap: () => Navigator.push(
+              context, MaterialPageRoute(builder: (_) => const PdfImportScreen())),
         ),
         _tile(
-          icon: Icons.insights, title: 'Spending Insights',
+          icon: Icons.upload_file_rounded,
+          title: 'Import CSV',
+          subtitle: 'Import expenses from a SpendSmart or custom CSV file',
+          color: Colors.green.shade700,
+          onTap: () => _importCSV(context, ref),
+        ),
+        _tile(
+          icon: Icons.insights,
+          title: 'Spending Insights',
           subtitle: 'Smart tips and spending analysis',
           color: Colors.purple,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const InsightsScreen())),
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const InsightsScreen())),
         ),
         _tile(
-          icon: Icons.notifications_active_rounded, title: 'Enable Notification Tracking',
-          subtitle: 'Auto-detect transactions from banking app notifications',
-          color: Colors.deepPurple,
-          onTap: () => _enableNotificationTracking(context, ref),
-        ),
-        _tile(
-          icon: Icons.track_changes_rounded, title: 'Spending Goals',
+          icon: Icons.track_changes_rounded,
+          title: 'Spending Goals',
           subtitle: 'Set and track your monthly budget goal',
           color: AppColors.primary,
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SpendingGoalsScreen())),
-        ),
-        _tile(
-          icon: Icons.cloud_sync_rounded, title: 'Sync to Cloud',
-          subtitle: SupabaseService.currentUser == null ? 'Log in to securely backup data' : 'Upload and pull remote data',
-          color: AppColors.secondary,
-          onTap: () {
-            if (SupabaseService.currentUser == null) {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen()));
-            } else {
-              _syncCloud(context, ref);
-            }
-          },
+          onTap: () => Navigator.push(context,
+              MaterialPageRoute(builder: (_) => const SpendingGoalsScreen())),
         ),
 
         const SizedBox(height: 16),
         _sectionTitle('Export'),
         _tile(
-          icon: Icons.picture_as_pdf, title: 'Export to PDF',
+          icon: Icons.picture_as_pdf,
+          title: 'Export to PDF',
           subtitle: 'Professional expense report with charts',
           color: Colors.deepOrange,
           onTap: () => _exportPDF(context, ref, settings.currency),
         ),
         _tile(
-          icon: Icons.table_chart, title: 'Export to CSV',
+          icon: Icons.table_chart,
+          title: 'Export to CSV',
           subtitle: 'Spreadsheet format for all transactions',
           color: Colors.green,
           onTap: () => _exportCSV(context, ref),
         ),
         _tile(
-          icon: Icons.share_rounded, title: 'Share CSV Report',
+          icon: Icons.share_rounded,
+          title: 'Share CSV Report',
           subtitle: 'Send expense data via WhatsApp, email, etc.',
           color: Colors.teal,
           onTap: () => _shareCSV(context, ref),
         ),
 
-        const SizedBox(height: 16),
-        _sectionTitle('About & Account'),
-        _tile(icon: Icons.info_outline, title: 'Version', subtitle: '2.1.0', onTap: null),
-        const SizedBox(height: 16),
-        
-        if (SupabaseService.currentUser != null)
-          ElevatedButton.icon(
-            onPressed: () => _handleLogout(context, ref),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red.shade50,
-              foregroundColor: Colors.red.shade700,
-              elevation: 0,
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.logout),
-            label: const Text('Log Out', style: TextStyle(fontWeight: FontWeight.bold)),
-          )
-        else
-          ElevatedButton.icon(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AuthScreen())),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-              foregroundColor: AppColors.primary,
-              elevation: 0,
-              minimumSize: const Size.fromHeight(50),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            icon: const Icon(Icons.login),
-            label: const Text('Log In to Sync', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 160),
       ]),
     );
   }
 
-  Widget _sectionTitle(String title) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(title, style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
-  );
+  Widget _sectionTitle(String title) => Builder(
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Text(
+              title,
+              style: TextStyle(
+                color: isDark ? const Color(0xFF90CAF9) : AppColors.primary,
+                fontWeight: FontWeight.bold,
+                fontSize: 13,
+                letterSpacing: 0.3,
+              ),
+            ),
+          );
+        },
+      );
 
-  Widget _tile({required IconData icon, required String title, String? subtitle, VoidCallback? onTap, Color? color}) {
+  Widget _tile({
+    required IconData icon,
+    required String title,
+    String? subtitle,
+    VoidCallback? onTap,
+    Color? color,
+  }) {
     final iconColor = color ?? AppColors.primary;
-    return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: ListTile(
-        leading: Container(
-          width: 38, height: 38,
-          decoration: BoxDecoration(color: iconColor.withValues(alpha: 0.1), shape: BoxShape.circle),
-          child: Icon(icon, color: iconColor, size: 20),
-        ),
-        title: Text(title),
-        subtitle: subtitle != null ? Text(subtitle, style: const TextStyle(color: Colors.grey, fontSize: 12)) : null,
-        trailing: onTap != null ? const Icon(Icons.chevron_right) : null,
-        onTap: onTap,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Builder(
+        builder: (context) {
+          final isDark = Theme.of(context).brightness == Brightness.dark;
+
+          final tile = ListTile(
+            leading: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: isDark ? 0.25 : 0.15),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            title: Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: isDark ? const Color(0xFFE8EAF6) : null,
+              ),
+            ),
+            subtitle: subtitle != null
+                ? Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: isDark ? const Color(0xFF90CAF9) : Colors.grey,
+                      fontSize: 12,
+                    ),
+                  )
+                : null,
+            trailing: onTap != null
+                ? Icon(Icons.chevron_right,
+                    color: isDark ? Colors.white38 : Colors.grey)
+                : null,
+            onTap: onTap,
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12)),
+          );
+
+          if (isDark) {
+            return Container(
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A2540),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1), width: 1),
+              ),
+              child: tile,
+            );
+          }
+          return GlassContainer(
+            borderRadius: 16,
+            padding: const EdgeInsets.all(4),
+            backgroundColor: Colors.white,
+            child: tile,
+          );
+        },
       ),
     );
   }
 
-  Future<void> _exportPDF(BuildContext context, WidgetRef ref, String currency) async {
-    final expenses = ref.read(expenseProvider).where((e) => !e.isUncategorized).toList();
+  Future<void> _importCSV(BuildContext context, WidgetRef ref) async {
+    CsvImportResult? result;
+    try {
+      result = await CsvImportService.pickAndParse();
+    } catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to read file: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (result == null) return;
+
+    if (!context.mounted) return;
+
+    if (result.imported.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errors.isNotEmpty
+              ? 'No valid rows found. ${result.errors.first}'
+              : 'No valid rows found in the CSV.'),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      return;
+    }
+
+    final skippedInfo = result.skipped > 0 ? '  ${result.skipped} rows skipped.' : '';
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Import CSV'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Found ${result!.imported.length} transactions to import.$skippedInfo',
+            ),
+            if (result.errors.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                '${result.errors.length} row(s) had errors and will be skipped.',
+                style: const TextStyle(fontSize: 12, color: Colors.orange),
+              ),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              'Duplicate IDs will be overwritten. Continue?',
+              style: TextStyle(fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Import'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || !context.mounted) return;
+
+    ref.read(expenseProvider.notifier).importExpenses(result.imported);
+
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Imported ${result.imported.length} transaction(s) successfully.',
+        ),
+        backgroundColor: Colors.green.shade700,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+    );
+  }
+
+  Future<void> _exportPDF(
+      BuildContext context, WidgetRef ref, String currency) async {
+    final expenses =
+        ref.read(expenseProvider).where((e) => !e.isUncategorized).toList();
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transactions to export')));
+          const SnackBar(content: Text('No transactions to export')));
       return;
     }
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('⏳ Generating PDF report...')));
-      final path = await PdfExportService.exportToPDF(expenses, currency: currency);
+          const SnackBar(content: Text('⏳ Generating PDF report...')));
+      final path =
+          await PdfExportService.exportToPDF(expenses, currency: currency);
       if (!context.mounted) return;
       await OpenFilex.open(path);
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('PDF export failed: $e'), backgroundColor: Colors.red));
+          SnackBar(
+              content: Text('PDF export failed: $e'),
+              backgroundColor: Colors.red));
     }
   }
 
@@ -216,7 +348,9 @@ class SettingsScreen extends ConsumerWidget {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('CSV export failed: $e'), backgroundColor: Colors.red));
+          SnackBar(
+              content: Text('CSV export failed: $e'),
+              backgroundColor: Colors.red));
     }
   }
 
@@ -224,13 +358,13 @@ class SettingsScreen extends ConsumerWidget {
     final expenses = ref.read(expenseProvider);
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transactions to share')));
+          const SnackBar(content: Text('No transactions to share')));
       return;
     }
     try {
       HapticFeedback.lightImpact();
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('📤 Preparing report...')));
+          const SnackBar(content: Text('📤 Preparing report...')));
       final path = await ExportService.exportToCSV(expenses);
       await Share.shareXFiles(
         [XFile(path)],
@@ -240,57 +374,42 @@ class SettingsScreen extends ConsumerWidget {
     } catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Share failed: $e'), backgroundColor: Colors.red));
+          SnackBar(
+              content: Text('Share failed: $e'),
+              backgroundColor: Colors.red));
     }
   }
 
-  Future<void> _syncCloud(BuildContext context, WidgetRef ref) async {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('☁️ Syncing to Supabase...'),
-        duration: Duration(seconds: 2),
+  void _editCurrency(
+      BuildContext context, WidgetRef ref, String current) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Select Currency'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: ['₹', '\$', '€', '£', '¥']
+              .map((c) => ListTile(
+                    title: Text(c),
+                    selected: c == current,
+                    selectedColor: AppColors.primary,
+                    onTap: () {
+                      ref
+                          .read(appSettingsProvider.notifier)
+                          .updateCurrency(c);
+                      Navigator.pop(context);
+                    },
+                  ))
+              .toList(),
+        ),
       ),
     );
-    try {
-      final expenses = ref.read(expenseProvider);
-      final budgets = ref.read(budgetProvider);
-      // Upload all local data
-      await SupabaseService.uploadAllExpenses(expenses);
-      await SupabaseService.uploadAllBudgets(budgets);
-      // Pull any remote data not yet local
-      await ref.read(expenseProvider.notifier).syncFromSupabase();
-      await ref.read(budgetProvider.notifier).syncFromSupabase();
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: const Text('✅ Sync complete!'),
-      backgroundColor: Colors.green.shade600,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ));
-    } catch (e) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sync failed: $e'), backgroundColor: Colors.red),
-      );
-    }
   }
 
-  void _editCurrency(BuildContext context, WidgetRef ref, String current) {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: const Text('Select Currency'),
-      content: Column(mainAxisSize: MainAxisSize.min,
-        children: ['₹', '\$', '€', '£', '¥'].map((c) => ListTile(
-          title: Text(c), selected: c == current, selectedColor: AppColors.primary,
-          onTap: () { ref.read(appSettingsProvider.notifier).updateCurrency(c); Navigator.pop(context); },
-        )).toList(),
-      ),
-    ));
-  }
-
-  Future<void> _editBudget(BuildContext context, WidgetRef ref, double current) async {
-    final ctrl = TextEditingController(text: current > 0 ? current.toStringAsFixed(0) : '');
+  Future<void> _editBudget(
+      BuildContext context, WidgetRef ref, double current) async {
+    final ctrl = TextEditingController(
+        text: current > 0 ? current.toStringAsFixed(0) : '');
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -302,13 +421,18 @@ class SettingsScreen extends ConsumerWidget {
           decoration: InputDecoration(
             labelText: 'Total monthly budget',
             prefixText: '${ref.read(appSettingsProvider).currency} ',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10)),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white),
             onPressed: () {
               final val = double.tryParse(ctrl.text) ?? 0;
               HapticFeedback.mediumImpact();
@@ -322,120 +446,140 @@ class SettingsScreen extends ConsumerWidget {
     ).whenComplete(() => ctrl.dispose());
   }
 
-  void _editStartingDay(BuildContext context, WidgetRef ref, int current) {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: const Text('Starting Day of Month'),
-      content: SizedBox(
-        width: double.maxFinite,
-        height: 200,
-        child: ListView.builder(
-          itemCount: 28, // Max safe day
-          itemBuilder: (context, index) {
-            final day = index + 1;
-            return ListTile(
-              title: Text('Day $day'),
-              trailing: day == current ? const Icon(Icons.check, color: AppColors.primary) : null,
-              onTap: () {
-                ref.read(appSettingsProvider.notifier).updateStartingDay(day);
-                Navigator.pop(context);
-              },
-            );
-          },
+  void _editStartingDay(
+      BuildContext context, WidgetRef ref, int current) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Starting Day of Month'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 200,
+          child: ListView.builder(
+            itemCount: 28,
+            itemBuilder: (context, index) {
+              final day = index + 1;
+              return ListTile(
+                title: Text('Day $day'),
+                trailing: day == current
+                    ? const Icon(Icons.check, color: AppColors.primary)
+                    : null,
+                onTap: () {
+                  ref
+                      .read(appSettingsProvider.notifier)
+                      .updateStartingDay(day);
+                  Navigator.pop(context);
+                },
+              );
+            },
+          ),
         ),
       ),
-    ));
+    );
   }
 
   void _editTheme(BuildContext context, WidgetRef ref, String current) {
-    showDialog(context: context, builder: (_) => AlertDialog(
-      title: const Text('Select Theme'),
-      content: Column(mainAxisSize: MainAxisSize.min, children: [
-        for (final t in [('light', '☀️ Light'), ('dark', '🌙 Dark'), ('system', '⚙️ System Default')])
-          ListTile(
-            title: Text(t.$2),
-            leading: Icon(
-              current == t.$1 ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-              color: AppColors.primary,
-            ),
-            onTap: () {
-              ref.read(appSettingsProvider.notifier).updateTheme(t.$1); 
-              Navigator.pop(context); 
-            },
-          ),
-      ]),
-    ));
-  }
-
-  Future<void> _handleLogout(BuildContext context, WidgetRef ref) async {
-    final confirm = await showDialog<bool>(
+    showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Log Out?'),
-        content: const Text('This will clear local data. Your data remains safely backed up in the cloud.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true), 
-            child: const Text('Log Out', style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold))
-          ),
-        ],
-      )
-    ) ?? false;
-
-    if (!confirm || !context.mounted) return;
-
-    HapticFeedback.heavyImpact();
-    
-    // 1. Sign out from Supabase
-    await SupabaseService.signOut();
-    
-    // 2. Clear entirely from local Hive boxes
-    final storage = ref.read(storageServiceProvider);
-    await storage.clearAll();
-
-    // 3. Clear in-memory state
-    ref.invalidate(expenseProvider);
-    ref.invalidate(budgetProvider);
-    ref.invalidate(lendingProvider);
-
-    // 4. Navigate straight back to Auth
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (_) => const AuthScreen()),
-        (route) => false,
-      );
-    }
-  }
-
-  Future<void> _enableNotificationTracking(BuildContext context, WidgetRef ref) async {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Requesting notification access…')),
-    );
-    final granted = await ref.read(notificationServiceProvider).init();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(
-        granted
-            ? '✅ Notification tracking enabled. Banking alerts will auto-create expenses.'
-            : '❌ Permission denied. Open Android Settings → Notification Access to grant it.',
+      builder: (_) => AlertDialog(
+        title: const Text('Select Theme'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (final t in [
+              ('light', '☀️ Light'),
+              ('dark', '🌙 Dark'),
+              ('system', '⚙️ System Default')
+            ])
+              ListTile(
+                title: Text(t.$2),
+                leading: Icon(
+                  current == t.$1
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                  color: AppColors.primary,
+                ),
+                onTap: () {
+                  ref.read(appSettingsProvider.notifier).updateTheme(t.$1);
+                  Navigator.pop(context);
+                },
+              ),
+          ],
+        ),
       ),
-      backgroundColor: granted ? Colors.green.shade600 : Colors.red.shade600,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      duration: const Duration(seconds: 4),
-    ));
+    );
   }
 
   String _ordinal(int number) {
     if (number >= 11 && number <= 13) return 'th';
     switch (number % 10) {
-      case 1:  return 'st';
-      case 2:  return 'nd';
-      case 3:  return 'rd';
-      default: return 'th';
+      case 1:
+        return 'st';
+      case 2:
+        return 'nd';
+      case 3:
+        return 'rd';
+      default:
+        return 'th';
     }
+  }
+}
+
+// ── App info card ──────────────────────────────────────────────────────────────
+
+class _AppInfoCard extends StatelessWidget {
+  const _AppInfoCard();
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return GlassContainer(
+      borderRadius: 24,
+      padding: const EdgeInsets.all(24),
+      backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+      child: Column(children: [
+        Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withValues(alpha: 0.3),
+                blurRadius: 16,
+                spreadRadius: 2,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Image.asset(
+              'assets/images/logo.png',
+              width: 80,
+              height: 80,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          'SpendSmart',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 4),
+        FutureBuilder<PackageInfo>(
+          future: PackageInfo.fromPlatform(),
+          builder: (context, snapshot) => Text(
+            'v${snapshot.data?.version ?? '2.1.0'}',
+            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Your personal expense tracker',
+          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+          textAlign: TextAlign.center,
+        ),
+      ]),
+    );
   }
 }

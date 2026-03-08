@@ -261,6 +261,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
 
   void _showSetGoalDialog(BuildContext context, double current) {
     _ctrl.text = current > 0 ? current.toStringAsFixed(0) : '';
+    final currency = ref.read(appSettingsProvider).currency;
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -271,7 +272,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
           keyboardType: TextInputType.number,
           decoration: InputDecoration(
             labelText: 'Monthly limit',
-            prefixText: '₹ ',
+            prefixText: '$currency ',
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),

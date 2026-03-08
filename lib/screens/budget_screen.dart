@@ -32,7 +32,7 @@ class BudgetScreen extends ConsumerWidget {
         ],
       ),
       body: Column(children: [
-        _buildSummaryCard(budgets, monthlyExpenses),
+        _buildSummaryCard(budgets, monthlyExpenses, settings.currency, settings.monthlyBudget),
         Expanded(
           child: Category.values.isEmpty
               ? const Center(child: Text('No categories', style: TextStyle(color: Colors.grey)))
@@ -41,7 +41,7 @@ class BudgetScreen extends ConsumerWidget {
                   children: Category.values.map((cat) {
                     final budget = budgets.firstWhere((b) => b.category == cat, orElse: () => Budget(category: cat, monthlyLimit: 0));
                     final spent = monthlyExpenses.where((e) => e.category == cat).fold(0.0, (a, b) => a + b.amount);
-                    return _buildBudgetCard(context, ref, cat, budget, spent);
+                    return _buildBudgetCard(context, ref, cat, budget, spent, settings.currency);
                   }).toList(),
                 ),
         ),
@@ -49,8 +49,11 @@ class BudgetScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSummaryCard(List<Budget> budgets, List expenses) {
-    final totalBudget = budgets.fold(0.0, (a, b) => a + b.monthlyLimit);
+  Widget _buildSummaryCard(List<Budget> budgets, List expenses, String currency, double globalMonthlyBudget) {
+    final categoryTotal = budgets.fold(0.0, (a, b) => a + b.monthlyLimit);
+    // Prefer the global monthly budget (set in Settings); fall back to the
+    // sum of per-category limits if no global budget is configured.
+    final totalBudget = globalMonthlyBudget > 0 ? globalMonthlyBudget : categoryTotal;
     final totalSpent = expenses.fold(0.0, (a, b) => a + b.amount);
     final pct = totalBudget > 0 ? (totalSpent / totalBudget).clamp(0.0, 1.0) : 0.0;
     return Container(
@@ -64,9 +67,9 @@ class BudgetScreen extends ConsumerWidget {
         const Text('Overall Budget', style: TextStyle(color: Colors.white70, fontSize: 13)),
         const SizedBox(height: 4),
         Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text('₹${NumberFormat('#,##0').format(totalSpent)}',
+          Text('$currency${NumberFormat('#,##0').format(totalSpent)}',
             style: const TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold)),
-          Text('of ₹${NumberFormat('#,##0').format(totalBudget)}',
+          Text('of $currency${NumberFormat('#,##0').format(totalBudget)}',
             style: const TextStyle(color: Colors.white70, fontSize: 14)),
         ]),
         const SizedBox(height: 12),
@@ -86,7 +89,7 @@ class BudgetScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBudgetCard(BuildContext context, WidgetRef ref, Category cat, Budget budget, double spent) {
+  Widget _buildBudgetCard(BuildContext context, WidgetRef ref, Category cat, Budget budget, double spent, String currency) {
     final hasLimit = budget.monthlyLimit > 0;
     final pct = hasLimit ? (spent / budget.monthlyLimit).clamp(0.0, 1.0) : 0.0;
     final isOverBudget = hasLimit && spent > budget.monthlyLimit;
@@ -116,9 +119,9 @@ class BudgetScreen extends ConsumerWidget {
           ]),
           const SizedBox(height: 12),
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('Spent: ₹${NumberFormat('#,##0').format(spent)}',
+            Text('Spent: $currency${NumberFormat('#,##0').format(spent)}',
               style: TextStyle(fontWeight: FontWeight.w600, color: isOverBudget ? Colors.red : null)),
-            Text(hasLimit ? 'Limit: ₹${NumberFormat('#,##0').format(budget.monthlyLimit)}' : 'No limit set',
+            Text(hasLimit ? 'Limit: $currency${NumberFormat('#,##0').format(budget.monthlyLimit)}' : 'No limit set',
               style: const TextStyle(color: Colors.grey, fontSize: 13)),
           ]),
           if (hasLimit) ...[
@@ -146,6 +149,7 @@ class BudgetScreen extends ConsumerWidget {
   void _showAddBudget(BuildContext context, WidgetRef ref, {Budget? existing}) {
     final catController = ValueNotifier<Category>(existing?.category ?? Category.food);
     final amountController = TextEditingController(text: existing?.monthlyLimit.toStringAsFixed(0) ?? '');
+    final currency = ref.read(appSettingsProvider).currency;
 
     showModalBottomSheet(
       context: context,
@@ -177,8 +181,8 @@ class BudgetScreen extends ConsumerWidget {
             controller: amountController,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
-              labelText: 'Monthly Limit (₹)',
-              prefixText: '₹ ',
+              labelText: 'Monthly Limit ($currency)',
+              prefixText: '$currency ',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),

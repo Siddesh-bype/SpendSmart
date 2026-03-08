@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.spendsmart"
+    namespace = "com.siddesh.spendsmart"
     compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
@@ -21,7 +21,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.example.spendsmart"
+        applicationId = "com.siddesh.spendsmart"
         minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode

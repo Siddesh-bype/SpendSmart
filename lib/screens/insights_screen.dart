@@ -191,7 +191,7 @@ class InsightsScreen extends ConsumerWidget {
   List<Map<String, dynamic>> _generateInsights(
     double thisTotal, double lastTotal, double change,
     Map<Category, double> catSums, List budgets,
-    dynamic settings, dynamic topCat, List recurring,
+    dynamic settings, MapEntry<Category, double>? topCat, List recurring,
   ) {
     final tips = <Map<String, dynamic>>[];
 

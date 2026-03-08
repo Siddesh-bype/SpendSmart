@@ -1,4 +1,4 @@
-package com.example.spendsmart
+package com.siddesh.spendsmart
 
 import io.flutter.embedding.android.FlutterActivity
 

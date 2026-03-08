@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
@@ -66,6 +67,7 @@ class _PendingTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final cur = ref.watch(appSettingsProvider).currency;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -74,7 +76,7 @@ class _PendingTile extends ConsumerWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
             Expanded(child: Text(expense.title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15))),
-            Text('₹${NumberFormat('#,##0.##').format(expense.amount)}',
+            Text('$cur${NumberFormat('#,##0.##').format(expense.amount)}',
               style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 16)),
           ]),
           const SizedBox(height: 4),
