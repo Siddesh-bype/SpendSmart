@@ -21,7 +21,7 @@ class LendingNotifier extends Notifier<List<Lending>> {
   }
 
   Future<void> settle(String id) async {
-    final l = state.firstWhere((e) => e.id == id);
+    final l = state.firstWhere((e) => e.id == id, orElse: () => throw StateError('Lending not found: $id'));
     l.isSettled = true;
     await ref.read(storageServiceProvider).saveLending(l);
     _reload();

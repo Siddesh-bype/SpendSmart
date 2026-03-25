@@ -6,6 +6,8 @@ import '../models/category.dart';
 import '../models/lending.dart';
 import '../models/income.dart';
 import '../models/recurring_expense.dart';
+import '../models/split_group.dart';
+import '../models/group_expense.dart';
 
 class StorageService {
   static const String expenseBoxName        = 'expenses';
@@ -14,6 +16,8 @@ class StorageService {
   static const String lendingBoxName        = 'lendings';
   static const String incomeBoxName         = 'incomes';
   static const String recurringBoxName      = 'recurring_expenses';
+  static const String splitGroupBoxName     = 'split_groups';
+  static const String groupExpenseBoxName   = 'group_expenses';
 
   Future<void> init() async {
     await Hive.initFlutter();
@@ -26,6 +30,8 @@ class StorageService {
     if (!Hive.isAdapterRegistered(4)) Hive.registerAdapter(IncomeAdapter());
     if (!Hive.isAdapterRegistered(5)) Hive.registerAdapter(LendingAdapter());
     if (!Hive.isAdapterRegistered(6)) Hive.registerAdapter(RecurringExpenseAdapter());
+    if (!Hive.isAdapterRegistered(7)) Hive.registerAdapter(SplitGroupAdapter());
+    if (!Hive.isAdapterRegistered(8)) Hive.registerAdapter(GroupExpenseAdapter());
 
     // Open Boxes
     await Hive.openBox<Expense>(expenseBoxName);
@@ -34,6 +40,8 @@ class StorageService {
     await Hive.openBox<Lending>(lendingBoxName);
     await Hive.openBox<Income>(incomeBoxName);
     await Hive.openBox<RecurringExpense>(recurringBoxName);
+    await Hive.openBox<SplitGroup>(splitGroupBoxName);
+    await Hive.openBox<GroupExpense>(groupExpenseBoxName);
   }
 
   // Expenses
@@ -97,6 +105,12 @@ class StorageService {
     return budgetBox.values.toList();
   }
 
+  // Incomes
+  Box<Income> get incomeBox => Hive.box<Income>(incomeBoxName);
+
+  // Recurring Expenses
+  Box<RecurringExpense> get recurringBox => Hive.box<RecurringExpense>(recurringBoxName);
+
   // Lendings
   Box<Lending> get lendingBox => Hive.box<Lending>(lendingBoxName);
 
@@ -112,13 +126,54 @@ class StorageService {
     return lendingBox.values.toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
+  // Split Groups
+  Box<SplitGroup> get splitGroupBox => Hive.box<SplitGroup>(splitGroupBoxName);
+
+  Future<void> saveSplitGroup(SplitGroup group) async {
+    await splitGroupBox.put(group.id, group);
+  }
+
+  Future<void> deleteSplitGroup(String id) async {
+    await splitGroupBox.delete(id);
+  }
+
+  List<SplitGroup> getAllSplitGroups() {
+    return splitGroupBox.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  }
+
+  // Group Expenses
+  Box<GroupExpense> get groupExpenseBox => Hive.box<GroupExpense>(groupExpenseBoxName);
+
+  Future<void> saveGroupExpense(GroupExpense expense) async {
+    await groupExpenseBox.put(expense.id, expense);
+  }
+
+  Future<void> deleteGroupExpense(String id) async {
+    await groupExpenseBox.delete(id);
+  }
+
+  List<GroupExpense> getAllGroupExpenses() {
+    return groupExpenseBox.values.toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
+  List<GroupExpense> getGroupExpenses(String groupId) {
+    return groupExpenseBox.values
+        .where((e) => e.groupId == groupId)
+        .toList()
+      ..sort((a, b) => b.date.compareTo(a.date));
+  }
+
   // Clear all data (on logout)
   Future<void> clearAll() async {
     await expenseBox.clear();
     await budgetBox.clear();
     await merchantBox.clear();
+    await incomeBox.clear();
+    await recurringBox.clear();
     await lendingBox.clear();
-    await Hive.box<Income>(incomeBoxName).clear();
-    await Hive.box<RecurringExpense>(recurringBoxName).clear();
+    await splitGroupBox.clear();
+    await groupExpenseBox.clear();
   }
 }

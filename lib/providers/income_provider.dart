@@ -1,13 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive/hive.dart';
 import '../models/income.dart';
+import 'service_provider.dart';
 
 final incomeProvider = NotifierProvider<IncomeNotifier, List<Income>>(IncomeNotifier.new);
 
 class IncomeNotifier extends Notifier<List<Income>> {
-  static const String _boxName = 'incomes';
-
-  Box<Income> get _box => Hive.box<Income>(_boxName);
+  Box<Income> get _box => ref.read(storageServiceProvider).incomeBox;
 
   @override
   List<Income> build() {

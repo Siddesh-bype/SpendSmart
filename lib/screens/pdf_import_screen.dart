@@ -60,7 +60,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
     setState(() { _importing = false; _parsed = []; _selected = {}; });
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('✅ Imported $toImport.length transactions successfully!'),
+        content: Text('✅ Imported ${toImport.length} transactions successfully!'),
         backgroundColor: Colors.green,
       ));
       Navigator.pop(context);

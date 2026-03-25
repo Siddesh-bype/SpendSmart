@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../providers/expense_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../widgets/category_grid.dart';
 import '../utils/constants.dart';
 
@@ -45,6 +46,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final currency = ref.watch(appSettingsProvider).currency;
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
@@ -70,7 +72,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             decoration: InputDecoration(
-              prefixText: '₹ ',
+              prefixText: '$currency ',
               labelText: 'Amount',
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               focusedBorder: OutlineInputBorder(

@@ -6,7 +6,7 @@ import 'analytics_screen.dart';
 import 'budget_screen.dart';
 import 'settings_screen.dart';
 import 'add_expense_screen.dart';
-import 'lending_screen.dart';
+import 'groups_screen.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
 import '../widgets/glass_container.dart';
@@ -30,7 +30,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     HomeScreen(),
     AnalyticsScreen(),
     BudgetScreen(),
-    LendingScreen(),
+    GroupsScreen(),
     SettingsScreen(),
   ];
 

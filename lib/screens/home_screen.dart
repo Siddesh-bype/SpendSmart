@@ -37,7 +37,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Deleted "${expense.title}"'),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 15),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(
@@ -99,14 +99,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final recentExpenses = expenses.where((e) => !e.isUncategorized).take(5).toList();
 
     // Budget check on expense changes
-    ref.listen(expenseProvider, (_, _) {
+    ref.listen(expenseProvider, (_, newState) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
+        // Read fresh data inside callback to avoid stale closures
+        final currentExpenses = ref.read(expenseProvider);
+        final currentBudgets = ref.read(budgetProvider);
+        final now = DateTime.now();
+        final settings = ref.read(appSettingsProvider);
+        final currentMonthly = currentExpenses.where(
+          (e) => e.date.isTargetCustomMonth(now.month, now.year, settings.startingDayOfMonth) && !e.isUncategorized,
+        ).toList();
         final Map<Category, double> spending = {};
-        for (var e in monthlyExpenses) {
+        for (var e in currentMonthly) {
           spending[e.category] = (spending[e.category] ?? 0) + e.amount;
         }
-        ref.read(notificationProvider.notifier).checkBudgets(budgets, spending);
+        ref.read(notificationProvider.notifier).checkBudgets(currentBudgets, spending);
       });
     });
 

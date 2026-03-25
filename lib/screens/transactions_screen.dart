@@ -38,7 +38,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Deleted "${expense.title}"'),
-        duration: const Duration(seconds: 4),
+        duration: const Duration(seconds: 15),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(

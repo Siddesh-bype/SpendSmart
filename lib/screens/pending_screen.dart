@@ -53,7 +53,7 @@ class PendingScreen extends ConsumerWidget {
               Expanded(
                 child: ListView.builder(
                   itemCount: pending.length,
-                  itemBuilder: (_, i) => _PendingTile(expense: pending[i]),
+                  itemBuilder: (_, i) => _PendingTile(key: ValueKey(pending[i].id), expense: pending[i]),
                 ),
               ),
             ]),
@@ -63,7 +63,7 @@ class PendingScreen extends ConsumerWidget {
 
 class _PendingTile extends ConsumerWidget {
   final Expense expense;
-  const _PendingTile({required this.expense});
+  const _PendingTile({super.key, required this.expense});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

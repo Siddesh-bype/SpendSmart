@@ -263,6 +263,26 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                 ],
 
+                // Daily Spending Chart
+                if (monthlyExpenses.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                      child: Text('Daily Spending',
+                          style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      child: SizedBox(
+                        height: 180,
+                        child: _dailySpendingChart(monthlyExpenses, daysInMonth, settings.currency),
+                      ),
+                    ),
+                  ),
+                ],
+
                 // 6-Month Bar Chart
                 SliverToBoxAdapter(
                   child: Padding(
@@ -381,6 +401,98 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             ]),
           ),
       ]),
+    );
+  }
+
+  Widget _dailySpendingChart(List expenses, int daysInMonth, String currency) {
+    final dailySpending = List<double>.filled(daysInMonth, 0);
+    for (final e in expenses) {
+      final day = e.date.day - 1;
+      if (day >= 0 && day < daysInMonth) {
+        dailySpending[day] += e.amount;
+      }
+    }
+
+    final spots = <FlSpot>[];
+    for (int i = 0; i < daysInMonth; i++) {
+      spots.add(FlSpot(i.toDouble(), dailySpending[i]));
+    }
+
+    final maxY = dailySpending.reduce((a, b) => a > b ? a : b);
+
+    return GlassContainer(
+      borderRadius: 16,
+      padding: const EdgeInsets.all(16),
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: maxY > 0 ? maxY / 4 : 1,
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: Colors.grey.shade200,
+              strokeWidth: 1,
+            ),
+          ),
+          titlesData: FlTitlesData(
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 22,
+                interval: (daysInMonth / 7).ceilToDouble(),
+                getTitlesWidget: (value, meta) {
+                  final day = value.toInt() + 1;
+                  if (day <= daysInMonth && day % ((daysInMonth / 7).ceil()) == 1) {
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text('$day', style: const TextStyle(fontSize: 9)),
+                    );
+                  }
+                  return const SizedBox();
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 44,
+                getTitlesWidget: (value, meta) => Text(
+                  NumberFormat.compact().format(value),
+                  style: const TextStyle(fontSize: 9),
+                ),
+              ),
+            ),
+            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+          ),
+          borderData: FlBorderData(show: false),
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: AppColors.primary,
+              barWidth: 2.5,
+              dotData: const FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: AppColors.primary.withValues(alpha: 0.1),
+              ),
+            ),
+          ],
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipItems: (touchedSpots) {
+                return touchedSpots.map((spot) {
+                  return LineTooltipItem(
+                    '${spot.x.toInt() + 1}: $currency${NumberFormat('#,##0').format(spot.y)}',
+                    const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                  );
+                }).toList();
+              },
+            ),
+          ),
+        ),
+      ),
     );
   }
 

@@ -5,6 +5,7 @@ import '../models/recurring_expense.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import 'expense_provider.dart';
+import 'service_provider.dart';
 
 final recurringExpenseProvider =
     NotifierProvider<RecurringExpenseNotifier, List<RecurringExpense>>(
@@ -12,8 +13,7 @@ final recurringExpenseProvider =
 );
 
 class RecurringExpenseNotifier extends Notifier<List<RecurringExpense>> {
-  static const String _boxName = 'recurring_expenses';
-  Box<RecurringExpense> get _box => Hive.box<RecurringExpense>(_boxName);
+  Box<RecurringExpense> get _box => ref.read(storageServiceProvider).recurringBox;
 
   @override
   List<RecurringExpense> build() =>

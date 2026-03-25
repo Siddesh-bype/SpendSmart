@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/recurring_expense.dart';
 import '../models/category.dart';
 import '../providers/recurring_expense_provider.dart';
+import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
 
 class RecurringExpenseScreen extends ConsumerWidget {
@@ -61,6 +62,7 @@ class _RecurringTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final currency  = ref.watch(appSettingsProvider).currency;
     final isDark     = Theme.of(context).brightness == Brightness.dark;
     final cardColor  = isDark ? AppColors.surfaceDark : Colors.white;
     final catColor   = item.category.color;
@@ -110,7 +112,7 @@ class _RecurringTile extends ConsumerWidget {
         ),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
           Text(
-            '₹${NumberFormat('#,##0').format(item.amount)}',
+            '$currency${NumberFormat('#,##0').format(item.amount)}',
             style: TextStyle(
               fontWeight: FontWeight.bold,
               fontSize: 15,
