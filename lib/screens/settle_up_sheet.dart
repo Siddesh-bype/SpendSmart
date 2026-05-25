@@ -18,9 +18,8 @@ class SettleUpSheet extends ConsumerWidget {
   });
 
   String _participantName(String id) {
-    return group.participants
-        .firstWhere((p) => p.id == id, orElse: () => group.participants.first)
-        .name;
+    final match = group.participants.where((p) => p.id == id).firstOrNull;
+    return match?.name ?? 'Unknown';
   }
 
   @override
@@ -91,9 +90,11 @@ class SettleUpSheet extends ConsumerWidget {
             child: ElevatedButton(
               onPressed: () {
                 ref.read(groupExpenseProvider.notifier).settleExpense(expense.id);
-                Navigator.pop(context);
                 HapticFeedback.mediumImpact();
-                ScaffoldMessenger.of(context).showSnackBar(
+                // Capture messenger before pop — context invalid after pop
+                final messenger = ScaffoldMessenger.of(context);
+                Navigator.pop(context);
+                messenger.showSnackBar(
                   SnackBar(
                     content: const Text('Marked as settled'),
                     behavior: SnackBarBehavior.floating,

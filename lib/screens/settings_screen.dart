@@ -527,8 +527,21 @@ class SettingsScreen extends ConsumerWidget {
 
 // ── App info card ──────────────────────────────────────────────────────────────
 
-class _AppInfoCard extends StatelessWidget {
+class _AppInfoCard extends StatefulWidget {
   const _AppInfoCard();
+
+  @override
+  State<_AppInfoCard> createState() => _AppInfoCardState();
+}
+
+class _AppInfoCardState extends State<_AppInfoCard> {
+  late final Future<PackageInfo> _packageInfoFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _packageInfoFuture = PackageInfo.fromPlatform();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -567,7 +580,7 @@ class _AppInfoCard extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         FutureBuilder<PackageInfo>(
-          future: PackageInfo.fromPlatform(),
+          future: _packageInfoFuture, // cached — not recreated on rebuild
           builder: (context, snapshot) => Text(
             'v${snapshot.data?.version ?? '2.1.0'}',
             style: const TextStyle(color: Colors.grey, fontSize: 12),

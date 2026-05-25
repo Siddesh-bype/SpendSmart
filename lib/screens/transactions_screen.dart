@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -46,7 +46,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           textColor: AppColors.accent,
           onPressed: () {
             HapticFeedback.lightImpact();
-            // ref is always valid here — parent is still alive
+            // ref is always valid here â€” parent is still alive
             ref.read(expenseProvider.notifier).addExpense(expense);
           },
         ),
@@ -152,7 +152,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   const Icon(Icons.date_range, size: 14, color: AppColors.secondary),
                   const SizedBox(width: 6),
                   Text(
-                    '${DateFormat('MMM d').format(_dateRange!.start)} – ${DateFormat('MMM d, yyyy').format(_dateRange!.end)}',
+                    '${DateFormat('MMM d').format(_dateRange!.start)} â€“ ${DateFormat('MMM d, yyyy').format(_dateRange!.end)}',
                     style: const TextStyle(
                         fontSize: 12,
                         color: AppColors.secondary,
@@ -177,7 +177,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ...Category.values.map((cat) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: FilterChip(
-                        label: Text(cat.name),
+                        label: Text(cat.displayName),
                         selected: _selectedCategory == cat,
                         selectedColor: cat.color.withValues(alpha: 0.25),
                         avatar: Icon(cat.icon, size: 14, color: cat.color),
@@ -292,3 +292,4 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     );
   }
 }
+

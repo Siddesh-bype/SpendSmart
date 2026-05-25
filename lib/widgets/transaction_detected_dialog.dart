@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
 
@@ -8,6 +8,7 @@ class TransactionDetectedDialog extends StatefulWidget {
   final String merchant;
   final double amount;
   final String rawMessage;
+  final String currency;
   final void Function(Category category) onSave;
   final VoidCallback onDismiss;
 
@@ -16,6 +17,7 @@ class TransactionDetectedDialog extends StatefulWidget {
     required this.merchant,
     required this.amount,
     required this.rawMessage,
+    required this.currency,
     required this.onSave,
     required this.onDismiss,
   });
@@ -80,7 +82,7 @@ class _TransactionDetectedDialogState
             ),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
-                '₹${widget.amount % 1 == 0 ? widget.amount.toStringAsFixed(0) : widget.amount.toStringAsFixed(2)}',
+                '${widget.currency}${widget.amount % 1 == 0 ? widget.amount.toStringAsFixed(0) : widget.amount.toStringAsFixed(2)}',
                 style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
               ),
               Text(widget.merchant,
@@ -118,7 +120,7 @@ class _TransactionDetectedDialogState
                     Icon(cat.icon, color: cat.color, size: 20),
                     const SizedBox(height: 4),
                     Text(
-                      cat.name,
+                      cat.displayName,
                       style: TextStyle(
                         fontSize: 9,
                         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -155,3 +157,4 @@ class _TransactionDetectedDialogState
     );
   }
 }
+

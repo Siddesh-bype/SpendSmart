@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
@@ -90,7 +90,7 @@ class _PendingTile extends ConsumerWidget {
               onTap: () {
                 ref.read(expenseProvider.notifier).categorizeExpense(expense.id, cat);
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('${expense.title} → ${cat.name}'), duration: const Duration(seconds: 2)),
+                  SnackBar(content: Text('${expense.title} â†’ ${cat.displayName}'), duration: const Duration(seconds: 2)),
                 );
               },
               child: Container(
@@ -103,7 +103,7 @@ class _PendingTile extends ConsumerWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(cat.icon, size: 14, color: cat.color),
                   const SizedBox(width: 5),
-                  Text(cat.name, style: TextStyle(color: cat.color, fontSize: 12, fontWeight: FontWeight.w600)),
+                  Text(cat.displayName, style: TextStyle(color: cat.color, fontSize: 12, fontWeight: FontWeight.w600)),
                 ]),
               ),
             )).toList(),
@@ -113,3 +113,4 @@ class _PendingTile extends ConsumerWidget {
     );
   }
 }
+

@@ -22,7 +22,8 @@ enum Category {
 }
 
 extension CategoryExtension on Category {
-  String get name {
+  /// Human-readable label. Named `displayName` to avoid shadowing Dart's built-in `Enum.name`.
+  String get displayName {
     switch (this) {
       case Category.food: return 'Food';
       case Category.transport: return 'Transport';

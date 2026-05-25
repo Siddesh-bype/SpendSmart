@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
@@ -180,7 +180,7 @@ class CsvImportService {
   static Category _parseCategory(String raw) {
     final lower = raw.toLowerCase().trim();
     for (final cat in Category.values) {
-      if (cat.name.toLowerCase() == lower) return cat;
+      if (cat.displayName.toLowerCase() == lower) return cat;
     }
     // Fuzzy fallbacks
     if (lower.contains('food') || lower.contains('dining') || lower.contains('eat')) {
@@ -209,3 +209,4 @@ class CsvImportService {
 extension _Let<T> on T {
   R let<R>(R Function(T) block) => block(this);
 }
+

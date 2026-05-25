@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -30,7 +30,7 @@ class ExpenseTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Slidable(
         key: ValueKey(expense.id),
-        // LEFT swipe → Edit (start)
+        // LEFT swipe â†’ Edit (start)
         startActionPane: ActionPane(
           motion: const DrawerMotion(),
           extentRatio: 0.25,
@@ -50,7 +50,7 @@ class ExpenseTile extends ConsumerWidget {
             ),
           ],
         ),
-        // RIGHT swipe → Delete (end)
+        // RIGHT swipe â†’ Delete (end)
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
           extentRatio: 0.25,
@@ -121,7 +121,7 @@ class ExpenseTile extends ConsumerWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  expense.category.name,
+                  expense.category.displayName,
                   style: TextStyle(
                     fontSize: 10,
                     color: expense.category.color,
@@ -140,3 +140,4 @@ class ExpenseTile extends ConsumerWidget {
     );
   }
 }
+

@@ -25,7 +25,12 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
   void clearAll() => state = [];
 
   /// Checks budgets against spending and adds relevant notifications.
-  void checkBudgets(List<Budget> budgets, Map<Category, double> spending) {
+  /// [currency] should come from appSettingsProvider.currency.
+  void checkBudgets(
+    List<Budget> budgets,
+    Map<Category, double> spending, {
+    String currency = '₹',
+  }) {
     for (final budget in budgets) {
       if (budget.monthlyLimit <= 0) continue;
       final spent = spending[budget.category] ?? 0.0;
@@ -34,26 +39,26 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
       // Already notified for this category this session? Skip duplicates.
       final alreadyHas80 = state.any((n) =>
           n.type == NotifType.budgetWarning &&
-          n.title.contains(budget.category.name));
+          n.title.contains(budget.category.displayName));
       final alreadyHasOver = state.any((n) =>
           n.type == NotifType.budgetExceeded &&
-          n.title.contains(budget.category.name));
+          n.title.contains(budget.category.displayName));
 
       if (pct >= 1.0 && !alreadyHasOver) {
         _add(AppNotification(
           id: const Uuid().v4(),
-          title: '🚨 Budget Exceeded: ${budget.category.name}',
+          title: '🚨 Budget Exceeded: ${budget.category.displayName}',
           body:
-              'You\'ve spent ₹${spent.toStringAsFixed(0)} of your ₹${budget.monthlyLimit.toStringAsFixed(0)} ${budget.category.name} budget.',
+              'You\'ve spent $currency${spent.toStringAsFixed(0)} of your $currency${budget.monthlyLimit.toStringAsFixed(0)} ${budget.category.displayName} budget.',
           time: DateTime.now(),
           type: NotifType.budgetExceeded,
         ));
-      } else if (pct >= 0.8 && !alreadyHas80) {
+      } else if (pct >= budget.alertAt && !alreadyHas80) {
         _add(AppNotification(
           id: const Uuid().v4(),
-          title: '⚠️ Budget Warning: ${budget.category.name}',
+          title: '⚠️ Budget Warning: ${budget.category.displayName}',
           body:
-              '${(pct * 100).toStringAsFixed(0)}% of your ${budget.category.name} budget used. ₹${(budget.monthlyLimit - spent).toStringAsFixed(0)} remaining.',
+              '${(pct * 100).toStringAsFixed(0)}% of your ${budget.category.displayName} budget used. $currency${(budget.monthlyLimit - spent).toStringAsFixed(0)} remaining.',
           time: DateTime.now(),
           type: NotifType.budgetWarning,
         ));

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
 
@@ -45,7 +45,7 @@ class CategoryGrid extends StatelessWidget {
                 Icon(category.icon, color: category.color, size: 28),
                 const SizedBox(height: 4),
                 Text(
-                  category.name,
+                  category.displayName,
                   style: TextStyle(
                     fontSize: 10,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -61,3 +61,4 @@ class CategoryGrid extends StatelessWidget {
     );
   }
 }
+

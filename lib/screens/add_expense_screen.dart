@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
@@ -213,7 +213,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                               ),
                             ),
                             subtitle: cat != null
-                                ? Text(cat.name,
+                                ? Text(cat.displayName,
                                     style: TextStyle(fontSize: 11, color: cat.color))
                                 : null,
                             onTap: () => onSelected(option),
@@ -290,7 +290,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             ),
             const SizedBox(height: 16),
 
-            // ── Split with friend ──────────────────────────────────────────
+            // â”€â”€ Split with friend â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             Container(
               decoration: BoxDecoration(
                 color: isDark
@@ -430,7 +430,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 ],
               ),
             ),
-            // ────────────────────────────────────────────────────────────────
+            // â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
             const SizedBox(height: 32),
 
@@ -511,7 +511,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          'Expense saved & slip added — $friendName owes you ${settings.currency}${splitAmt.toStringAsFixed(2)}'),
+                          'Expense saved & slip added â€” $friendName owes you ${settings.currency}${splitAmt.toStringAsFixed(2)}'),
                       backgroundColor: Colors.green.shade700,
                       behavior: SnackBarBehavior.floating,
                       shape: RoundedRectangleBorder(
@@ -531,3 +531,4 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 }
+

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/recurring_expense.dart';
@@ -107,7 +107,7 @@ class _RecurringTile extends ConsumerWidget {
           ),
         ),
         subtitle: Text(
-          '$freqLabel · Next: ${DateFormat('d MMM yyyy').format(item.nextDue)}',
+          '$freqLabel Â· Next: ${DateFormat('d MMM yyyy').format(item.nextDue)}',
           style: TextStyle(fontSize: 12, color: item.isActive ? Colors.grey : Colors.grey.shade400),
         ),
         trailing: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -274,7 +274,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
             children: Category.values.map((cat) {
               final selected = cat == _category;
               return FilterChip(
-                label: Text(cat.name),
+                label: Text(cat.displayName),
                 avatar: Icon(cat.icon, size: 16, color: selected ? Colors.white : cat.color),
                 selected: selected,
                 onSelected: (_) => setState(() => _category = cat),
@@ -348,3 +348,4 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
     );
   }
 }
+

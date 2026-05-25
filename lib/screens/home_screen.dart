@@ -114,7 +114,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         for (var e in currentMonthly) {
           spending[e.category] = (spending[e.category] ?? 0) + e.amount;
         }
-        ref.read(notificationProvider.notifier).checkBudgets(currentBudgets, spending);
+        ref.read(notificationProvider.notifier).checkBudgets(
+          currentBudgets,
+          spending,
+          currency: ref.read(appSettingsProvider).currency,
+        );
       });
     });
 
@@ -123,7 +127,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       body: SafeArea(
         child: CustomScrollView(
           slivers: [
-            // ── Header ──────────────────────────────────────────────────────
+            // â”€â”€ Header â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -177,7 +181,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // ── Summary card ─────────────────────────────────────────────────
+            // â”€â”€ Summary card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
@@ -273,7 +277,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // ── Spending alert banner ─────────────────────────────────────────
+            // â”€â”€ Spending alert banner â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             if (settings.monthlyBudget > 0 && totalSpent > settings.monthlyBudget * 0.8)
               SliverToBoxAdapter(
                 child: Padding(
@@ -286,7 +290,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
 
-            // ── Income quick-access card ─────────────────────────────────────
+            // â”€â”€ Income quick-access card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -328,7 +332,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // ── Category Spending ────────────────────────────────────────────
+            // â”€â”€ Category Spending â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -343,7 +347,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
             SliverToBoxAdapter(child: _buildCategoryBars(context, monthlyExpenses, budgets, settings.currency)),
 
-            // ── Recurring expenses card ───────────────────────────────────────
+            // â”€â”€ Recurring expenses card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -377,7 +381,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            // ── Recent Transactions ──────────────────────────────────────────
+            // â”€â”€ Recent Transactions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -464,7 +468,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       child: Icon(cat.icon, size: 16, color: cat.color),
                     ),
                     const SizedBox(width: 12),
-                    Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w700)),
+                    Text(cat.displayName, style: const TextStyle(fontWeight: FontWeight.w700)),
                   ]),
                   Text('$currency${NumberFormat('#,##0').format(spent)} / $currency${NumberFormat('#,##0').format(limit)}',
                       style: const TextStyle(fontSize: 13, color: Colors.grey)),
@@ -545,3 +549,4 @@ class _SpendingAlertBanner extends StatelessWidget {
     );
   }
 }
+

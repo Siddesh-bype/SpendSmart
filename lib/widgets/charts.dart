@@ -64,6 +64,8 @@ class ExpenseBarChart extends StatelessWidget {
     }
 
     final maxVal = values.reduce((a, b) => a > b ? a : b);
+    // Guard against all-zero values which makes maxY=0 and breaks fl_chart
+    final maxY = maxVal > 0 ? maxVal * 1.2 : 1.0;
 
     List<BarChartGroupData> barGroups = [];
     for (int i = 0; i < values.length; i++) {
@@ -87,22 +89,26 @@ class ExpenseBarChart extends StatelessWidget {
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          maxY: maxVal * 1.2,
+          maxY: maxY,
           barTouchData: BarTouchData(enabled: false),
           titlesData: FlTitlesData(
             show: true,
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: Text(
-                      labels[value.toInt()],
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                    ),
-                  );
-                },
+                  getTitlesWidget: (value, meta) {
+                    final index = value.toInt();
+                    final label = index >= 0 && index < labels.length
+                        ? labels[index]
+                        : '';
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: Text(
+                        label,
+                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
+                      ),
+                    );
+                  },
               ),
             ),
             leftTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),

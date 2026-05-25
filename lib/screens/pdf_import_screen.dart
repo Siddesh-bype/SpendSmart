@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -60,7 +60,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
     setState(() { _importing = false; _parsed = []; _selected = {}; });
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('✅ Imported ${toImport.length} transactions successfully!'),
+        content: Text('âœ… Imported ${toImport.length} transactions successfully!'),
         backgroundColor: Colors.green,
       ));
       Navigator.pop(context);
@@ -137,7 +137,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
           const Text('Import Bank Statement', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           const Text(
-            'Pick your bank\'s PDF statement to auto-import all debit transactions.\n\nSupported banks:\nHDFC • SBI • ICICI • Axis • Kotak • Yes Bank',
+            'Pick your bank\'s PDF statement to auto-import all debit transactions.\n\nSupported banks:\nHDFC â€¢ SBI â€¢ ICICI â€¢ Axis â€¢ Kotak â€¢ Yes Bank',
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.grey, height: 1.6),
           ),
@@ -200,7 +200,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_fileName ?? 'Statement', style: const TextStyle(fontWeight: FontWeight.bold)),
-              Text('Found ${_parsed.length} debit transactions  •  ${_selected.length} selected',
+              Text('Found ${_parsed.length} debit transactions  â€¢  ${_selected.length} selected',
                 style: const TextStyle(color: Colors.grey, fontSize: 12)),
             ]),
           ),
@@ -251,7 +251,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                         color: e.category.color.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Text(e.category.name, style: TextStyle(fontSize: 10, color: e.category.color)),
+                      child: Text(e.category.displayName, style: TextStyle(fontSize: 10, color: e.category.color)),
                     ),
                   ]),
                 ),
@@ -265,3 +265,4 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
     ]);
   }
 }
+

@@ -5,6 +5,7 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../providers/expense_provider.dart';
 import '../providers/merchant_memory_provider.dart';
+import '../providers/app_settings_provider.dart';
 import 'category_grid.dart';
 import '../utils/constants.dart';
 
@@ -34,11 +35,14 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final currency = ref.watch(appSettingsProvider).currency;
+
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: AppColors.surfaceLight, // Fallback, theme should handle this
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -49,7 +53,7 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey[300],
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -62,7 +66,7 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
           ),
           const SizedBox(height: 16),
           Text(
-            '₹${widget.expense.amount.toStringAsFixed(2)}',
+            '$currency${widget.expense.amount.toStringAsFixed(2)}',
             style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: AppColors.primary),
             textAlign: TextAlign.center,
           ),
@@ -74,7 +78,10 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
           ),
           Text(
             DateFormat('EEEE, MMM dd • hh:mm a').format(widget.expense.date),
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+            style: TextStyle(
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+              fontSize: 12,
+            ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 24),
@@ -98,10 +105,12 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
               Expanded(
                 child: OutlinedButton(
                   onPressed: () {
-                    // Skip creates it as uncategorized with 'other' category
-                    widget.expense.category = Category.other;
-                    widget.expense.isUncategorized = true;
-                    ref.read(expenseProvider.notifier).updateExpense(widget.expense);
+                    // Use copyWith — never mutate HiveObject fields directly
+                    final skipped = widget.expense.copyWith(
+                      category: Category.other,
+                      isUncategorized: true,
+                    );
+                    ref.read(expenseProvider.notifier).updateExpense(skipped);
                     Navigator.pop(context);
                   },
                   style: OutlinedButton.styleFrom(
@@ -117,14 +126,16 @@ class _TransactionPopupState extends ConsumerState<TransactionPopup> {
                   onPressed: _selectedCategory == null
                       ? null
                       : () {
-                          widget.expense.category = _selectedCategory!;
-                          widget.expense.isUncategorized = false;
-                          
                           if (_rememberMerchant) {
-                            ref.read(merchantNotifierProvider.notifier).saveMerchant(widget.expense.title, _selectedCategory!);
+                            ref.read(merchantNotifierProvider.notifier)
+                                .saveMerchant(widget.expense.title, _selectedCategory!);
                           }
-                          
-                          ref.read(expenseProvider.notifier).updateExpense(widget.expense);
+                          // Use copyWith — never mutate HiveObject fields directly
+                          final categorized = widget.expense.copyWith(
+                            category: _selectedCategory!,
+                            isUncategorized: false,
+                          );
+                          ref.read(expenseProvider.notifier).updateExpense(categorized);
                           Navigator.pop(context);
                         },
                   style: ElevatedButton.styleFrom(

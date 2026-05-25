@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
@@ -60,7 +60,7 @@ class InsightsScreen extends ConsumerWidget {
                 _infoCard(
                   icon: topCat.key.icon,
                   color: topCat.key.color,
-                  title: 'Top Category: ${topCat.key.name}',
+                  title: 'Top Category: ${topCat.key.displayName}',
                   subtitle: '${settings.currency}${NumberFormat('#,##0').format(topCat.value)} this month'
                     ' (${thisTotal > 0 ? (topCat.value / thisTotal * 100).toStringAsFixed(0) : 0}% of spending)',
                 ),
@@ -140,7 +140,7 @@ class InsightsScreen extends ConsumerWidget {
           decoration: BoxDecoration(color: Colors.purple.withValues(alpha: 0.1), shape: BoxShape.circle),
           child: const Icon(Icons.autorenew, color: Colors.purple, size: 20)),
         title: Text(r['name'], style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        subtitle: Text('~${r['frequency']}  •  Monthly ~$currency${NumberFormat('#,##0').format(r['amount'])}',
+        subtitle: Text('~${r['frequency']}  â€¢  Monthly ~$currency${NumberFormat('#,##0').format(r['amount'])}',
           style: const TextStyle(fontSize: 12, color: Colors.grey)),
         trailing: const Icon(Icons.repeat, size: 16, color: Colors.purple),
       ),
@@ -222,8 +222,8 @@ class InsightsScreen extends ConsumerWidget {
           tips.add({
             'icon': Icons.account_balance_wallet,
             'color': Colors.red,
-            'title': '${entry.key.name} Budget Almost Exhausted',
-            'body': 'You\'ve used ${(pct * 100).toStringAsFixed(0)}% of your ${entry.key.name} budget. Only ${settings.currency}${(budget.monthlyLimit - entry.value).toStringAsFixed(0)} remaining.',
+            'title': '${entry.key.displayName} Budget Almost Exhausted',
+            'body': 'You\'ve used ${(pct * 100).toStringAsFixed(0)}% of your ${entry.key.displayName} budget. Only ${settings.currency}${(budget.monthlyLimit - entry.value).toStringAsFixed(0)} remaining.',
           });
         }
       }
@@ -233,8 +233,8 @@ class InsightsScreen extends ConsumerWidget {
       tips.add({
         'icon': topCat.key.icon,
         'color': topCat.key.color,
-        'title': '${topCat.key.name} Dominates Your Spending',
-        'body': '${(topCat.value / thisTotal * 100).toStringAsFixed(0)}% of your budget goes to ${topCat.key.name}. Consider setting a specific budget cap.',
+        'title': '${topCat.key.displayName} Dominates Your Spending',
+        'body': '${(topCat.value / thisTotal * 100).toStringAsFixed(0)}% of your budget goes to ${topCat.key.displayName}. Consider setting a specific budget cap.',
       });
     }
 
@@ -281,3 +281,4 @@ class InsightsScreen extends ConsumerWidget {
 
   String _capitalize(String s) => s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
+

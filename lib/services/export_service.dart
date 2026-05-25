@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 import 'package:csv/csv.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
@@ -26,7 +26,7 @@ class ExportService {
         DateFormat('yyyy-MM-dd HH:mm:ss').format(exp.date),
         exp.title,
         exp.amount,
-        exp.category.name,
+        exp.category.displayName,
         exp.source,
         exp.isManual,
         exp.isUncategorized,
@@ -44,3 +44,4 @@ class ExportService {
     return path;
   }
 }
+

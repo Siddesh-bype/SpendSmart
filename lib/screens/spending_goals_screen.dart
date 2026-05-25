@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -158,7 +158,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(20)),
             child: Text(
-              isOver ? '🚨 Over Goal' : '${(pct * 100).toStringAsFixed(0)}% used',
+              isOver ? 'ðŸš¨ Over Goal' : '${(pct * 100).toStringAsFixed(0)}% used',
               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
             ),
           ),
@@ -236,7 +236,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
         const SizedBox(width: 10),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(cat.name, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+            Text(cat.displayName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
             Text('$currency${NumberFormat('#,##0').format(spent)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           ]),
           const SizedBox(height: 4),
@@ -295,3 +295,4 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     );
   }
 }
+

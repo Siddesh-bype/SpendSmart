@@ -91,12 +91,11 @@ class PdfImportService {
 
   static bool _isHeaderLine(String line) {
     final lower = line.toLowerCase();
-    return lower.contains('date') && lower.contains('description') ||
+    return (lower.contains('date') && lower.contains('description')) ||
         lower.contains('opening balance') ||
         lower.contains('closing balance') ||
-        lower.contains('statement') && lower.contains('account') ||
-        lower.contains('page ') ||
-        lower.length < 10;
+        (lower.contains('statement') && lower.contains('account')) ||
+        lower.startsWith('page ');
   }
 
   static bool _isCredit(String line, String desc) {

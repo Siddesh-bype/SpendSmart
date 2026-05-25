@@ -186,8 +186,10 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       isUncategorized: false,
     );
     ref.read(expenseProvider.notifier).updateExpense(updated);
+    // Capture messenger before pop — context invalid after pop
+    final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+    messenger.showSnackBar(SnackBar(
       content: const Text('Expense updated ✓'),
       backgroundColor: Colors.green.shade600,
       behavior: SnackBarBehavior.floating,

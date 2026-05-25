@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
@@ -117,12 +117,12 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
                   child: ScaleTransition(
                     scale: CurvedAnimation(parent: _quickAddController, curve: Curves.easeOutBack),
                     child: FloatingActionButton.extended(
-                      heroTag: 'quick_${cat.name}',
+                      heroTag: 'quick_${cat.displayName}',
                       onPressed: () => _openAddExpense(initialCategory: cat),
                       backgroundColor: cat.color,
                       foregroundColor: Colors.white,
                       icon: Icon(cat.icon, size: 20),
-                      label: Text(cat.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      label: Text(cat.displayName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
                       elevation: 8,
                     ),
                   ),
@@ -130,7 +130,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
               }),
               const SizedBox(height: 10),
             ],
-            // Main FAB — circular
+            // Main FAB â€” circular
             ScaleTransition(
               scale: CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
               child: GestureDetector(
@@ -183,12 +183,12 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
                   height: 56,
                   child: Row(
                     children: [
-                      // Left group — flex 3 each so total = 6
+                      // Left group â€” flex 3 each so total = 6
                       Expanded(flex: 3, child: _navItem(0, Icons.home_rounded, Icons.home_outlined, 'Home', isDark)),
                       Expanded(flex: 3, child: _navItem(1, Icons.pie_chart_rounded, Icons.pie_chart_outline_rounded, 'Analytics', isDark)),
                       // Center gap for FAB
                       const SizedBox(width: 64),
-                      // Right group — flex 2 each so total = 6
+                      // Right group â€” flex 2 each so total = 6
                       Expanded(flex: 2, child: _navItem(2, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Budget', isDark)),
                       Expanded(flex: 2, child: _navItem(3, Icons.handshake_rounded, Icons.handshake_outlined, 'Split', isDark)),
                       Expanded(flex: 2, child: _navItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile', isDark)),
@@ -203,7 +203,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     );
   }
 
-  // Returns inner widget only — Expanded wrapper is applied at call site
+  // Returns inner widget only â€” Expanded wrapper is applied at call site
   Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label, bool isDark) {
     final selected = _currentIndex == index;
     final inactiveColor = isDark ? Colors.white54 : Colors.black45;
@@ -246,3 +246,4 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     );
   }
 }
+

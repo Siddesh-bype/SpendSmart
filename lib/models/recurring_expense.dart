@@ -32,8 +32,15 @@ class RecurringExpense extends HiveObject {
         return DateTime(from.year + 1, from.month, from.day);
       case 'monthly':
       default:
-        final next = DateTime(from.year, from.month + 1, from.day);
-        return next;
+        var nextMonth = from.month + 1;
+        var nextYear = from.year;
+        if (nextMonth > 12) {
+          nextMonth = 1;
+          nextYear++;
+        }
+        // Clamp day to last day of target month to prevent overflow (e.g. Jan 31 → Feb 28)
+        final lastDayOfMonth = DateTime(nextYear, nextMonth + 1, 0).day;
+        return DateTime(nextYear, nextMonth, from.day.clamp(1, lastDayOfMonth));
     }
   }
 }

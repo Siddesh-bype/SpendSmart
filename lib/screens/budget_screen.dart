@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/budget_provider.dart';
@@ -107,7 +107,7 @@ class BudgetScreen extends ConsumerWidget {
                 child: Icon(cat.icon, color: cat.color, size: 20)),
               const SizedBox(width: 12),
               Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(cat.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                Text(cat.displayName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
                 if (isOverBudget)
                   const Text('Over budget!', style: TextStyle(color: Colors.red, fontSize: 11, fontWeight: FontWeight.w600)),
               ]),
@@ -210,3 +210,4 @@ class BudgetScreen extends ConsumerWidget {
     });
   }
 }
+
