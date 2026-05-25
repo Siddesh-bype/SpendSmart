@@ -5,14 +5,14 @@ import '../utils/constants.dart';
 import '../providers/app_settings_provider.dart';
 import 'main_scaffold.dart';
 
-class OnboardingScreen extends StatefulWidget {
+class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
   @override
-  State<OnboardingScreen> createState() => _OnboardingScreenState();
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
 }
 
-class _OnboardingScreenState extends State<OnboardingScreen>
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     with TickerProviderStateMixin {
   final PageController _controller = PageController();
   int _page = 0;
@@ -21,7 +21,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
 
-  final List<_OnboardPage> _pages = [
+  // Pages made static const — no rebuild overhead.
+  static const _pages = [
     _OnboardPage(
       icon: Icons.sms,
       color: AppColors.primary,
@@ -67,7 +68,9 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     _pageAnimCtrl.forward(from: 0);
   }
 
-  Future<void> _finish(WidgetRef ref) async {
+  /// Completes onboarding and navigates to MainScaffold.
+  /// mounted check prevents using context after async gap.
+  Future<void> _finish() async {
     HapticFeedback.mediumImpact();
     await ref.read(appSettingsProvider.notifier).completeOnboarding();
     if (!mounted) return;
@@ -109,15 +112,13 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                       ),
                     ),
                     if (!isLast)
-                      Consumer(builder: (context, ref, _) {
-                        return TextButton(
-                          onPressed: () => _finish(ref),
-                          child: const Text(
-                            'Skip',
-                            style: TextStyle(color: Colors.grey, fontSize: 14),
-                          ),
-                        );
-                      }),
+                      TextButton(
+                        onPressed: _finish,
+                        child: const Text(
+                          'Skip',
+                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -166,34 +167,32 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               const SizedBox(height: 32),
 
-              // Next / Get Started button
+              // Next / Get Started — ref accessed directly via ConsumerState
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Consumer(builder: (context, ref, _) {
-                  return ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size.fromHeight(52),
-                      backgroundColor: isLast ? AppColors.accent : AppColors.primary,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      if (!isLast) {
-                        _controller.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.easeInOut,
-                        );
-                      } else {
-                        _finish(ref);
-                      }
-                    },
-                    child: Text(
-                      isLast ? 'Get Started' : 'Next',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
-                    ),
-                  );
-                }),
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(52),
+                    backgroundColor: isLast ? AppColors.accent : AppColors.primary,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    if (!isLast) {
+                      _controller.nextPage(
+                        duration: const Duration(milliseconds: 300),
+                        curve: Curves.easeInOut,
+                      );
+                    } else {
+                      _finish();
+                    }
+                  },
+                  child: Text(
+                    isLast ? 'Get Started' : 'Next',
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                ),
               ),
               const SizedBox(height: 32),
             ],

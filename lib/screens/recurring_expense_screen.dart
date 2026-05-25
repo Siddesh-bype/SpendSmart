@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/recurring_expense.dart';
@@ -6,6 +6,7 @@ import '../models/category.dart';
 import '../providers/recurring_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../widgets/empty_state.dart';
 
 class RecurringExpenseScreen extends ConsumerWidget {
   const RecurringExpenseScreen({super.key});
@@ -13,7 +14,6 @@ class RecurringExpenseScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(recurringExpenseProvider);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -35,16 +35,11 @@ class RecurringExpenseScreen extends ConsumerWidget {
         ),
       ),
       body: items.isEmpty
-          ? Center(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Icon(Icons.repeat_rounded, size: 64, color: Colors.purple.shade200),
-                const SizedBox(height: 16),
-                Text('No recurring expenses yet',
-                    style: TextStyle(fontSize: 16, color: isDark ? Colors.white60 : Colors.grey.shade600)),
-                const SizedBox(height: 8),
-                Text('Add subscriptions, rent, EMIs & more',
-                    style: TextStyle(fontSize: 13, color: isDark ? Colors.white38 : Colors.grey.shade400)),
-              ]),
+          ? EmptyState(
+              icon: Icons.repeat_rounded,
+              title: 'No recurring expenses yet',
+              subtitle: 'Add subscriptions, rent, EMIs & more',
+              iconColor: Colors.purple.shade200,
             )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -180,6 +175,14 @@ class _AddRecurringSheet extends ConsumerStatefulWidget {
   ConsumerState<_AddRecurringSheet> createState() => _AddRecurringSheetState();
 }
 
+/// Frequency options: value → display label. Const so not rebuilt every frame.
+const _kFrequencyLabels = <String, String>{
+  'daily': 'Daily',
+  'weekly': 'Weekly',
+  'monthly': 'Monthly',
+  'yearly': 'Yearly',
+};
+
 class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
   final _titleCtrl  = TextEditingController();
   final _amountCtrl = TextEditingController();
@@ -293,16 +296,16 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
-            children: ['daily', 'weekly', 'monthly', 'yearly'].map((f) {
-              final label = f[0].toUpperCase() + f.substring(1);
+            children: _kFrequencyLabels.entries.map((entry) {
+              final selected = _frequency == entry.key;
               return ChoiceChip(
-                label: Text(label),
-                selected: _frequency == f,
-                onSelected: (_) => setState(() => _frequency = f),
+                label: Text(entry.value),
+                selected: selected,
+                onSelected: (_) => setState(() => _frequency = entry.key),
                 selectedColor: Colors.purple.shade600,
                 labelStyle: TextStyle(
-                  color: _frequency == f ? Colors.white : null,
-                  fontWeight: _frequency == f ? FontWeight.bold : FontWeight.normal,
+                  color: selected ? Colors.white : null,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                 ),
               );
             }).toList(),

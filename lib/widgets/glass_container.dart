@@ -16,8 +16,10 @@ class GlassContainer extends StatelessWidget {
     this.borderRadius = 24.0,
     this.padding = const EdgeInsets.all(24),
     this.margin = EdgeInsets.zero,
-    this.blurRadius = 10.0,  // Reduced from 15 → 10 for smoother rendering
-    this.backgroundColor = Colors.white,
+    this.blurRadius = 10.0,
+    // Default transparent — callers pass explicit color when needed.
+    // Colors.white caused dark-mode cards to look blown out.
+    this.backgroundColor = Colors.transparent,
     this.border,
   });
 

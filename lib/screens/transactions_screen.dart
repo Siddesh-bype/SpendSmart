@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -8,7 +8,9 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
+import '../widgets/empty_state.dart';
 import '../utils/constants.dart';
+import '../utils/date_extension.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   final Category? initialCategory;
@@ -38,7 +40,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('Deleted "${expense.title}"'),
-        duration: const Duration(seconds: 15),
+        duration: const Duration(seconds: 6),
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(
@@ -77,11 +79,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       expenses.sort((a, b) => b.amount.compareTo(a.amount));
     }
 
-    final grouped = <String, List<Expense>>{};
-    for (final e in expenses) {
-      final key = DateFormat('MMMM yyyy').format(e.date);
-      grouped.putIfAbsent(key, () => []).add(e);
-    }
+    final grouped = groupByMonth(expenses, (e) => e.date);
 
     return Scaffold(
       appBar: AppBar(
@@ -240,44 +238,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final hasFilters = _selectedCategory != null ||
         _searchQuery.isNotEmpty ||
         _dateRange != null;
-    return Center(
-      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-        Icon(
-          hasFilters
-              ? Icons.search_off_rounded
-              : Icons.receipt_long_rounded,
-          size: 72,
-          color: Colors.grey.shade300,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          hasFilters ? 'No matching transactions' : 'No transactions yet',
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          hasFilters
-              ? 'Try adjusting your filters or search'
-              : 'Add your first expense using the + button',
-          style: const TextStyle(color: Colors.grey, fontSize: 13),
-          textAlign: TextAlign.center,
-        ),
-        if (hasFilters) ...[
-          const SizedBox(height: 20),
-          OutlinedButton.icon(
-            icon: const Icon(Icons.clear_all),
-            label: const Text('Clear Filters'),
-            style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary)),
-            onPressed: () => setState(() {
-              _selectedCategory = null;
-              _searchQuery = '';
-              _dateRange = null;
-            }),
-          ),
-        ],
-      ]),
+    return EmptyState(
+      icon: hasFilters ? Icons.search_off_rounded : Icons.receipt_long_rounded,
+      title: hasFilters ? 'No matching transactions' : 'No transactions yet',
+      subtitle: hasFilters
+          ? 'Try adjusting your filters or search'
+          : 'Add your first expense using the + button',
+      action: hasFilters
+          ? OutlinedButton.icon(
+              icon: const Icon(Icons.clear_all),
+              label: const Text('Clear Filters'),
+              style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: const BorderSide(color: AppColors.primary)),
+              onPressed: () => setState(() {
+                _selectedCategory = null;
+                _searchQuery = '';
+                _dateRange = null;
+              }),
+            )
+          : null,
     );
   }
 
