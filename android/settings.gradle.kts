@@ -14,6 +14,8 @@ pluginManagement {
         google()
         mavenCentral()
         gradlePluginPortal()
+        // Flutter engine mirror — fallback when storage.googleapis.com is blocked
+        maven { url = uri("https://storage.flutter-io.cn/download.flutter.io") }
     }
 }
 
