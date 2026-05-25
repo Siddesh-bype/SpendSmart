@@ -1,12 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_settings_provider.dart';
-
-class SpendingGoal {
-  final double monthlyLimit;
-  final bool enabled;
-
-  const SpendingGoal({required this.monthlyLimit, required this.enabled});
-}
+import '../models/spending_goal.dart';
 
 final spendingGoalProvider = NotifierProvider<SpendingGoalNotifier, SpendingGoal>(
   SpendingGoalNotifier.new,

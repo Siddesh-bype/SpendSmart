@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show debugPrint;
 import 'package:hive_flutter/hive_flutter.dart';
 import '../models/expense.dart';
 import '../models/merchant_memory.dart';
@@ -48,11 +49,21 @@ class StorageService {
   Box<Expense> get expenseBox => Hive.box<Expense>(expenseBoxName);
   
   Future<void> saveExpense(Expense expense) async {
-    await expenseBox.put(expense.id, expense);
+    try {
+      await expenseBox.put(expense.id, expense);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.saveExpense failed: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<void> deleteExpense(String id) async {
-    await expenseBox.delete(id);
+    try {
+      await expenseBox.delete(id);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.deleteExpense failed: $e\n$st');
+      rethrow;
+    }
   }
 
   List<Expense> getAllExpenses() {
@@ -98,7 +109,12 @@ class StorageService {
   }
 
   Future<void> saveBudget(Budget budget) async {
-    await budgetBox.put(budget.category.index, budget);
+    try {
+      await budgetBox.put(budget.category.index, budget);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.saveBudget failed: $e\n$st');
+      rethrow;
+    }
   }
 
   List<Budget> getAllBudgets() {
@@ -115,11 +131,21 @@ class StorageService {
   Box<Lending> get lendingBox => Hive.box<Lending>(lendingBoxName);
 
   Future<void> saveLending(Lending lending) async {
-    await lendingBox.put(lending.id, lending);
+    try {
+      await lendingBox.put(lending.id, lending);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.saveLending failed: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<void> deleteLending(String id) async {
-    await lendingBox.delete(id);
+    try {
+      await lendingBox.delete(id);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.deleteLending failed: $e\n$st');
+      rethrow;
+    }
   }
 
   List<Lending> getAllLendings() {
@@ -130,11 +156,21 @@ class StorageService {
   Box<SplitGroup> get splitGroupBox => Hive.box<SplitGroup>(splitGroupBoxName);
 
   Future<void> saveSplitGroup(SplitGroup group) async {
-    await splitGroupBox.put(group.id, group);
+    try {
+      await splitGroupBox.put(group.id, group);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.saveSplitGroup failed: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<void> deleteSplitGroup(String id) async {
-    await splitGroupBox.delete(id);
+    try {
+      await splitGroupBox.delete(id);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.deleteSplitGroup failed: $e\n$st');
+      rethrow;
+    }
   }
 
   List<SplitGroup> getAllSplitGroups() {
@@ -146,11 +182,21 @@ class StorageService {
   Box<GroupExpense> get groupExpenseBox => Hive.box<GroupExpense>(groupExpenseBoxName);
 
   Future<void> saveGroupExpense(GroupExpense expense) async {
-    await groupExpenseBox.put(expense.id, expense);
+    try {
+      await groupExpenseBox.put(expense.id, expense);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.saveGroupExpense failed: $e\n$st');
+      rethrow;
+    }
   }
 
   Future<void> deleteGroupExpense(String id) async {
-    await groupExpenseBox.delete(id);
+    try {
+      await groupExpenseBox.delete(id);
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.deleteGroupExpense failed: $e\n$st');
+      rethrow;
+    }
   }
 
   List<GroupExpense> getAllGroupExpenses() {
@@ -167,13 +213,18 @@ class StorageService {
 
   // Clear all data (on logout)
   Future<void> clearAll() async {
-    await expenseBox.clear();
-    await budgetBox.clear();
-    await merchantBox.clear();
-    await incomeBox.clear();
-    await recurringBox.clear();
-    await lendingBox.clear();
-    await splitGroupBox.clear();
-    await groupExpenseBox.clear();
+    try {
+      await expenseBox.clear();
+      await budgetBox.clear();
+      await merchantBox.clear();
+      await incomeBox.clear();
+      await recurringBox.clear();
+      await lendingBox.clear();
+      await splitGroupBox.clear();
+      await groupExpenseBox.clear();
+    } on HiveError catch (e, st) {
+      debugPrint('StorageService.clearAll failed: $e\n$st');
+      rethrow;
+    }
   }
 }
