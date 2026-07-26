@@ -37,13 +37,15 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
     if (widget.existingGroup != null) {
       _nameCtrl.text = widget.existingGroup!.name;
       _participants = widget.existingGroup!.participants
-          .map((p) => _ParticipantEntry(
-                id: p.id,
-                nameCtrl: TextEditingController(text: p.name),
-                colorIndex: groupAvatarColors
-                    .indexWhere((c) => c.toARGB32() == p.avatarColorValue)
-                    .clamp(0, groupAvatarColors.length - 1),
-              ))
+          .map(
+            (p) => _ParticipantEntry(
+              id: p.id,
+              nameCtrl: TextEditingController(text: p.name),
+              colorIndex: groupAvatarColors
+                  .indexWhere((c) => c.toARGB32() == p.avatarColorValue)
+                  .clamp(0, groupAvatarColors.length - 1),
+            ),
+          )
           .toList();
     } else {
       _participants = [
@@ -72,11 +74,13 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
 
   void _addParticipant() {
     setState(() {
-      _participants.add(_ParticipantEntry(
-        id: _uuid.v4(),
-        nameCtrl: TextEditingController(),
-        colorIndex: _participants.length % groupAvatarColors.length,
-      ));
+      _participants.add(
+        _ParticipantEntry(
+          id: _uuid.v4(),
+          nameCtrl: TextEditingController(),
+          colorIndex: _participants.length % groupAvatarColors.length,
+        ),
+      );
     });
   }
 
@@ -88,15 +92,17 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
     });
   }
 
-  void _save() {
+  Future<void> _save() async {
     final name = _nameCtrl.text.trim();
     final validParticipants = _participants
         .where((p) => p.nameCtrl.text.trim().isNotEmpty)
-        .map((p) => Participant(
-              id: p.id,
-              name: p.nameCtrl.text.trim(),
-              avatarColorValue: groupAvatarColors[p.colorIndex].toARGB32(),
-            ))
+        .map(
+          (p) => Participant(
+            id: p.id,
+            name: p.nameCtrl.text.trim(),
+            avatarColorValue: groupAvatarColors[p.colorIndex].toARGB32(),
+          ),
+        )
         .toList();
 
     if (name.isEmpty) {
@@ -111,6 +117,15 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
       );
       return;
     }
+    final participantNames = validParticipants
+        .map((participant) => participant.name.toLowerCase())
+        .toSet();
+    if (participantNames.length != validParticipants.length) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Participant names must be unique')),
+      );
+      return;
+    }
 
     final group = SplitGroup(
       id: widget.existingGroup?.id ?? _uuid.v4(),
@@ -120,12 +135,12 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
     );
 
     if (widget.existingGroup != null) {
-      ref.read(splitGroupProvider.notifier).updateGroup(group);
+      await ref.read(splitGroupProvider.notifier).updateGroup(group);
     } else {
-      ref.read(splitGroupProvider.notifier).addGroup(group);
+      await ref.read(splitGroupProvider.notifier).addGroup(group);
     }
 
-    Navigator.pop(context);
+    if (mounted) Navigator.pop(context);
     HapticFeedback.mediumImpact();
   }
 
@@ -136,7 +151,9 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
@@ -146,7 +163,8 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
@@ -156,7 +174,9 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
             const SizedBox(height: 16),
             Text(
               isEditing ? 'Edit Group' : 'New Group',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -166,14 +186,21 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 labelText: 'Group Name',
                 hintText: 'e.g., Trip to Goa, Room Rent',
                 prefixIcon: const Icon(Icons.group_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 20),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Participants', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                Text(
+                  'Participants',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 TextButton.icon(
                   onPressed: _addParticipant,
                   icon: const Icon(Icons.add, size: 18),
@@ -191,15 +218,22 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                     GestureDetector(
                       onTap: () {
                         setState(() {
-                          p.colorIndex = (p.colorIndex + 1) % groupAvatarColors.length;
+                          p.colorIndex =
+                              (p.colorIndex + 1) % groupAvatarColors.length;
                         });
                       },
                       child: CircleAvatar(
                         radius: 16,
                         backgroundColor: groupAvatarColors[p.colorIndex],
                         child: Text(
-                          p.nameCtrl.text.isEmpty ? '?' : p.nameCtrl.text[0].toUpperCase(),
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 13),
+                          p.nameCtrl.text.isEmpty
+                              ? '?'
+                              : p.nameCtrl.text[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
@@ -212,15 +246,24 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                         decoration: InputDecoration(
                           hintText: 'Name',
                           isDense: true,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
                         ),
                       ),
                     ),
                     if (_participants.length > 2)
                       IconButton(
                         onPressed: () => _removeParticipant(i),
-                        icon: Icon(Icons.close, size: 18, color: Colors.grey.shade400),
+                        icon: Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.grey.shade400,
+                        ),
                       ),
                   ],
                 ),
@@ -235,11 +278,16 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
                 child: Text(
                   isEditing ? 'Save Changes' : 'Create Group',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

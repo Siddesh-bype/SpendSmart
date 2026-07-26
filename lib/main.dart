@@ -1,17 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import 'providers/app_settings_provider.dart';
 import 'providers/service_provider.dart';
-import 'services/storage_service.dart';
-import 'utils/theme.dart';
-import 'utils/globals.dart';
 import 'screens/splash_screen.dart';
+import 'services/storage_service.dart';
+import 'utils/globals.dart';
+import 'utils/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ── Local Storage Init ─────────────────────────────────
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService();
   await storageService.init();

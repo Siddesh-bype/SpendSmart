@@ -3,7 +3,9 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import 'service_provider.dart';
 
-final expenseProvider = NotifierProvider<ExpenseNotifier, List<Expense>>(ExpenseNotifier.new);
+final expenseProvider = NotifierProvider<ExpenseNotifier, List<Expense>>(
+  ExpenseNotifier.new,
+);
 
 class ExpenseNotifier extends Notifier<List<Expense>> {
   @override
@@ -20,14 +22,13 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
     _loadExpenses();
   }
 
-  Future<void> addExpenseFromSMS(Expense expense, {bool isImport = false}) async {
+  Future<void> addExpenseFromSMS(
+    Expense expense, {
+    bool isImport = false,
+  }) async {
     if (isImport) {
-      final exists = state.any((e) =>
-          e.amount == expense.amount &&
-          e.date.year == expense.date.year &&
-          e.date.month == expense.date.month &&
-          e.date.day == expense.date.day &&
-          e.title == expense.title);
+      final key = _expenseKey(expense);
+      final exists = state.any((e) => _expenseKey(e) == key);
       if (exists) return;
     }
     await ref.read(storageServiceProvider).saveExpense(expense);
@@ -47,26 +48,31 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
   Future<void> categorizeExpense(String id, Category category) async {
     final index = state.indexWhere((e) => e.id == id);
     if (index == -1) return; // expense was deleted before categorization
-    final updated = state[index].copyWith(category: category, isUncategorized: false);
+    final updated = state[index].copyWith(
+      category: category,
+      isUncategorized: false,
+    );
     await ref.read(storageServiceProvider).saveExpense(updated);
     _loadExpenses();
   }
 
   /// Batch-import: saves all non-duplicate expenses in one pass, then reloads state once.
-  Future<void> importExpenses(List<Expense> expenses) async {
+  Future<int> importExpenses(List<Expense> expenses) async {
     final storage = ref.read(storageServiceProvider);
-    final existing = state;
+    final seen = state.map(_expenseKey).toSet();
+    var inserted = 0;
     for (final expense in expenses) {
-      final isDuplicate = existing.any((e) =>
-          e.amount == expense.amount &&
-          e.date.year == expense.date.year &&
-          e.date.month == expense.date.month &&
-          e.date.day == expense.date.day &&
-          e.title == expense.title);
-      if (!isDuplicate) {
+      if (seen.add(_expenseKey(expense))) {
         await storage.saveExpense(expense);
+        inserted++;
       }
     }
-    _loadExpenses(); // single reload
+    _loadExpenses();
+    return inserted;
+  }
+
+  String _expenseKey(Expense e) {
+    final day = DateTime(e.date.year, e.date.month, e.date.day);
+    return '${e.title.trim().toLowerCase()}|${e.amount.toStringAsFixed(2)}|${day.toIso8601String()}';
   }
 }

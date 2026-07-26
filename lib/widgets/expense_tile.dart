@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
@@ -11,7 +11,8 @@ import '../utils/constants.dart';
 class ExpenseTile extends ConsumerWidget {
   final Expense expense;
   final VoidCallback? onEdit;
-  final VoidCallback? onDelete; // Parent handles delete + undo so ref is always valid
+  final VoidCallback?
+  onDelete; // Parent handles delete + undo so ref is always valid
 
   const ExpenseTile({
     super.key,
@@ -30,7 +31,7 @@ class ExpenseTile extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       child: Slidable(
         key: ValueKey(expense.id),
-        // LEFT swipe â†’ Edit (start)
+        // LEFT swipe -> Edit (start)
         startActionPane: ActionPane(
           motion: const DrawerMotion(),
           extentRatio: 0.25,
@@ -50,14 +51,16 @@ class ExpenseTile extends ConsumerWidget {
             ),
           ],
         ),
-        // RIGHT swipe â†’ Delete (end)
+        // RIGHT swipe -> Delete (end)
         endActionPane: ActionPane(
           motion: const DrawerMotion(),
           extentRatio: 0.25,
-          dismissible: DismissiblePane(onDismissed: () {
-            HapticFeedback.mediumImpact();
-            onDelete?.call();
-          }),
+          dismissible: DismissiblePane(
+            onDismissed: () {
+              HapticFeedback.mediumImpact();
+              onDelete?.call();
+            },
+          ),
           children: [
             SlidableAction(
               onPressed: (_) {
@@ -78,21 +81,30 @@ class ExpenseTile extends ConsumerWidget {
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.03),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              )
+                color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
             ],
             border: Border.all(
-              color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-            )
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : Colors.black.withValues(alpha: 0.03),
+            ),
           ),
           child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 8,
+            ),
             leading: CircleAvatar(
               radius: 24,
               backgroundColor: expense.category.color.withValues(alpha: 0.15),
-              child: Icon(expense.category.icon, color: expense.category.color, size: 22),
+              child: Icon(
+                expense.category.icon,
+                color: expense.category.color,
+                size: 22,
+              ),
             ),
             title: Text(
               expense.title,
@@ -104,7 +116,11 @@ class ExpenseTile extends ConsumerWidget {
               padding: const EdgeInsets.only(top: 4.0),
               child: Text(
                 DateFormat('MMM dd, yyyy  h:mm a').format(expense.date),
-                style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Colors.grey,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
             ),
             trailing: Column(
@@ -116,8 +132,7 @@ class ExpenseTile extends ConsumerWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
-                    color: AppColors.primary,
-                  ),
+                  ).copyWith(color: theme.colorScheme.primary),
                 ),
                 const SizedBox(height: 4),
                 Text(
@@ -127,8 +142,8 @@ class ExpenseTile extends ConsumerWidget {
                     color: expense.category.color,
                     fontWeight: FontWeight.w600,
                   ),
-                )
-              ]
+                ),
+              ],
             ),
             onTap: () {
               HapticFeedback.selectionClick();
@@ -140,4 +155,3 @@ class ExpenseTile extends ConsumerWidget {
     );
   }
 }
-

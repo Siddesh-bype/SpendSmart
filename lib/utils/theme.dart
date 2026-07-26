@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'constants.dart';
 
 class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.light,
       primaryColor: AppColors.primary,
       scaffoldBackgroundColor: AppColors.backgroundLight,
@@ -17,14 +17,33 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: AppColors.textLight,
         onTertiary: Colors.white,
-        error: Color(0xFFB00020),
+        error: AppColors.error,
         onError: Colors.white,
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.light().textTheme).apply(
+      textTheme: ThemeData.light().textTheme.apply(
         bodyColor: AppColors.textLight,
         displayColor: AppColors.textLight,
       ),
       iconTheme: const IconThemeData(color: AppColors.primary),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        foregroundColor: AppColors.textLight,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.accent,
+        foregroundColor: AppColors.accentForeground,
+        elevation: 8,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.12)),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         labelStyle: const TextStyle(color: Colors.black54),
         hintStyle: const TextStyle(color: Colors.black38),
@@ -33,13 +52,19 @@ class AppTheme {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Color(0xFFBBCDE0), width: 1.5),
+          borderSide: const BorderSide(
+            color: AppColors.borderLight,
+            width: 1.5,
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.primary, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(
@@ -59,7 +84,9 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? AppColors.primary : Colors.grey,
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.primary
+              : Colors.grey,
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
@@ -78,6 +105,7 @@ class AppTheme {
 
   static ThemeData get darkTheme {
     return ThemeData(
+      useMaterial3: true,
       brightness: Brightness.dark,
       primaryColor: AppColors.accent,
       scaffoldBackgroundColor: AppColors.backgroundDark,
@@ -90,34 +118,56 @@ class AppTheme {
         onSecondary: Colors.white,
         onSurface: AppColors.textDark,
         onTertiary: Colors.white,
-        error: Color(0xFFCF6679),
+        error: AppColors.error,
         onError: Colors.black,
       ),
-      textTheme: GoogleFonts.poppinsTextTheme(ThemeData.dark().textTheme).apply(
+      textTheme: ThemeData.dark().textTheme.apply(
         bodyColor: AppColors.textDark,
         displayColor: AppColors.textDark,
       ),
       iconTheme: const IconThemeData(color: AppColors.textDark),
+      appBarTheme: const AppBarTheme(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        centerTitle: false,
+        foregroundColor: AppColors.textDark,
+      ),
+      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+        backgroundColor: AppColors.accent,
+        foregroundColor: AppColors.accentForeground,
+        elevation: 8,
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      chipTheme: ChipThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        side: BorderSide(color: AppColors.accent.withValues(alpha: 0.16)),
+      ),
       inputDecorationTheme: InputDecorationTheme(
         labelStyle: const TextStyle(color: Colors.white70),
         hintStyle: const TextStyle(color: Colors.white38),
         prefixIconColor: AppColors.accent,
         suffixIconColor: AppColors.accent,
         filled: true,
-        fillColor: const Color(0xFF1E2740),
+        fillColor: AppColors.surfaceElevatedDark,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white24),
+          borderSide: const BorderSide(color: AppColors.borderDark),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.white24),
+          borderSide: const BorderSide(color: AppColors.borderDark),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppColors.accent, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 14,
+        ),
       ),
       cardTheme: CardThemeData(
         shape: RoundedRectangleBorder(
@@ -137,7 +187,9 @@ class AppTheme {
       ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
-          (s) => s.contains(WidgetState.selected) ? AppColors.accent : Colors.grey.shade600,
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.accent
+              : Colors.grey.shade600,
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)

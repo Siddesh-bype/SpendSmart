@@ -24,22 +24,25 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   // Pages made static const — no rebuild overhead.
   static const _pages = [
     _OnboardPage(
-      icon: Icons.sms,
+      icon: Icons.add_card_outlined,
       color: AppColors.primary,
-      title: 'Auto-detect UPI Payments',
-      desc: 'Instantly read SMS for UPI transactions and automatically log your expenses without lifting a finger.',
+      title: 'Track Every Expense',
+      desc:
+          'Add expenses manually or import compatible bank statements and CSV files when you are ready.',
     ),
     _OnboardPage(
       icon: Icons.pie_chart,
       color: AppColors.secondary,
       title: 'Smart Spending Analytics',
-      desc: 'See exactly where your money goes with beautiful charts and category-wise breakdowns.',
+      desc:
+          'See exactly where your money goes with beautiful charts and category-wise breakdowns.',
     ),
     _OnboardPage(
       icon: Icons.account_balance_wallet,
       color: AppColors.accent,
       title: 'Set Budgets & Goals',
-      desc: 'Set monthly budgets for each category and get alerts before you overspend.',
+      desc:
+          'Set monthly budgets for each category and get alerts before you overspend.',
     ),
   ];
 
@@ -47,11 +50,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   void initState() {
     super.initState();
     _pageAnimCtrl = AnimationController(
-      vsync: this, duration: const Duration(milliseconds: 500),
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
     );
-    _fadeAnim  = CurvedAnimation(parent: _pageAnimCtrl, curve: Curves.easeOut);
+    _fadeAnim = CurvedAnimation(parent: _pageAnimCtrl, curve: Curves.easeOut);
     _slideAnim = Tween<Offset>(begin: const Offset(0, 0.12), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _pageAnimCtrl, curve: Curves.easeOutCubic));
+        .animate(
+          CurvedAnimation(parent: _pageAnimCtrl, curve: Curves.easeOutCubic),
+        );
     _pageAnimCtrl.forward();
   }
 
@@ -74,9 +80,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     HapticFeedback.mediumImpact();
     await ref.read(appSettingsProvider.notifier).completeOnboarding();
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScaffold()),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScaffold()));
   }
 
   @override
@@ -104,11 +110,17 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text(
-                      'SpendSmart',
-                      style: TextStyle(
-                        fontSize: 22, fontWeight: FontWeight.bold,
-                        color: Colors.white, letterSpacing: -0.5,
+                    const Expanded(
+                      child: Text(
+                        'SpendSmart',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0,
+                        ),
                       ),
                     ),
                     if (!isLast)
@@ -154,16 +166,21 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               // Dot indicators
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(_pages.length, (i) => AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: _page == i ? 24 : 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    color: _page == i ? AppColors.accent : Colors.grey.shade700,
+                children: List.generate(
+                  _pages.length,
+                  (i) => AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    width: _page == i ? 24 : 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(4),
+                      color: _page == i
+                          ? AppColors.accent
+                          : Colors.grey.shade700,
+                    ),
                   ),
-                )),
+                ),
               ),
               const SizedBox(height: 32),
 
@@ -173,8 +190,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                    backgroundColor: isLast ? AppColors.accent : AppColors.primary,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    backgroundColor: isLast
+                        ? AppColors.accent
+                        : AppColors.primary,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                   ),
                   onPressed: () {
                     HapticFeedback.lightImpact();
@@ -190,7 +211,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   child: Text(
                     isLast ? 'Get Started' : 'Next',
                     style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ),
@@ -203,28 +227,47 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   Widget _buildPage(_OnboardPage page) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 32),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 120, height: 120,
-            decoration: BoxDecoration(
-              color: page.color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-              border: Border.all(color: page.color.withValues(alpha: 0.3), width: 2),
+    return Center(
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: page.color.withValues(alpha: 0.15),
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: page.color.withValues(alpha: 0.3),
+                  width: 2,
+                ),
+              ),
+              child: Icon(page.icon, size: 56, color: page.color),
             ),
-            child: Icon(page.icon, size: 56, color: page.color),
-          ),
-          const SizedBox(height: 40),
-          Text(page.title, textAlign: TextAlign.center,
+            const SizedBox(height: 40),
+            Text(
+              page.title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
-                  fontSize: 24, fontWeight: FontWeight.bold, color: Colors.white)),
-          const SizedBox(height: 16),
-          Text(page.desc, textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 15, color: Colors.grey, height: 1.6)),
-        ],
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              page.desc,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 15,
+                color: Colors.grey,
+                height: 1.6,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

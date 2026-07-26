@@ -43,3 +43,11 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/build/
+/android/key.properties
+/android/app/*.jks
+/deps.txt
+/pub_cache.txt
+/cloudflare/ai-analysis-worker/.dev.vars*
+# Wrangler's local cache holds the Cloudflare account id and email
+**/.wrangler/

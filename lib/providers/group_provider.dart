@@ -3,7 +3,9 @@ import '../models/split_group.dart';
 import 'service_provider.dart';
 
 final splitGroupProvider =
-    NotifierProvider<SplitGroupNotifier, List<SplitGroup>>(SplitGroupNotifier.new);
+    NotifierProvider<SplitGroupNotifier, List<SplitGroup>>(
+      SplitGroupNotifier.new,
+    );
 
 class SplitGroupNotifier extends Notifier<List<SplitGroup>> {
   @override
@@ -26,7 +28,13 @@ class SplitGroupNotifier extends Notifier<List<SplitGroup>> {
   }
 
   Future<void> deleteGroup(String id) async {
-    await ref.read(storageServiceProvider).deleteSplitGroup(id);
+    final storage = ref.read(storageServiceProvider);
+    for (final expense in storage.getAllGroupExpenses().where(
+      (e) => e.groupId == id,
+    )) {
+      await storage.deleteGroupExpense(expense.id);
+    }
+    await storage.deleteSplitGroup(id);
     _reload();
   }
 }

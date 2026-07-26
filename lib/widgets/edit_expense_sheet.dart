@@ -6,8 +6,10 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/merchant_memory_provider.dart';
 import '../widgets/category_grid.dart';
 import '../utils/constants.dart';
+import '../utils/validation.dart';
 
 /// Shared edit bottom sheet used by both HomeScreen and TransactionsScreen
 class EditExpenseSheet extends ConsumerStatefulWidget {
@@ -29,11 +31,12 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   void initState() {
     super.initState();
     _amountCtrl = TextEditingController(
-        text: widget.expense.amount.toStringAsFixed(2));
+      text: widget.expense.amount.toStringAsFixed(2),
+    );
     _titleCtrl = TextEditingController(text: widget.expense.title);
-    _noteCtrl  = TextEditingController(text: widget.expense.note ?? '');
+    _noteCtrl = TextEditingController(text: widget.expense.note ?? '');
     _selectedCategory = widget.expense.category;
-    _selectedDate     = widget.expense.date;
+    _selectedDate = widget.expense.date;
   }
 
   @override
@@ -50,133 +53,171 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 24, right: 24, top: 20,
+        left: 24,
+        right: 24,
+        top: 20,
       ),
       child: SingleChildScrollView(
-        child: Column(mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start, children: [
-          // Header
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            const Text('Edit Expense',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            IconButton(
-              icon: const Icon(Icons.close),
-              onPressed: () => Navigator.pop(context),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Edit Expense',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ],
             ),
-          ]),
-          const SizedBox(height: 12),
+            const SizedBox(height: 12),
 
-          // Amount
-          TextField(
-            controller: _amountCtrl,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
-            decoration: InputDecoration(
-              prefixText: '$currency ',
-              labelText: 'Amount',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+            // Amount
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                prefixText: '$currency ',
+                labelText: 'Amount',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.secondary,
+                    width: 2,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-          // Title
-          TextField(
-            controller: _titleCtrl,
-            decoration: InputDecoration(
-              labelText: 'Merchant / Title',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12),
-                borderSide: const BorderSide(color: AppColors.secondary, width: 2),
+            // Title
+            TextField(
+              controller: _titleCtrl,
+              decoration: InputDecoration(
+                labelText: 'Merchant / Title',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(
+                    color: AppColors.secondary,
+                    width: 2,
+                  ),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 10),
+            const SizedBox(height: 10),
 
-          // Note
-          TextField(
-            controller: _noteCtrl,
-            decoration: InputDecoration(
-              labelText: 'Note (Optional)',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            // Note
+            TextField(
+              controller: _noteCtrl,
+              decoration: InputDecoration(
+                labelText: 'Note (Optional)',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
+            const SizedBox(height: 14),
 
-          // Category
-          const Text('Category',
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 8),
-          CategoryGrid(
-            selectedCategory: _selectedCategory,
-            onSelect: (c) {
-              HapticFeedback.selectionClick();
-              setState(() => _selectedCategory = c);
-            },
-          ),
-          const SizedBox(height: 10),
+            // Category
+            const Text(
+              'Category',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            CategoryGrid(
+              selectedCategory: _selectedCategory,
+              onSelect: (c) {
+                HapticFeedback.selectionClick();
+                setState(() => _selectedCategory = c);
+              },
+            ),
+            const SizedBox(height: 10),
 
-          // Date
-          OutlinedButton.icon(
-            icon: const Icon(Icons.calendar_today,
-                size: 16, color: AppColors.secondary),
-            label: Text(
-              DateFormat('dd MMM yyyy').format(_selectedDate),
-              style: const TextStyle(color: AppColors.secondary),
+            // Date
+            OutlinedButton.icon(
+              icon: const Icon(
+                Icons.calendar_today,
+                size: 16,
+                color: AppColors.secondary,
+              ),
+              label: Text(
+                DateFormat('dd MMM yyyy').format(_selectedDate),
+                style: const TextStyle(color: AppColors.secondary),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: AppColors.secondary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              onPressed: () async {
+                final dt = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime.now(),
+                );
+                if (dt != null) {
+                  setState(
+                    () => _selectedDate = dt.copyWith(
+                      hour: _selectedDate.hour,
+                      minute: _selectedDate.minute,
+                    ),
+                  );
+                }
+              },
             ),
-            style: OutlinedButton.styleFrom(
-              side: const BorderSide(color: AppColors.secondary),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () async {
-              final dt = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate,
-                firstDate: DateTime(2000),
-                lastDate: DateTime.now(),
-              );
-              if (dt != null) {
-                setState(() => _selectedDate = dt.copyWith(
-                    hour: _selectedDate.hour,
-                    minute: _selectedDate.minute));
-              }
-            },
-          ),
-          const SizedBox(height: 20),
+            const SizedBox(height: 20),
 
-          // Save
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(50),
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
+            // Save
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              onPressed: _save,
+              child: const Text(
+                'Save Changes',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
             ),
-            onPressed: _save,
-            child: const Text('Save Changes',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-          ),
-          const SizedBox(height: 24),
-        ]),
+            const SizedBox(height: 24),
+          ],
+        ),
       ),
     );
   }
 
-  void _save() {
-    final amt = double.tryParse(_amountCtrl.text);
+  Future<void> _save() async {
+    final amt = parsePositiveAmount(_amountCtrl.text);
     final title = _titleCtrl.text.trim();
     if (amt == null || amt <= 0 || title.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill amount and title')));
+        const SnackBar(content: Text('Please fill amount and title')),
+      );
       return;
     }
     HapticFeedback.mediumImpact();
+    final categoryChanged = _selectedCategory != widget.expense.category;
     final updated = widget.expense.copyWith(
       title: title,
       amount: amt,
@@ -185,16 +226,35 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       note: _noteCtrl.text,
       isUncategorized: false,
     );
-    ref.read(expenseProvider.notifier).updateExpense(updated);
+    try {
+      await ref.read(expenseProvider.notifier).updateExpense(updated);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not update the expense. Try again.'),
+          ),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+    if (categoryChanged) {
+      ref
+          .read(merchantNotifierProvider.notifier)
+          .correctMerchant(title, _selectedCategory);
+    }
     // Capture messenger before pop — context invalid after pop
     final messenger = ScaffoldMessenger.of(context);
     Navigator.pop(context);
-    messenger.showSnackBar(SnackBar(
-      content: const Text('Expense updated ✓'),
-      backgroundColor: Colors.green.shade600,
-      behavior: SnackBarBehavior.floating,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      duration: const Duration(seconds: 2),
-    ));
+    messenger.showSnackBar(
+      SnackBar(
+        content: const Text('Expense updated ✓'),
+        backgroundColor: Colors.green.shade600,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 2),
+      ),
+    );
   }
 }

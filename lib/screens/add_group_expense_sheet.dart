@@ -7,6 +7,7 @@ import '../models/group_expense.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/validation.dart';
 
 class AddGroupExpenseSheet extends ConsumerStatefulWidget {
   final SplitGroup group;
@@ -14,7 +15,8 @@ class AddGroupExpenseSheet extends ConsumerStatefulWidget {
   const AddGroupExpenseSheet({super.key, required this.group});
 
   @override
-  ConsumerState<AddGroupExpenseSheet> createState() => _AddGroupExpenseSheetState();
+  ConsumerState<AddGroupExpenseSheet> createState() =>
+      _AddGroupExpenseSheetState();
 }
 
 class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
@@ -34,8 +36,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     _paidBy = widget.group.participants.first.id;
     _date = DateTime.now();
     _shareCtrls = {
-      for (final p in widget.group.participants)
-        p.id: TextEditingController(),
+      for (final p in widget.group.participants) p.id: TextEditingController(),
     };
   }
 
@@ -52,7 +53,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
 
   void _onAmountChanged() {
     if (!_equalSplit) return;
-    final amount = double.tryParse(_amountCtrl.text.trim()) ?? 0;
+    final amount = parsePositiveAmount(_amountCtrl.text) ?? 0;
     if (amount > 0 && widget.group.participants.isNotEmpty) {
       final share = amount / widget.group.participants.length;
       for (final c in _shareCtrls.values) {
@@ -69,12 +70,14 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     return total;
   }
 
-  void _save() {
+  Future<void> _save() async {
     final desc = _descCtrl.text.trim();
-    final amount = double.tryParse(_amountCtrl.text.trim());
-    if (desc.isEmpty || amount == null || amount <= 0) {
+    final amount = parsePositiveAmount(_amountCtrl.text);
+    if (desc.isEmpty || amount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid description and amount')),
+        const SnackBar(
+          content: Text('Please enter a valid description and amount'),
+        ),
       );
       return;
     }
@@ -82,14 +85,27 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     final shares = widget.group.participants.map((p) {
       return ParticipantShare(
         participantId: p.id,
-        amount: double.tryParse(_shareCtrls[p.id]!.text.trim()) ?? 0,
+        amount: parsePositiveAmount(_shareCtrls[p.id]!.text) ?? 0,
       );
     }).toList();
+
+    if (shares.any((share) => share.amount <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Every participant share must be greater than zero'),
+        ),
+      );
+      return;
+    }
 
     final diff = (amount - _totalShares).abs();
     if (diff > 0.02) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Shares must sum to total (difference: ${diff.toStringAsFixed(2)})')),
+        SnackBar(
+          content: Text(
+            'Shares must sum to total (difference: ${diff.toStringAsFixed(2)})',
+          ),
+        ),
       );
       return;
     }
@@ -105,9 +121,19 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
       note: _noteCtrl.text.trim(),
     );
 
-    ref.read(groupExpenseProvider.notifier).addExpense(expense);
-    Navigator.pop(context);
-    HapticFeedback.mediumImpact();
+    try {
+      await ref.read(groupExpenseProvider.notifier).addExpense(expense);
+      if (mounted) Navigator.pop(context);
+      HapticFeedback.mediumImpact();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save the group expense. Try again.'),
+          ),
+        );
+      }
+    }
   }
 
   @override
@@ -118,7 +144,9 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
@@ -128,7 +156,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
           children: [
             Center(
               child: Container(
-                width: 40, height: 4,
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade300,
                   borderRadius: BorderRadius.circular(2),
@@ -138,7 +167,9 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
             const SizedBox(height: 16),
             Text(
               'Add Expense',
-              style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 20),
             TextField(
@@ -148,18 +179,24 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 labelText: 'Description',
                 hintText: 'e.g., Dinner at restaurant',
                 prefixIcon: const Icon(Icons.description_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: _amountCtrl,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
               onChanged: (_) => _onAmountChanged(),
               decoration: InputDecoration(
                 labelText: 'Amount ($currencySymbol)',
                 prefixIcon: const Icon(Icons.attach_money),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -168,65 +205,78 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               decoration: InputDecoration(
                 labelText: 'Paid by',
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               items: widget.group.participants.map((p) {
-                return DropdownMenuItem(
-                  value: p.id,
-                  child: Text(p.name),
-                );
+                return DropdownMenuItem(value: p.id, child: Text(p.name));
               }).toList(),
               onChanged: (v) => setState(() => _paidBy = v!),
             ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _equalSplit = true),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: _equalSplit ? AppColors.primary : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.horizontal(left: Radius.circular(12)),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Equal Split',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: _equalSplit ? Colors.white : theme.colorScheme.onSurface,
-                          fontSize: 13,
+            Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _equalSplit = true),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _equalSplit
+                            ? AppColors.primary
+                            : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: const BorderRadius.horizontal(
+                          left: Radius.circular(12),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Equal Split',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: _equalSplit
+                                ? Colors.white
+                                : theme.colorScheme.onSurface,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _equalSplit = false),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(vertical: 10),
-                    decoration: BoxDecoration(
-                      color: !_equalSplit ? AppColors.primary : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: const BorderRadius.horizontal(right: Radius.circular(12)),
-                    ),
-                    child: Center(
-                      child: Text(
-                        'Custom',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: !_equalSplit ? Colors.white : theme.colorScheme.onSurface,
-                          fontSize: 13,
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _equalSplit = false),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: !_equalSplit
+                            ? AppColors.primary
+                            : theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: const BorderRadius.horizontal(
+                          right: Radius.circular(12),
+                        ),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'Custom',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: !_equalSplit
+                                ? Colors.white
+                                : theme.colorScheme.onSurface,
+                            fontSize: 13,
+                          ),
                         ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 12),
             ...widget.group.participants.map((p) {
               final color = Color(p.avatarColorValue);
@@ -239,23 +289,39 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       backgroundColor: color,
                       child: Text(
                         p.name[0].toUpperCase(),
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 11),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 10),
-                    Expanded(child: Text(p.name, style: const TextStyle(fontWeight: FontWeight.w600))),
+                    Expanded(
+                      child: Text(
+                        p.name,
+                        style: const TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ),
                     SizedBox(
                       width: 100,
                       child: TextField(
                         controller: _shareCtrls[p.id],
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         readOnly: _equalSplit,
                         textAlign: TextAlign.right,
                         style: const TextStyle(fontSize: 14),
                         decoration: InputDecoration(
                           isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 8,
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
                         ),
                       ),
                     ),
@@ -270,7 +336,12 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                   'Total: $currencySymbol${_totalShares.toStringAsFixed(2)} / $currencySymbol${double.tryParse(_amountCtrl.text.trim()) ?? 0}',
                   style: TextStyle(
                     fontSize: 12,
-                    color: (_totalShares - (double.tryParse(_amountCtrl.text.trim()) ?? 0)).abs() < 0.02
+                    color:
+                        (_totalShares -
+                                    (double.tryParse(_amountCtrl.text.trim()) ??
+                                        0))
+                                .abs() <
+                            0.02
                         ? Colors.green
                         : Colors.red,
                     fontWeight: FontWeight.w600,
@@ -283,7 +354,9 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               decoration: InputDecoration(
                 labelText: 'Note (optional)',
                 prefixIcon: const Icon(Icons.note_outlined),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -295,9 +368,14 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
-                child: const Text('Add Expense', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: const Text(
+                  'Add Expense',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ),
             ),
           ],

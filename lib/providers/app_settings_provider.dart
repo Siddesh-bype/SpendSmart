@@ -6,7 +6,9 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences not initialized');
 });
 
-final appSettingsProvider = NotifierProvider<AppSettingsNotifier, AppSettings>(AppSettingsNotifier.new);
+final appSettingsProvider = NotifierProvider<AppSettingsNotifier, AppSettings>(
+  AppSettingsNotifier.new,
+);
 
 class AppSettingsNotifier extends Notifier<AppSettings> {
   @override
@@ -14,10 +16,15 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     final prefs = ref.watch(sharedPreferencesProvider);
     return AppSettings(
       currency: prefs.getString('currency') ?? '₹',
-      monthlyBudget: prefs.getDouble('monthlyBudget') ?? prefs.getDouble('monthlyIncome') ?? 0.0,
+      monthlyBudget:
+          prefs.getDouble('monthlyBudget') ??
+          prefs.getDouble('monthlyIncome') ??
+          0.0,
       theme: prefs.getString('theme') ?? 'system',
       onboardingDone: prefs.getBool('onboardingDone') ?? false,
       startingDayOfMonth: prefs.getInt('startingDayOfMonth') ?? 1,
+      aiWorkerUrl: prefs.getString('aiWorkerUrl') ?? '',
+      aiProxyToken: prefs.getString('aiProxyToken') ?? '',
     );
   }
 
@@ -27,7 +34,9 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   }
 
   Future<void> updateBudget(double budget) async {
-    await ref.read(sharedPreferencesProvider).setDouble('monthlyBudget', budget);
+    await ref
+        .read(sharedPreferencesProvider)
+        .setDouble('monthlyBudget', budget);
     state = state.copyWith(monthlyBudget: budget);
   }
 
@@ -44,5 +53,22 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   Future<void> completeOnboarding() async {
     await ref.read(sharedPreferencesProvider).setBool('onboardingDone', true);
     state = state.copyWith(onboardingDone: true);
+  }
+
+  Future<void> updateAiConnection(String workerUrl, String proxyToken) async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.setString('aiWorkerUrl', workerUrl.trim());
+    await prefs.setString('aiProxyToken', proxyToken.trim());
+    state = state.copyWith(
+      aiWorkerUrl: workerUrl.trim(),
+      aiProxyToken: proxyToken.trim(),
+    );
+  }
+
+  Future<void> clearAiConnection() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove('aiWorkerUrl');
+    await prefs.remove('aiProxyToken');
+    state = state.copyWith(aiWorkerUrl: '', aiProxyToken: '');
   }
 }

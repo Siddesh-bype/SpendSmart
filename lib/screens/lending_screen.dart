@@ -9,6 +9,7 @@ import '../providers/lending_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../services/lending_pdf_service.dart';
 import '../utils/constants.dart';
+import '../utils/validation.dart';
 
 class LendingScreen extends ConsumerStatefulWidget {
   const LendingScreen({super.key});
@@ -31,20 +32,23 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       ),
     );
     try {
-      final path =
-          await LendingPdfService.exportToPDF(lendings, currency: currency);
+      final path = await LendingPdfService.exportToPDF(
+        lendings,
+        currency: currency,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
       await OpenFilex.open(path);
-    } catch (e) {
+    } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('PDF export failed: $e'),
-          backgroundColor: Colors.red,
+          content: const Text('PDF export failed. Try again.'),
+          backgroundColor: AppColors.error,
           behavior: SnackBarBehavior.floating,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     } finally {
@@ -77,8 +81,10 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Friends & Lending',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Friends & Lending',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           _exporting
               ? const Padding(
@@ -98,143 +104,179 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                 ),
         ],
       ),
-      body: Column(children: [
-        // Summary banner
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
+      body: Column(
+        children: [
+          // Summary banner
+          Container(
+            width: double.infinity,
+            margin: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [AppColors.primary, AppColors.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
                   color: AppColors.primary.withValues(alpha: 0.35),
                   blurRadius: 14,
-                  offset: const Offset(0, 5))
-            ],
-          ),
-          child: Row(
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _summaryCol(
-                  'Total Owed to You',
-                  netBalance.values
-                      .where((v) => v > 0)
-                      .fold(0.0, (a, b) => a + b),
-                  Colors.green.shade200,
-                  currency,
+                Expanded(
+                  child: _summaryCol(
+                    'Total Owed to You',
+                    netBalance.values
+                        .where((v) => v > 0)
+                        .fold(0.0, (a, b) => a + b),
+                    Colors.green.shade200,
+                    currency,
+                  ),
                 ),
                 Container(width: 1, height: 40, color: Colors.white24),
-                _summaryCol(
-                  'You Owe Others',
-                  netBalance.values
-                      .where((v) => v < 0)
-                      .fold(0.0, (a, b) => a + b.abs()),
-                  Colors.red.shade200,
-                  currency,
+                Expanded(
+                  child: _summaryCol(
+                    'You Owe Others',
+                    netBalance.values
+                        .where((v) => v < 0)
+                        .fold(0.0, (a, b) => a + b.abs()),
+                    Colors.red.shade200,
+                    currency,
+                  ),
                 ),
-              ]),
-        ),
+              ],
+            ),
+          ),
 
-        if (byFriend.isEmpty)
-          Expanded(
-            child: Center(
-              child: Column(
+          if (byFriend.isEmpty)
+            Expanded(
+              child: Center(
+                child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.people_alt_outlined,
-                        size: 72, color: Colors.grey.shade300),
+                    Icon(
+                      Icons.people_alt_outlined,
+                      size: 72,
+                      color: Colors.grey.shade300,
+                    ),
                     const SizedBox(height: 16),
-                    const Text('No active lendings',
-                        style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text('Tap + to record money you gave or owe.',
-                        style: TextStyle(
-                            color: Colors.grey.shade500, fontSize: 13)),
-                  ]),
-            ),
-          )
-        else
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: netBalance.entries.map((entry) {
-                final name = entry.key;
-                final net = entry.value;
-                final iOweThemMore = net < 0;
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                  child: ExpansionTile(
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
-                    leading: CircleAvatar(
-                      backgroundColor: iOweThemMore
-                          ? Colors.red.withValues(alpha: 0.15)
-                          : Colors.green.withValues(alpha: 0.15),
-                      child: Text(
-                        name[0].toUpperCase(),
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: iOweThemMore ? Colors.red : Colors.green,
-                        ),
+                    const Text(
+                      'No active lendings',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                    title: Text(name,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: Text(
-                      iOweThemMore
-                          ? 'You owe $currency${NumberFormat('#,##0').format(net.abs())}'
-                          : 'Owed to you $currency${NumberFormat('#,##0').format(net)}',
+                    const SizedBox(height: 8),
+                    Text(
+                      'Tap + to record money you gave or owe.',
                       style: TextStyle(
-                        color: iOweThemMore ? Colors.red : Colors.green,
-                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade500,
                         fontSize: 13,
                       ),
                     ),
-                    children: byFriend[name]!
-                        .map((l) => _lendingTile(context, l, currency))
-                        .toList(),
-                  ),
-                );
-              }).toList(),
+                  ],
+                ),
+              ),
+            )
+          else
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: netBalance.entries.map((entry) {
+                  final name = entry.key;
+                  final net = entry.value;
+                  final iOweThemMore = net < 0;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: ExpansionTile(
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      leading: CircleAvatar(
+                        backgroundColor: iOweThemMore
+                            ? Colors.red.withValues(alpha: 0.15)
+                            : Colors.green.withValues(alpha: 0.15),
+                        child: Text(
+                          name[0].toUpperCase(),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: iOweThemMore ? Colors.red : Colors.green,
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        name,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        iOweThemMore
+                            ? 'You owe $currency${NumberFormat('#,##0').format(net.abs())}'
+                            : 'Owed to you $currency${NumberFormat('#,##0').format(net)}',
+                        style: TextStyle(
+                          color: iOweThemMore ? Colors.red : Colors.green,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                      children: byFriend[name]!
+                          .map((l) => _lendingTile(context, l, currency))
+                          .toList(),
+                    ),
+                  );
+                }).toList(),
+              ),
             ),
-          ),
-      ]),
+        ],
+      ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddSheet(context),
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Record',
-            style:
-                TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        label: const Text(
+          'Record',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
 
   Widget _summaryCol(
-      String label, double amount, Color valueColor, String currency) {
-    return Column(children: [
-      Text(label,
-          style: const TextStyle(color: Colors.white70, fontSize: 11)),
-      const SizedBox(height: 4),
-      Text(
-        '$currency${NumberFormat('#,##0').format(amount)}',
-        style: TextStyle(
-            color: valueColor, fontSize: 20, fontWeight: FontWeight.bold),
-      ),
-    ]);
+    String label,
+    double amount,
+    Color valueColor,
+    String currency,
+  ) {
+    return Column(
+      children: [
+        Text(
+          label,
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: Colors.white70, fontSize: 11),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$currency${NumberFormat('#,##0').format(amount)}',
+          style: TextStyle(
+            color: valueColor,
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
+    );
   }
 
-  Widget _lendingTile(
-      BuildContext context, Lending l, String currency) {
+  Widget _lendingTile(BuildContext context, Lending l, String currency) {
     return ListTile(
       dense: true,
       leading: Icon(
@@ -265,7 +307,8 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
               content: const Text('Marked as settled ✓'),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10)),
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           );
         },
@@ -280,7 +323,8 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (_) => _AddLendingSheet(ref: ref),
     );
   }
@@ -297,10 +341,11 @@ class _AddLendingSheet extends StatefulWidget {
 }
 
 class _AddLendingSheetState extends State<_AddLendingSheet> {
-  final _nameCtrl   = TextEditingController();
+  final _nameCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
-  final _noteCtrl   = TextEditingController();
+  final _noteCtrl = TextEditingController();
   bool _iGave = true;
+  bool _saving = false;
 
   @override
   void dispose() {
@@ -310,13 +355,12 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
     super.dispose();
   }
 
-  void _save() {
-    final name   = _nameCtrl.text.trim();
-    final amount = double.tryParse(_amountCtrl.text.trim());
-    if (name.isEmpty || amount == null || amount <= 0) {
+  Future<void> _save() async {
+    final name = _nameCtrl.text.trim();
+    final amount = parsePositiveAmount(_amountCtrl.text);
+    if (name.isEmpty || amount == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-            content: Text('Please enter a valid name and amount')),
+        const SnackBar(content: Text('Please enter a valid name and amount')),
       );
       return;
     }
@@ -328,41 +372,61 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
       date: DateTime.now(),
       note: _noteCtrl.text.trim(),
     );
-    widget.ref.read(lendingProvider.notifier).addLending(lending);
-    Navigator.pop(context);
-    HapticFeedback.mediumImpact();
+    setState(() => _saving = true);
+    try {
+      await widget.ref.read(lendingProvider.notifier).addLending(lending);
+      if (mounted) Navigator.pop(context);
+      HapticFeedback.mediumImpact();
+    } catch (_) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Could not save this lending entry. Try again.'),
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme    = Theme.of(context);
+    final theme = Theme.of(context);
     final currency = widget.ref.read(appSettingsProvider).currency;
     return Padding(
       padding: EdgeInsets.only(
-        left: 20, right: 20, top: 20,
+        left: 20,
+        right: 20,
+        top: 20,
         bottom: MediaQuery.of(context).viewInsets.bottom + 20,
       ),
       child: SingleChildScrollView(
         child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2))),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              const SizedBox(height: 16),
-              Text('Record Lending',
-                  style: theme.textTheme.titleLarge
-                      ?.copyWith(fontWeight: FontWeight.bold)),
-              const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Record Lending',
+              style: theme.textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
 
-              // Type toggle
-              Row(children: [
+            // Type toggle
+            Row(
+              children: [
                 Expanded(
                   child: GestureDetector(
                     onTap: () => setState(() => _iGave = true),
@@ -374,7 +438,8 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                             ? Colors.green
                             : theme.colorScheme.surfaceContainerHighest,
                         borderRadius: const BorderRadius.horizontal(
-                            left: Radius.circular(12)),
+                          left: Radius.circular(12),
+                        ),
                       ),
                       child: Center(
                         child: Text(
@@ -401,7 +466,8 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                             ? Colors.red
                             : theme.colorScheme.surfaceContainerHighest,
                         borderRadius: const BorderRadius.horizontal(
-                            right: Radius.circular(12)),
+                          right: Radius.circular(12),
+                        ),
                       ),
                       child: Center(
                         child: Text(
@@ -417,59 +483,67 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                     ),
                   ),
                 ),
-              ]),
-              const SizedBox(height: 16),
+              ],
+            ),
+            const SizedBox(height: 16),
 
-              TextField(
-                controller: _nameCtrl,
-                textCapitalization: TextCapitalization.words,
-                decoration: InputDecoration(
-                  labelText: 'Friend\'s Name',
-                  prefixIcon: const Icon(Icons.person_outline),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+            TextField(
+              controller: _nameCtrl,
+              textCapitalization: TextCapitalization.words,
+              decoration: InputDecoration(
+                labelText: 'Friend\'s Name',
+                prefixIcon: const Icon(Icons.person_outline),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _amountCtrl,
-                keyboardType:
-                    const TextInputType.numberWithOptions(decimal: true),
-                decoration: InputDecoration(
-                  labelText: 'Amount ($currency)',
-                  prefixIcon: const Icon(Icons.attach_money),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amountCtrl,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(
+                labelText: 'Amount ($currency)',
+                prefixIcon: const Icon(Icons.attach_money),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _noteCtrl,
-                decoration: InputDecoration(
-                  labelText: 'Note (optional)',
-                  prefixIcon: const Icon(Icons.note_outlined),
-                  border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12)),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _noteCtrl,
+              decoration: InputDecoration(
+                labelText: 'Note (optional)',
+                prefixIcon: const Icon(Icons.note_outlined),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: _saving ? null : _save,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text('Save',
-                      style: TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
+                ),
+                child: const Text(
+                  'Save',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ),
-            ]),
+            ),
+          ],
+        ),
       ),
     );
   }

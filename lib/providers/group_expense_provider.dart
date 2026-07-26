@@ -3,7 +3,9 @@ import '../models/group_expense.dart';
 import 'service_provider.dart';
 
 final groupExpenseProvider =
-    NotifierProvider<GroupExpenseNotifier, List<GroupExpense>>(GroupExpenseNotifier.new);
+    NotifierProvider<GroupExpenseNotifier, List<GroupExpense>>(
+      GroupExpenseNotifier.new,
+    );
 
 class GroupExpenseNotifier extends Notifier<List<GroupExpense>> {
   @override
@@ -31,7 +33,9 @@ class GroupExpenseNotifier extends Notifier<List<GroupExpense>> {
   }
 
   Future<void> settleExpense(String id) async {
-    final expense = state.firstWhere((e) => e.id == id, orElse: () => throw StateError('Expense not found: $id'));
+    final index = state.indexWhere((e) => e.id == id);
+    if (index == -1) return;
+    final expense = state[index];
     final updated = expense.copyWith(isSettled: true);
     await ref.read(storageServiceProvider).saveGroupExpense(updated);
     _reload();

@@ -1,10 +1,15 @@
-﻿import 'dart:io';
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
-import '../models/expense.dart';
+
 import '../models/category.dart';
+import '../models/expense.dart';
+import '../utils/validation.dart';
+import 'category_classifier.dart';
 
 class CsvImportResult {
   final List<Expense> imported;
@@ -19,33 +24,50 @@ class CsvImportResult {
 }
 
 class CsvImportService {
+  static const _maxCsvBytes = 5 * 1024 * 1024;
+
   static final _dateFormats = [
-    DateFormat('yyyy-MM-dd HH:mm:ss'), // SpendSmart export format
+    DateFormat('yyyy-MM-dd HH:mm:ss'),
     DateFormat('yyyy-MM-dd'),
     DateFormat('dd/MM/yyyy'),
     DateFormat('MM/dd/yyyy'),
     DateFormat('dd-MM-yyyy'),
   ];
 
-  /// Opens a file picker for .csv files and parses the result.
-  /// Returns null if user cancelled.
-  static Future<CsvImportResult?> pickAndParse() async {
+  /// [memoryLookup] is consulted before the keyword rules; see [parse].
+  static Future<CsvImportResult?> pickAndParse({
+    MerchantCategoryLookup? memoryLookup,
+  }) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: ['csv'],
-      withData: true,
+      withData: false,
     );
 
     if (result == null || result.files.isEmpty) return null;
 
     final file = result.files.first;
-    String csvString;
+    if (file.size > _maxCsvBytes) {
+      return const CsvImportResult(
+        imported: [],
+        skipped: 0,
+        errors: ['CSV file is too large. Choose a file under 5 MB.'],
+      );
+    }
 
-    if (file.bytes != null) {
-      csvString = String.fromCharCodes(file.bytes!);
-    } else if (file.path != null) {
-      csvString = await File(file.path!).readAsString();
-    } else {
+    String? csvString;
+    try {
+      csvString = await _readSelectedFile(file);
+    } on FormatException {
+      return const CsvImportResult(
+        imported: [],
+        skipped: 0,
+        errors: ['CSV file must use valid UTF-8 text.'],
+      );
+    } on FileSystemException {
+      csvString = null;
+    }
+    if (csvString == null) {
       return const CsvImportResult(
         imported: [],
         skipped: 0,
@@ -53,10 +75,31 @@ class CsvImportService {
       );
     }
 
-    return _parse(csvString);
+    return parse(csvString, memoryLookup: memoryLookup);
   }
 
-  static CsvImportResult _parse(String csvString) {
+  static Future<String?> _readSelectedFile(PlatformFile file) async {
+    if (file.bytes != null) {
+      return utf8.decode(file.bytes!);
+    }
+    final path = file.path;
+    if (path == null || path.isEmpty) return null;
+    return File(path).readAsString();
+  }
+
+  /// Parses [csvString] into expenses.
+  ///
+  /// Category resolution per row, first hit wins:
+  /// 1. an explicit `category` column holding an exact category name — the
+  ///    user typed it, so it beats every guess;
+  /// 2. [memoryLookup], the categories the user has already taught the app;
+  /// 3. the keyword rules, run over the category column when it holds
+  ///    free text ("Groceries"), then over the title;
+  /// 4. `Category.other`, flagged `isUncategorized` for the pending queue.
+  static CsvImportResult parse(
+    String csvString, {
+    MerchantCategoryLookup? memoryLookup,
+  }) {
     final List<List<dynamic>> rows;
     try {
       rows = const CsvDecoder(skipEmptyLines: true).convert(csvString);
@@ -76,49 +119,68 @@ class CsvImportService {
       );
     }
 
-    // Build column index map from header row (case-insensitive)
-    final headers = rows.first.map((h) => h.toString().toLowerCase().trim()).toList();
+    final headers = rows.first
+        .map((h) => h.toString().toLowerCase().trim())
+        .toList();
 
-    int col(String name) => headers.indexWhere((h) => h.contains(name));
+    int col(Set<String> names) => headers.indexWhere(names.contains);
 
-    final idIdx     = col('id');
-    final dateIdx   = col('date');
-    final titleIdx  = col('title').let((v) => v < 0 ? col('merchant') : v);
-    final amountIdx = col('amount');
-    final catIdx    = col('category');
-    final srcIdx    = col('source');
-    final manIdx    = col('manual');
-    final noteIdx   = col('note');
+    final idIdx = col({'id', 'transaction id', 'reference id'});
+    final dateIdx = col({'date', 'transaction date', 'txn date'});
+    final titleIdx = col({'title', 'merchant', 'description', 'narration'});
+    final amountIdx = col({
+      'amount',
+      'debit',
+      'debit amount',
+      'withdrawal',
+      'withdrawal amount',
+    });
+    final catIdx = col({'category'});
+    final srcIdx = col({'source'});
+    final manIdx = col({'manual', 'is manual'});
+    final noteIdx = col({'note', 'notes'});
 
     if (dateIdx < 0 || titleIdx < 0 || amountIdx < 0) {
       return const CsvImportResult(
         imported: [],
         skipped: 0,
         errors: [
-          'Missing required columns. Expected at least: Date, Title (or Merchant), Amount.'
+          'Missing required columns. Expected Date, Title or Merchant, and Amount.',
         ],
       );
     }
 
     final imported = <Expense>[];
     final errors = <String>[];
-    int skipped = 0;
+    var skipped = 0;
 
     for (var i = 1; i < rows.length; i++) {
       final row = rows[i];
       if (row.every((c) => c.toString().trim().isEmpty)) continue;
 
       try {
-        // Amount
-        final rawAmount = row[amountIdx].toString().replaceAll(RegExp(r'[^\d.]'), '');
-        final amount = double.tryParse(rawAmount);
-        if (amount == null || amount <= 0) {
+        final requiredLastIndex = [
+          dateIdx,
+          titleIdx,
+          amountIdx,
+        ].reduce((a, b) => a > b ? a : b);
+        if (row.length <= requiredLastIndex) {
           skipped++;
-          errors.add('Row ${i + 1}: invalid amount "${row[amountIdx]}"');
+          errors.add('Row ${i + 1}: missing required values');
           continue;
         }
 
-        // Title
+        final rawAmount = row[amountIdx].toString().trim().replaceFirst(
+          RegExp(r'^(?:rs\.?|inr|₹|\$|€|£|¥)\s*', caseSensitive: false),
+          '',
+        );
+        final amount = parsePositiveAmount(rawAmount);
+        if (amount == null) {
+          skipped++;
+          errors.add('Row ${i + 1}: invalid amount');
+          continue;
+        }
+
         final title = row[titleIdx].toString().trim();
         if (title.isEmpty) {
           skipped++;
@@ -126,87 +188,99 @@ class CsvImportService {
           continue;
         }
 
-        // Date
         DateTime? date;
         final rawDate = row[dateIdx].toString().trim();
-        for (final fmt in _dateFormats) {
+        for (final format in _dateFormats) {
           try {
-            date = fmt.parseStrict(rawDate);
+            date = format.parseStrict(rawDate);
             break;
           } catch (_) {}
         }
         if (date == null) {
           skipped++;
-          errors.add('Row ${i + 1}: unrecognised date "$rawDate"');
+          errors.add('Row ${i + 1}: unrecognised date');
           continue;
         }
 
-        // Category (default to other if unknown)
-        Category category = Category.other;
-        if (catIdx >= 0) {
-          category = _parseCategory(row[catIdx].toString());
-        }
+        final rawCategory = catIdx >= 0 && catIdx < row.length
+            ? row[catIdx].toString()
+            : '';
+        final (category, isUncategorized) = _resolveCategory(
+          rawCategory: rawCategory,
+          title: title,
+          memoryLookup: memoryLookup,
+        );
 
-        // Optional fields
-        final id    = (idIdx >= 0 && row[idIdx].toString().trim().isNotEmpty)
+        final id =
+            (idIdx >= 0 &&
+                idIdx < row.length &&
+                row[idIdx].toString().trim().isNotEmpty)
             ? row[idIdx].toString().trim()
             : const Uuid().v4();
-        final source = srcIdx >= 0 ? row[srcIdx].toString().trim() : 'csv';
-        final isManual = manIdx >= 0
+        final source = srcIdx >= 0 && srcIdx < row.length
+            ? row[srcIdx].toString().trim()
+            : 'csv';
+        final isManual = manIdx >= 0 && manIdx < row.length
             ? row[manIdx].toString().toLowerCase() == 'true'
             : true;
-        final note  = noteIdx >= 0 ? row[noteIdx].toString().trim() : '';
+        final note = noteIdx >= 0 && noteIdx < row.length
+            ? row[noteIdx].toString().trim()
+            : '';
 
-        imported.add(Expense(
-          id: id,
-          title: title,
-          amount: amount,
-          category: category,
-          date: date,
-          note: note,
-          isManual: isManual,
-          isUncategorized: false,
-          source: source.isEmpty ? 'csv' : source,
-        ));
-      } catch (e) {
+        imported.add(
+          Expense(
+            id: id,
+            title: title,
+            amount: amount,
+            category: category,
+            date: date,
+            note: note,
+            isManual: isManual,
+            isUncategorized: isUncategorized,
+            source: source.isEmpty ? 'csv' : source,
+          ),
+        );
+      } catch (_) {
         skipped++;
-        errors.add('Row ${i + 1}: $e');
+        errors.add('Row ${i + 1}: could not be imported');
       }
     }
 
-    return CsvImportResult(imported: imported, skipped: skipped, errors: errors);
+    return CsvImportResult(
+      imported: imported,
+      skipped: skipped,
+      errors: errors,
+    );
   }
 
-  static Category _parseCategory(String raw) {
+  /// See [parse] for the resolution order. Returns the category and the
+  /// `isUncategorized` flag: only a step-4 fallback leaves a row for the user.
+  static (Category, bool) _resolveCategory({
+    required String rawCategory,
+    required String title,
+    required MerchantCategoryLookup? memoryLookup,
+  }) {
+    final explicit = _namedCategory(rawCategory);
+    if (explicit != null) return (explicit, false);
+
+    final remembered = memoryLookup?.call(title);
+    if (remembered != null) return (remembered, false);
+
+    if (rawCategory.trim().isNotEmpty) {
+      final labelled = CategoryClassifier.classify(rawCategory);
+      if (labelled.isConfident) return (labelled.category, false);
+    }
+
+    return resolveImportedCategory(title, null);
+  }
+
+  /// Exact match against a [CategoryExtension.displayName], case-insensitive.
+  static Category? _namedCategory(String raw) {
     final lower = raw.toLowerCase().trim();
+    if (lower.isEmpty) return null;
     for (final cat in Category.values) {
       if (cat.displayName.toLowerCase() == lower) return cat;
     }
-    // Fuzzy fallbacks
-    if (lower.contains('food') || lower.contains('dining') || lower.contains('eat')) {
-      return Category.food;
-    }
-    if (lower.contains('transport') || lower.contains('travel') || lower.contains('fuel') || lower.contains('petrol')) {
-      return Category.transport;
-    }
-    if (lower.contains('shop') || lower.contains('grocery') || lower.contains('retail')) {
-      return Category.shopping;
-    }
-    if (lower.contains('health') || lower.contains('medical') || lower.contains('pharma')) {
-      return Category.health;
-    }
-    if (lower.contains('entertain') || lower.contains('movie') || lower.contains('game')) {
-      return Category.entertainment;
-    }
-    if (lower.contains('bill') || lower.contains('util') || lower.contains('electric') || lower.contains('rent')) {
-      return Category.bills;
-    }
-    return Category.other;
+    return null;
   }
 }
-
-// Helper extension to avoid a temp variable for col() inline
-extension _Let<T> on T {
-  R let<R>(R Function(T) block) => block(this);
-}
-

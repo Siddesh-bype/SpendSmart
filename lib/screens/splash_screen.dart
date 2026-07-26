@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../utils/constants.dart';
 import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
@@ -23,11 +22,17 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _anim = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 1200));
-    _scale = Tween<double>(begin: 0.6, end: 1.0).animate(
-        CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
-    _fade = Tween<double>(begin: 0, end: 1).animate(
-        CurvedAnimation(parent: _anim, curve: Curves.easeIn));
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
+    _scale = Tween<double>(
+      begin: 0.6,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.elasticOut));
+    _fade = Tween<double>(
+      begin: 0,
+      end: 1,
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeIn));
     _anim.forward();
     _navigate();
   }
@@ -91,7 +96,7 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 24),
                 Text(
                   'SpendSmart',
-                  style: GoogleFonts.poppins(
+                  style: const TextStyle(
                     fontSize: 36,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
@@ -100,8 +105,10 @@ class _SplashScreenState extends State<SplashScreen>
                 const SizedBox(height: 8),
                 Text(
                   'Your personal expense tracker',
-                  style:
-                      GoogleFonts.poppins(fontSize: 16, color: Colors.grey),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: AppColors.mutedDark,
+                  ),
                 ),
               ],
             ),

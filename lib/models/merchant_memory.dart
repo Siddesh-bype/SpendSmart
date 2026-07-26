@@ -9,7 +9,7 @@ class MerchantMemory extends HiveObject {
   final String merchantName;
 
   @HiveField(1)
-  final Category category;
+  Category category;
 
   @HiveField(2)
   int usageCount;

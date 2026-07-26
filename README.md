@@ -1,118 +1,70 @@
-# SpendSmart - Expense Tracker
+# SpendSmart
 
-SpendSmart is a comprehensive personal finance management application built with Flutter. It helps users track their daily expenses, manage budgets, gain spending insights, and securely back up their financial data to the cloud.
+SpendSmart is a local-first Flutter expense tracker for Android. Financial data stays in Hive storage on the device unless the user explicitly exports or shares a report.
 
 ## Features
 
-### 📊 Expense Tracking
-- **Add Expenses**: Quickly log expenses with amount, category, date, and notes.
-- **Smart Categorization**: Automatically categorizes expenses (Food, Transport, Bills, etc.).
-- **Edit & Delete**: Easily modify or remove any transaction.
-- **Search & Filter**: Find transactions by name, category, or date range.
-- **Sort**: Organize transactions by date or amount.
+- Add, edit, delete, search, filter, and categorize expenses.
+- Track monthly and category budgets with configurable month start dates.
+- Record income, recurring expenses, lending entries, and split-group expenses.
+- Review spending charts, trends, goals, and local budget notifications.
+- Optionally request an AI spending review through your own Cloudflare Worker and OpenRouter account. Only category totals, month progress, budget, and currency are sent, and only after you tap Analyze spending.
+- Optionally ask the same Worker to suggest categories for pending transactions. Only merchant name strings are sent, and only after you tap Categorize with AI.
+- Import text-based bank statement PDFs and compatible CSV files with a review step.
+- Export expense reports as PDF or CSV and share them through Android apps.
+- Light, dark, and system themes with reduced-motion support.
 
-### 💰 Budget Management
-- **Set Monthly Budget**: Define a total spending limit for the month, respecting custom starting days.
-- **Category Budgets**: Set specific limits for each spending category.
-- **Visual Progress**: Track spending progress with intuitive, smoothly animated progress bars.
-- **Alerts**: Get notified when approaching or exceeding budget limits.
+SpendSmart does not currently provide accounts, cloud synchronization, automatic SMS monitoring, or cross-device backup.
 
-### 📈 Smart Insights
-- **Spending Analysis**: Visual charts showing spending distribution across categories.
-- **Trend Analysis**: Track spending habits over time.
-- **Comparison**: Compare current spending with previous periods.
-- **Smart Tips**: AI-powered suggestions to save money.
+## Optional AI Review
 
-### ☁️ Cloud Sync & Security
-- **Secure Authentication**: Login/Signup using email or Google.
-- **Cloud Backup**: Automatically syncs all financial data to the cloud.
-- **Offline Support**: Continue using the app even without internet.
-- **Data Sync**: Sync data across multiple devices.
+The Android app never contains an OpenRouter key. Deploy the Worker in
+`cloudflare/ai-analysis-worker`, set its `OPENROUTER_API_KEY` and
+`APP_PROXY_TOKEN` as Cloudflare secrets, then enter the Worker URL and proxy token
+in Settings. You deploy and own that Worker.
 
-### 📄 PDF Bank Statement Import
-- **Auto-Import**: Extract transactions directly from bank statement PDFs.
-- **Smart Matching**: Matches imported transactions with existing records.
-- **Review Required**: All imported transactions require user review before saving.
+Two actions can send data to it. Both are opt-in: each runs only when you tap it,
+never automatically and never in the background. They send different data.
 
-### 🔔 Notification Tracking
-- **SMS Monitoring**: Automatically detects and parses transaction SMS messages.
-- **Notification Access**: Reads notifications from other banking apps to track spending.
-- **Privacy Focused**: Requires explicit permission and processes data locally.
+- **Analyze spending** (Insights) sends aggregate category totals, custom-month
+  progress, the monthly budget, and the currency. It sends no merchant names, no
+  transaction titles, notes, dates, or IDs, and no individual transactions. The
+  forecast and the anomaly list are computed in the Worker; the model only
+  explains them.
+- **Categorize with AI** (Pending Categorization) sends merchant name strings and
+  nothing else — at most 50 per request, each at most 64 characters. No amounts,
+  dates, IDs, notes, or existing categories go with them. The Worker discards any
+  suggestion whose merchant it did not send, whose category is not one of the
+  app's categories, or whose confidence is not low, medium, or high.
 
-### 📊 Reporting & Export
-- **PDF Reports**: Generate professional, printable PDF expense reports with charts.
-- **CSV Export**: Export all transaction data to CSV format for use in spreadsheets.
-- **Share Reports**: Easily share reports via WhatsApp, email, or other apps.
+## Requirements
 
-### 🎨 Customization
-- **Currency Support**: Supports multiple currencies (default: ₹).
-- **Theme Options**: Light, Dark, and System default themes.
-- **Starting Day**: Customize the start day of the month (1-31), affecting all Insights and Budget calculations.
-- **Fluid UI**: Enjoy a polished, engaging interface with smooth implicit animations.
+- Flutter SDK compatible with Dart `3.10.7` or newer.
+- Android SDK with API 36 installed.
 
-## Getting Started
+## Development
 
-### Prerequisites
-- Flutter SDK (version 3.10.7 or higher)
-- Android Studio or VS Code
-- Firebase project (for cloud sync)
+```powershell
+C:\flutter\bin\flutter.bat pub get
+C:\flutter\bin\flutter.bat analyze
+C:\flutter\bin\flutter.bat test
+C:\flutter\bin\flutter.bat run
+```
 
-### Installation
-1. Clone the repository:
-   ```bash
-   git clone <repository-url>
-   cd spendsmart
-   ```
+## Imports
 
-2. Install dependencies:
-   ```bash
-   flutter pub get
-   ```
+CSV imports require date, title or merchant, and amount columns. Supported aliases are defined in `CsvImportService`. Invalid, oversized, or duplicate rows are skipped and reported before data is saved.
 
-3. Configure Firebase:
-   - Create a Firebase project at [https://firebase.google.com/](https://firebase.google.com/)
-   - Add Android and iOS apps to your Firebase project
-   - Download `google-services.json` (Android) and `GoogleService-Info.plist` (iOS)
-   - Place them in the `android/app/` and `ios/Runner/` directories respectively
+PDF import supports text-based statements containing explicit debit markers. Scanned-image statements require OCR and are not supported.
 
-4. Run the app:
-   ```bash
-   flutter run
-   ```
+## Android Release
 
-## Usage
+Create `android/key.properties` locally with `storeFile`, `storePassword`, `keyAlias`, and `keyPassword`. Keep that file and the keystore private and backed up; neither is committed.
 
-### Adding an Expense
-1. Tap the '+' button on the Home screen
-2. Enter the amount
-3. Select a category
-4. Add an optional note
-5. Tap 'Save'
+Build per-ABI release APKs with:
 
-### Importing Bank Statements
-1. Go to Settings > Import Bank Statement (PDF)
-2. Select a PDF file from your device
-3. The app will parse transactions and show them for review
-4. Review each transaction and tap 'Save' to add them to your records
+```powershell
+C:\flutter\bin\flutter.bat build apk --release --split-per-abi --obfuscate --split-debug-info=build\symbols
+```
 
-### Setting a Budget
-1. Go to Home screen
-2. Tap the 'Budget' card or go to Settings > Spending Goals
-3. Set your total monthly budget
-4. Optionally, set budgets for individual categories
-5. Track your progress throughout the month
-
-## Tech Stack
-
-- **Framework**: Flutter (with implicit UI animations via TweenAnimationBuilder)
-- **State Management**: Riverpod
-- **Database**: SQLite (sqflite) for local storage
-- **Cloud Sync**: Supabase (PostgreSQL)
-- **PDF Processing**: Syncfusion_flutter_pdf
-- **Notifications**: Telephony (Android), UserNotifications (iOS)
-- **Charts**: fl_chart
-- **Authentication**: Firebase Authentication / Supabase Auth
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Generated APKs are written to `build\app\outputs\flutter-apk`.

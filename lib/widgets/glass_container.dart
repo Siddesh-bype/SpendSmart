@@ -16,7 +16,7 @@ class GlassContainer extends StatelessWidget {
     this.borderRadius = 24.0,
     this.padding = const EdgeInsets.all(24),
     this.margin = EdgeInsets.zero,
-    this.blurRadius = 10.0,
+    this.blurRadius = 12.0,
     // Default transparent — callers pass explicit color when needed.
     // Colors.white caused dark-mode cards to look blown out.
     this.backgroundColor = Colors.transparent,
@@ -25,17 +25,28 @@ class GlassContainer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final effectiveBorder =
+        border ??
+        Border.all(
+          color: (isDark ? Colors.white : Colors.black).withValues(
+            alpha: isDark ? 0.10 : 0.06,
+          ),
+          width: 1,
+        );
+    final shadowAlpha = isDark ? 0.22 : 0.08;
+
     return RepaintBoundary(
       child: Container(
         margin: margin,
         decoration: BoxDecoration(
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.07),
+              color: Colors.black.withValues(alpha: shadowAlpha),
               blurRadius: 24,
               offset: const Offset(0, 8),
               spreadRadius: 0,
-            )
+            ),
           ],
           borderRadius: BorderRadius.circular(borderRadius),
         ),
@@ -46,13 +57,9 @@ class GlassContainer extends StatelessWidget {
             child: Container(
               padding: padding,
               decoration: BoxDecoration(
-                color: backgroundColor.withValues(alpha: 0.25),
+                color: backgroundColor.withValues(alpha: isDark ? 0.72 : 0.82),
                 borderRadius: BorderRadius.circular(borderRadius),
-                border: border ??
-                    Border.all(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      width: 1.5,
-                    ),
+                border: effectiveBorder,
               ),
               child: child,
             ),

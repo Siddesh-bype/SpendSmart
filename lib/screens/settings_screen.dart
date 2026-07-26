@@ -6,10 +6,12 @@ import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/expense_provider.dart';
+import '../providers/service_provider.dart';
 import '../services/csv_import_service.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
 import '../utils/constants.dart';
+import '../utils/validation.dart';
 import '../widgets/glass_container.dart';
 import 'pdf_import_screen.dart';
 import 'insights_screen.dart';
@@ -24,130 +26,155 @@ class SettingsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile & Settings',
-            style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Profile & Settings',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
-      body: ListView(padding: const EdgeInsets.all(16), children: [
-        // ── App info card ──────────────────────────────────────────
-        const _AppInfoCard(),
-        const SizedBox(height: 24),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          // ── App info card ──────────────────────────────────────────
+          const _AppInfoCard(),
+          const SizedBox(height: 24),
 
-        _sectionTitle('Preferences'),
-        _tile(
-          icon: Icons.currency_rupee,
-          title: 'Currency',
-          subtitle: settings.currency,
-          onTap: () => _editCurrency(context, ref, settings.currency),
-        ),
-        _tile(
-          icon: Icons.account_balance_wallet,
-          title: 'Monthly Budget',
-          subtitle:
-              '${settings.currency}${settings.monthlyBudget.toStringAsFixed(0)}',
-          onTap: () => _editBudget(context, ref, settings.monthlyBudget),
-        ),
-        _tile(
-          icon: Icons.calendar_month_outlined,
-          title: 'Starting Day of Month',
-          subtitle:
-              'Starts on the ${settings.startingDayOfMonth}${_ordinal(settings.startingDayOfMonth)}',
-          onTap: () =>
-              _editStartingDay(context, ref, settings.startingDayOfMonth),
-        ),
+          _sectionTitle('Preferences'),
+          _tile(
+            icon: Icons.currency_rupee,
+            title: 'Currency',
+            subtitle: settings.currency,
+            onTap: () => _editCurrency(context, ref, settings.currency),
+          ),
+          _tile(
+            icon: Icons.account_balance_wallet,
+            title: 'Monthly Budget',
+            subtitle:
+                '${settings.currency}${settings.monthlyBudget.toStringAsFixed(0)}',
+            onTap: () => _editBudget(context, ref, settings.monthlyBudget),
+          ),
+          _tile(
+            icon: Icons.calendar_month_outlined,
+            title: 'Starting Day of Month',
+            subtitle:
+                'Starts on the ${settings.startingDayOfMonth}${_ordinal(settings.startingDayOfMonth)}',
+            onTap: () =>
+                _editStartingDay(context, ref, settings.startingDayOfMonth),
+          ),
 
-        const SizedBox(height: 16),
-        _sectionTitle('Appearance'),
-        _tile(
-          icon: Icons.palette_outlined,
-          title: 'Theme',
-          subtitle: settings.theme == 'light'
-              ? '☀️ Light'
-              : settings.theme == 'dark'
-                  ? '🌙 Dark'
-                  : '⚙️ System',
-          onTap: () => _editTheme(context, ref, settings.theme),
-        ),
+          const SizedBox(height: 16),
+          _sectionTitle('Appearance'),
+          _tile(
+            icon: Icons.palette_outlined,
+            title: 'Theme',
+            subtitle: settings.theme == 'light'
+                ? '☀️ Light'
+                : settings.theme == 'dark'
+                ? '🌙 Dark'
+                : '⚙️ System',
+            onTap: () => _editTheme(context, ref, settings.theme),
+          ),
 
-        const SizedBox(height: 16),
-        _sectionTitle('Data & Import'),
-        _tile(
-          icon: Icons.picture_as_pdf,
-          title: 'Import Bank Statement (PDF)',
-          subtitle: 'Auto-import transactions from your bank PDF',
-          color: Colors.red,
-          onTap: () => Navigator.push(
-              context, MaterialPageRoute(builder: (_) => const PdfImportScreen())),
-        ),
-        _tile(
-          icon: Icons.upload_file_rounded,
-          title: 'Import CSV',
-          subtitle: 'Import expenses from a SpendSmart or custom CSV file',
-          color: Colors.green.shade700,
-          onTap: () => _importCSV(context, ref),
-        ),
-        _tile(
-          icon: Icons.insights,
-          title: 'Spending Insights',
-          subtitle: 'Smart tips and spending analysis',
-          color: Colors.purple,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const InsightsScreen())),
-        ),
-        _tile(
-          icon: Icons.track_changes_rounded,
-          title: 'Spending Goals',
-          subtitle: 'Set and track your monthly budget goal',
-          color: AppColors.primary,
-          onTap: () => Navigator.push(context,
-              MaterialPageRoute(builder: (_) => const SpendingGoalsScreen())),
-        ),
+          const SizedBox(height: 16),
+          _sectionTitle('Data & Import'),
+          _tile(
+            icon: Icons.auto_awesome_outlined,
+            title: 'AI Spending Review',
+            subtitle: settings.aiWorkerUrl.isEmpty
+                ? 'Configure your private Cloudflare Worker'
+                : 'Cloudflare Worker connected',
+            color: AppColors.secondary,
+            onTap: () => _editAiConnection(
+              context,
+              ref,
+              settings.aiWorkerUrl,
+              settings.aiProxyToken,
+            ),
+          ),
+          _tile(
+            icon: Icons.picture_as_pdf,
+            title: 'Import Bank Statement (PDF)',
+            subtitle: 'Auto-import transactions from your bank PDF',
+            color: Colors.red,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const PdfImportScreen()),
+            ),
+          ),
+          _tile(
+            icon: Icons.upload_file_rounded,
+            title: 'Import CSV',
+            subtitle: 'Import expenses from a SpendSmart or custom CSV file',
+            color: Colors.green.shade700,
+            onTap: () => _importCSV(context, ref),
+          ),
+          _tile(
+            icon: Icons.insights,
+            title: 'Spending Insights',
+            subtitle: 'Smart tips and spending analysis',
+            color: Colors.purple,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const InsightsScreen()),
+            ),
+          ),
+          _tile(
+            icon: Icons.track_changes_rounded,
+            title: 'Spending Goals',
+            subtitle: 'Set and track your monthly budget goal',
+            color: AppColors.primary,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const SpendingGoalsScreen()),
+            ),
+          ),
 
-        const SizedBox(height: 16),
-        _sectionTitle('Export'),
-        _tile(
-          icon: Icons.picture_as_pdf,
-          title: 'Export to PDF',
-          subtitle: 'Professional expense report with charts',
-          color: Colors.deepOrange,
-          onTap: () => _exportPDF(context, ref, settings.currency),
-        ),
-        _tile(
-          icon: Icons.table_chart,
-          title: 'Export to CSV',
-          subtitle: 'Spreadsheet format for all transactions',
-          color: Colors.green,
-          onTap: () => _exportCSV(context, ref),
-        ),
-        _tile(
-          icon: Icons.share_rounded,
-          title: 'Share CSV Report',
-          subtitle: 'Send expense data via WhatsApp, email, etc.',
-          color: Colors.teal,
-          onTap: () => _shareCSV(context, ref),
-        ),
+          const SizedBox(height: 16),
+          _sectionTitle('Export'),
+          _tile(
+            icon: Icons.picture_as_pdf,
+            title: 'Export to PDF',
+            subtitle: 'Professional expense report with charts',
+            color: Colors.deepOrange,
+            onTap: () => _exportPDF(context, ref, settings.currency),
+          ),
+          _tile(
+            icon: Icons.table_chart,
+            title: 'Export to CSV',
+            subtitle: 'Spreadsheet format for all transactions',
+            color: Colors.green,
+            onTap: () => _exportCSV(context, ref),
+          ),
+          _tile(
+            icon: Icons.share_rounded,
+            title: 'Share CSV Report',
+            subtitle: 'Send expense data via WhatsApp, email, etc.',
+            color: Colors.teal,
+            onTap: () => _shareCSV(context, ref),
+          ),
 
-        const SizedBox(height: 160),
-      ]),
+          const SizedBox(height: 160),
+        ],
+      ),
     );
   }
 
   Widget _sectionTitle(String title) => Builder(
-        builder: (context) {
-          final isDark = Theme.of(context).brightness == Brightness.dark;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 8),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: isDark ? const Color(0xFF90CAF9) : AppColors.primary,
-                fontWeight: FontWeight.bold,
-                fontSize: 13,
-                letterSpacing: 0.3,
-              ),
-            ),
-          );
-        },
+    builder: (context) {
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Text(
+          title,
+          style: TextStyle(
+            color: isDark ? const Color(0xFF90CAF9) : AppColors.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 13,
+            letterSpacing: 0.3,
+          ),
+        ),
       );
+    },
+  );
 
   Widget _tile({
     required IconData icon,
@@ -190,12 +217,15 @@ class SettingsScreen extends ConsumerWidget {
                   )
                 : null,
             trailing: onTap != null
-                ? Icon(Icons.chevron_right,
-                    color: isDark ? Colors.white38 : Colors.grey)
+                ? Icon(
+                    Icons.chevron_right,
+                    color: isDark ? Colors.white38 : Colors.grey,
+                  )
                 : null,
             onTap: onTap,
             shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12)),
+              borderRadius: BorderRadius.circular(12),
+            ),
           );
 
           if (isDark) {
@@ -204,16 +234,18 @@ class SettingsScreen extends ConsumerWidget {
                 color: const Color(0xFF1A2540),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1), width: 1),
+                  color: Colors.white.withValues(alpha: 0.1),
+                  width: 1,
+                ),
               ),
-              child: tile,
+              child: Material(color: Colors.transparent, child: tile),
             );
           }
           return GlassContainer(
             borderRadius: 16,
             padding: const EdgeInsets.all(4),
             backgroundColor: Colors.white,
-            child: tile,
+            child: Material(color: Colors.transparent, child: tile),
           );
         },
       ),
@@ -221,14 +253,16 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _importCSV(BuildContext context, WidgetRef ref) async {
+    // Captured before the picker await — ref is unsafe once this widget is gone.
+    final memoryLookup = ref.read(storageServiceProvider).lookupMerchantCategory;
     CsvImportResult? result;
     try {
-      result = await CsvImportService.pickAndParse();
-    } catch (e) {
+      result = await CsvImportService.pickAndParse(memoryLookup: memoryLookup);
+    } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to read file: $e'),
+          content: const Text('Could not read the selected CSV file.'),
           backgroundColor: Colors.red,
         ),
       );
@@ -242,18 +276,24 @@ class SettingsScreen extends ConsumerWidget {
     if (result.imported.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(result.errors.isNotEmpty
-              ? 'No valid rows found. ${result.errors.first}'
-              : 'No valid rows found in the CSV.'),
+          content: Text(
+            result.errors.isNotEmpty
+                ? 'No valid rows found. ${result.errors.first}'
+                : 'No valid rows found in the CSV.',
+          ),
           backgroundColor: Colors.red,
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
       return;
     }
 
-    final skippedInfo = result.skipped > 0 ? '  ${result.skipped} rows skipped.' : '';
+    final skippedInfo = result.skipped > 0
+        ? '  ${result.skipped} rows skipped.'
+        : '';
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -274,7 +314,7 @@ class SettingsScreen extends ConsumerWidget {
             ],
             const SizedBox(height: 12),
             const Text(
-              'Duplicate IDs will be overwritten. Continue?',
+              'Existing or repeated matching transactions will be skipped. Continue?',
               style: TextStyle(fontSize: 13),
             ),
           ],
@@ -298,44 +338,155 @@ class SettingsScreen extends ConsumerWidget {
 
     if (confirm != true || !context.mounted) return;
 
-    ref.read(expenseProvider.notifier).importExpenses(result.imported);
+    int inserted;
+    try {
+      inserted = await ref
+          .read(expenseProvider.notifier)
+          .importExpenses(result.imported);
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not import the selected transactions.'),
+        ),
+      );
+      return;
+    }
 
     if (!context.mounted) return;
+    final duplicates = result.imported.length - inserted;
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Imported ${result.imported.length} transaction(s) successfully.',
+          'Imported $inserted transaction(s). '
+          '${result.skipped} invalid row(s), $duplicates duplicate(s) skipped.',
         ),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     );
   }
 
+  Future<void> _editAiConnection(
+    BuildContext context,
+    WidgetRef ref,
+    String currentUrl,
+    String currentToken,
+  ) async {
+    final url = TextEditingController(text: currentUrl);
+    final token = TextEditingController(text: currentToken);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('AI Spending Review'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Use the HTTPS Worker URL and proxy token from your Cloudflare deployment. Do not enter an OpenRouter key here.',
+                style: TextStyle(fontSize: 12),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: url,
+                keyboardType: TextInputType.url,
+                autocorrect: false,
+                decoration: const InputDecoration(
+                  labelText: 'Worker URL',
+                  hintText:
+                      'https://spendsmart-ai.example.workers.dev/analyze-spending',
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: token,
+                obscureText: true,
+                autocorrect: false,
+                enableSuggestions: false,
+                decoration: const InputDecoration(labelText: 'Proxy token'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          if (currentUrl.isNotEmpty)
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(appSettingsProvider.notifier)
+                    .clearAiConnection();
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child: const Text('Disconnect'),
+            ),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final endpoint = Uri.tryParse(url.text.trim());
+              if (endpoint == null ||
+                  endpoint.scheme != 'https' ||
+                  endpoint.host.isEmpty ||
+                  token.text.trim().length < 16) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'Enter a valid HTTPS Worker URL and proxy token.',
+                    ),
+                  ),
+                );
+                return;
+              }
+              await ref
+                  .read(appSettingsProvider.notifier)
+                  .updateAiConnection(url.text, token.text);
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+    url.dispose();
+    token.dispose();
+  }
+
   Future<void> _exportPDF(
-      BuildContext context, WidgetRef ref, String currency) async {
-    final expenses =
-        ref.read(expenseProvider).where((e) => !e.isUncategorized).toList();
+    BuildContext context,
+    WidgetRef ref,
+    String currency,
+  ) async {
+    final expenses = ref
+        .read(expenseProvider)
+        .where((e) => !e.isUncategorized)
+        .toList();
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No transactions to export')));
+        const SnackBar(content: Text('No transactions to export')),
+      );
       return;
     }
     try {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('⏳ Generating PDF report...')));
-      final path =
-          await PdfExportService.exportToPDF(expenses, currency: currency);
+        const SnackBar(content: Text('⏳ Generating PDF report...')),
+      );
+      final path = await PdfExportService.exportToPDF(
+        expenses,
+        currency: currency,
+      );
       if (!context.mounted) return;
       await OpenFilex.open(path);
-    } catch (e) {
+    } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('PDF export failed: $e'),
-              backgroundColor: Colors.red));
+        const SnackBar(content: Text('PDF export failed. Try again.')),
+      );
     }
   }
 
@@ -345,43 +496,42 @@ class SettingsScreen extends ConsumerWidget {
       final path = await ExportService.exportToCSV(expenses);
       if (!context.mounted) return;
       await OpenFilex.open(path);
-    } catch (e) {
+    } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('CSV export failed: $e'),
-              backgroundColor: Colors.red));
+        const SnackBar(content: Text('CSV export failed. Try again.')),
+      );
     }
   }
 
   Future<void> _shareCSV(BuildContext context, WidgetRef ref) async {
     final expenses = ref.read(expenseProvider);
     if (expenses.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No transactions to share')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('No transactions to share')));
       return;
     }
     try {
       HapticFeedback.lightImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('📤 Preparing report...')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('📤 Preparing report...')));
       final path = await ExportService.exportToCSV(expenses);
       await Share.shareXFiles(
         [XFile(path)],
         subject: 'SpendSmart Expense Report',
         text: 'My expense report from SpendSmart 📊',
       );
-    } catch (e) {
+    } catch (_) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-              content: Text('Share failed: $e'),
-              backgroundColor: Colors.red));
+        const SnackBar(content: Text('Could not share the report. Try again.')),
+      );
     }
   }
 
-  void _editCurrency(
-      BuildContext context, WidgetRef ref, String current) {
+  void _editCurrency(BuildContext context, WidgetRef ref, String current) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -389,17 +539,17 @@ class SettingsScreen extends ConsumerWidget {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: ['₹', '\$', '€', '£', '¥']
-              .map((c) => ListTile(
-                    title: Text(c),
-                    selected: c == current,
-                    selectedColor: AppColors.primary,
-                    onTap: () {
-                      ref
-                          .read(appSettingsProvider.notifier)
-                          .updateCurrency(c);
-                      Navigator.pop(context);
-                    },
-                  ))
+              .map(
+                (c) => ListTile(
+                  title: Text(c),
+                  selected: c == current,
+                  selectedColor: AppColors.primary,
+                  onTap: () {
+                    ref.read(appSettingsProvider.notifier).updateCurrency(c);
+                    Navigator.pop(context);
+                  },
+                ),
+              )
               .toList(),
         ),
       ),
@@ -407,9 +557,13 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _editBudget(
-      BuildContext context, WidgetRef ref, double current) async {
+    BuildContext context,
+    WidgetRef ref,
+    double current,
+  ) async {
     final ctrl = TextEditingController(
-        text: current > 0 ? current.toStringAsFixed(0) : '');
+      text: current > 0 ? current.toStringAsFixed(0) : '',
+    );
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -421,23 +575,30 @@ class SettingsScreen extends ConsumerWidget {
           decoration: InputDecoration(
             labelText: 'Total monthly budget',
             prefixText: '${ref.read(appSettingsProvider).currency} ',
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
           ),
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel')),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white),
-            onPressed: () {
-              final val = double.tryParse(ctrl.text) ?? 0;
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final val = parsePositiveAmount(ctrl.text);
+              if (val == null) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Enter a valid monthly budget')),
+                );
+                return;
+              }
               HapticFeedback.mediumImpact();
-              ref.read(appSettingsProvider.notifier).updateBudget(val);
-              Navigator.pop(context);
+              await ref.read(appSettingsProvider.notifier).updateBudget(val);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Save'),
           ),
@@ -446,8 +607,7 @@ class SettingsScreen extends ConsumerWidget {
     ).whenComplete(() => ctrl.dispose());
   }
 
-  void _editStartingDay(
-      BuildContext context, WidgetRef ref, int current) {
+  void _editStartingDay(BuildContext context, WidgetRef ref, int current) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -465,9 +625,7 @@ class SettingsScreen extends ConsumerWidget {
                     ? const Icon(Icons.check, color: AppColors.primary)
                     : null,
                 onTap: () {
-                  ref
-                      .read(appSettingsProvider.notifier)
-                      .updateStartingDay(day);
+                  ref.read(appSettingsProvider.notifier).updateStartingDay(day);
                   Navigator.pop(context);
                 },
               );
@@ -489,7 +647,7 @@ class SettingsScreen extends ConsumerWidget {
             for (final t in [
               ('light', '☀️ Light'),
               ('dark', '🌙 Dark'),
-              ('system', '⚙️ System Default')
+              ('system', '⚙️ System Default'),
             ])
               ListTile(
                 title: Text(t.$2),
@@ -551,48 +709,50 @@ class _AppInfoCardState extends State<_AppInfoCard> {
       borderRadius: 24,
       padding: const EdgeInsets.all(24),
       backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-      child: Column(children: [
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.3),
-                blurRadius: 16,
-                spreadRadius: 2,
-                offset: const Offset(0, 4),
+      child: Column(
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.3),
+                  blurRadius: 16,
+                  spreadRadius: 2,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: Image.asset(
+                'assets/images/logo.png',
+                width: 80,
+                height: 80,
               ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 80,
-              height: 80,
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'SpendSmart',
-          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 4),
-        FutureBuilder<PackageInfo>(
-          future: _packageInfoFuture, // cached — not recreated on rebuild
-          builder: (context, snapshot) => Text(
-            'v${snapshot.data?.version ?? '2.1.0'}',
-            style: const TextStyle(color: Colors.grey, fontSize: 12),
+          const SizedBox(height: 16),
+          const Text(
+            'SpendSmart',
+            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          'Your personal expense tracker',
-          style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
-          textAlign: TextAlign.center,
-        ),
-      ]),
+          const SizedBox(height: 4),
+          FutureBuilder<PackageInfo>(
+            future: _packageInfoFuture, // cached — not recreated on rebuild
+            builder: (context, snapshot) => Text(
+              'v${snapshot.data?.version ?? '2.1.0'}',
+              style: const TextStyle(color: Colors.grey, fontSize: 12),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Your personal expense tracker',
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
     );
   }
 }

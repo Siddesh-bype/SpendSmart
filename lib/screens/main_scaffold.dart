@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'home_screen.dart';
@@ -20,11 +20,13 @@ class MainScaffold extends ConsumerStatefulWidget {
   ConsumerState<MainScaffold> createState() => _MainScaffoldState();
 }
 
-class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProviderStateMixin {
+class _MainScaffoldState extends ConsumerState<MainScaffold>
+    with TickerProviderStateMixin {
   int _currentIndex = 0;
   bool _quickAddOpen = false;
   late final AnimationController _fabController;
   late final AnimationController _quickAddController;
+  late final AnimationController _pulseController;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -43,14 +45,18 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     )..forward();
     _quickAddController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 200),
+      duration: const Duration(milliseconds: 360),
     );
+    _pulseController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1400),
+    )..repeat(count: 3);
     // Generate any overdue recurring expenses on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      ref.read(recurringExpenseProvider.notifier).generateDueExpenses(
-        ref.read(expenseProvider.notifier),
-      );
+      ref
+          .read(recurringExpenseProvider.notifier)
+          .generateDueExpenses(ref.read(expenseProvider.notifier));
     });
   }
 
@@ -58,6 +64,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
   void dispose() {
     _fabController.dispose();
     _quickAddController.dispose();
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -87,7 +94,9 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     _closeQuickAdd();
     await Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddExpenseScreen(initialCategory: initialCategory)),
+      MaterialPageRoute(
+        builder: (_) => AddExpenseScreen(initialCategory: initialCategory),
+      ),
     );
   }
 
@@ -101,28 +110,41 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
       behavior: HitTestBehavior.translucent,
       child: Scaffold(
         extendBody: false,
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
+        body: IndexedStack(index: _currentIndex, children: _screens),
         floatingActionButton: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             // Quick-add chips
             if (_quickAddOpen) ...[
-              ...Category.values.take(6).map((cat) {
+              ...Category.values.take(6).toList().asMap().entries.map((entry) {
+                final index = entry.key;
+                final cat = entry.value;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 10),
                   child: ScaleTransition(
-                    scale: CurvedAnimation(parent: _quickAddController, curve: Curves.easeOutBack),
+                    scale: CurvedAnimation(
+                      parent: _quickAddController,
+                      curve: Interval(
+                        index * 0.07,
+                        0.65 + index * 0.07,
+                        curve: Curves.easeOutBack,
+                      ),
+                    ),
                     child: FloatingActionButton.extended(
                       heroTag: 'quick_${cat.displayName}',
                       onPressed: () => _openAddExpense(initialCategory: cat),
                       backgroundColor: cat.color,
                       foregroundColor: Colors.white,
                       icon: Icon(cat.icon, size: 20),
-                      label: Text(cat.displayName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 0.5)),
+                      label: Text(
+                        cat.displayName,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
                       elevation: 8,
                     ),
                   ),
@@ -130,31 +152,82 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
               }),
               const SizedBox(height: 10),
             ],
-            // Main FAB â€” circular
+            // Main FAB - circular
             ScaleTransition(
-              scale: CurvedAnimation(parent: _fabController, curve: Curves.elasticOut),
-              child: GestureDetector(
-                onLongPress: _toggleQuickAdd,
-                child: SizedBox(
-                  width: 50,
-                  height: 50,
-                  child: FloatingActionButton(
-                    heroTag: 'main_fab',
-                    onPressed: () {
-                      HapticFeedback.lightImpact();
-                      if (_quickAddOpen) {
-                        _closeQuickAdd();
-                      } else {
-                        _openAddExpense();
-                      }
-                    },
-                    backgroundColor: AppColors.accent,
-                    elevation: 8,
-                    child: AnimatedRotation(
-                      turns: _quickAddOpen ? 0.125 : 0,
-                      duration: const Duration(milliseconds: 250),
-                      curve: Curves.easeInOutBack,
-                      child: const Icon(Icons.add, color: Colors.white, size: 28),
+              scale: CurvedAnimation(
+                parent: _fabController,
+                curve: Curves.elasticOut,
+              ),
+              child: RepaintBoundary(
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    final reduceMotion = MediaQuery.disableAnimationsOf(
+                      context,
+                    );
+                    final pulse = reduceMotion ? 0.0 : _pulseController.value;
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        if (!_quickAddOpen)
+                          Transform.scale(
+                            scale: 1 + pulse * 0.42,
+                            child: Opacity(
+                              opacity: (1 - pulse).clamp(0.0, 1.0) * 0.42,
+                              child: Container(
+                                width: 58,
+                                height: 58,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.accent,
+                                    width: 2,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: AppColors.accent.withValues(
+                                        alpha: 0.35,
+                                      ),
+                                      blurRadius: 20,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        child!,
+                      ],
+                    );
+                  },
+                  child: GestureDetector(
+                    onLongPress: _toggleQuickAdd,
+                    child: SizedBox(
+                      width: 50,
+                      height: 50,
+                      child: FloatingActionButton(
+                        heroTag: 'main_fab',
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          if (_quickAddOpen) {
+                            _closeQuickAdd();
+                          } else {
+                            _openAddExpense();
+                          }
+                        },
+                        backgroundColor: AppColors.accent,
+                        elevation: 8,
+                        child: AnimatedRotation(
+                          turns: _quickAddOpen ? 0.125 : 0,
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOutBack,
+                          child: const Icon(
+                            Icons.add,
+                            color: AppColors.accentForeground,
+                            size: 28,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -183,15 +256,60 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
                   height: 56,
                   child: Row(
                     children: [
-                      // Left group â€” flex 3 each so total = 6
-                      Expanded(flex: 3, child: _navItem(0, Icons.home_rounded, Icons.home_outlined, 'Home', isDark)),
-                      Expanded(flex: 3, child: _navItem(1, Icons.pie_chart_rounded, Icons.pie_chart_outline_rounded, 'Analytics', isDark)),
+                      // Left group - flex 3 each so total = 6
+                      Expanded(
+                        flex: 3,
+                        child: _navItem(
+                          0,
+                          Icons.home_rounded,
+                          Icons.home_outlined,
+                          'Home',
+                          isDark,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: _navItem(
+                          1,
+                          Icons.pie_chart_rounded,
+                          Icons.pie_chart_outline_rounded,
+                          'Analytics',
+                          isDark,
+                        ),
+                      ),
                       // Center gap for FAB
                       const SizedBox(width: 64),
-                      // Right group â€” flex 2 each so total = 6
-                      Expanded(flex: 2, child: _navItem(2, Icons.account_balance_wallet_rounded, Icons.account_balance_wallet_outlined, 'Budget', isDark)),
-                      Expanded(flex: 2, child: _navItem(3, Icons.handshake_rounded, Icons.handshake_outlined, 'Split', isDark)),
-                      Expanded(flex: 2, child: _navItem(4, Icons.person_rounded, Icons.person_outline_rounded, 'Profile', isDark)),
+                      // Right group - flex 2 each so total = 6
+                      Expanded(
+                        flex: 2,
+                        child: _navItem(
+                          2,
+                          Icons.account_balance_wallet_rounded,
+                          Icons.account_balance_wallet_outlined,
+                          'Budget',
+                          isDark,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: _navItem(
+                          3,
+                          Icons.handshake_rounded,
+                          Icons.handshake_outlined,
+                          'Split',
+                          isDark,
+                        ),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: _navItem(
+                          4,
+                          Icons.person_rounded,
+                          Icons.person_outline_rounded,
+                          'Profile',
+                          isDark,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -203,47 +321,62 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> with TickerProvider
     );
   }
 
-  // Returns inner widget only â€” Expanded wrapper is applied at call site
-  Widget _navItem(int index, IconData activeIcon, IconData inactiveIcon, String label, bool isDark) {
+  // Returns inner widget only; Expanded wrapper is applied at call site.
+  Widget _navItem(
+    int index,
+    IconData activeIcon,
+    IconData inactiveIcon,
+    String label,
+    bool isDark,
+  ) {
     final selected = _currentIndex == index;
     final inactiveColor = isDark ? Colors.white54 : Colors.black45;
 
-    return GestureDetector(
-      onTap: () => _onTabTap(index),
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 250),
-            curve: Curves.easeOutExpo,
-            padding: EdgeInsets.symmetric(horizontal: 10, vertical: selected ? 6 : 4),
-            decoration: BoxDecoration(
-              color: selected ? AppColors.accent.withValues(alpha: 0.2) : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: GestureDetector(
+        onTap: () => _onTabTap(index),
+        behavior: HitTestBehavior.opaque,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOutExpo,
+              padding: EdgeInsets.symmetric(
+                horizontal: 10,
+                vertical: selected ? 6 : 4,
+              ),
+              decoration: BoxDecoration(
+                color: selected
+                    ? AppColors.accent.withValues(alpha: 0.2)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(
+                selected ? activeIcon : inactiveIcon,
+                color: selected ? AppColors.accent : inactiveColor,
+                size: selected ? 22 : 20,
+              ),
             ),
-            child: Icon(
-              selected ? activeIcon : inactiveIcon,
-              color: selected ? AppColors.accent : inactiveColor,
-              size: selected ? 22 : 20,
+            const SizedBox(height: 2),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                fontSize: 10,
+                color: selected ? AppColors.accent : inactiveColor,
+                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                letterSpacing: 0.2,
+                height: 1.2,
+              ),
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
-          ),
-          const SizedBox(height: 2),
-          AnimatedDefaultTextStyle(
-            duration: const Duration(milliseconds: 200),
-            style: TextStyle(
-              fontSize: 10,
-              color: selected ? AppColors.accent : inactiveColor,
-              fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-              letterSpacing: 0.2,
-              height: 1.2,
-            ),
-            child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
-
