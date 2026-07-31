@@ -52,6 +52,23 @@ const maxBodyBytes = 8 * 1024;
 const maxAmount = 10_000_000;
 const maxMerchants = 50;
 const maxMerchantLength = 64;
+
+/// Free models that support `response_format: json_object`, tried in order.
+/// Verified against https://openrouter.ai/api/v1/models. Free tiers are
+/// aggressively rate-limited, so a single model is not dependable -- the chain
+/// is what keeps AI working rather than 502-ing on the first 429.
+const fallbackModels = [
+  "openrouter/free",
+  "google/gemma-4-31b-it:free",
+  "openai/gpt-oss-20b:free",
+  "nvidia/nemotron-nano-9b-v2:free",
+];
+
+function modelChain(env: Env): string[] {
+  const preferred = env.OPENROUTER_MODEL?.trim();
+  if (!preferred) return fallbackModels;
+  return [preferred, ...fallbackModels.filter((model) => model !== preferred)];
+}
 const confidenceLevels = ["low", "medium", "high"];
 const allowedCategories = new Set([
   "Food",
@@ -148,29 +165,41 @@ async function requestCompletion(
   system: string,
   user: unknown,
 ): Promise<string | null> {
-  const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-      "Content-Type": "application/json",
-      "X-OpenRouter-Title": title,
-    },
-    body: JSON.stringify({
-      model: env.OPENROUTER_MODEL || "cohere/north-mini-code:free",
-      temperature: 0.2,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: JSON.stringify(user) },
-      ],
-    }),
-  });
-  if (!upstream.ok) return null;
-  const payload = (await upstream.json()) as {
-    choices?: Array<{ message?: { content?: string } }>;
-  };
-  const content = payload.choices?.[0]?.message?.content;
-  return typeof content === "string" ? content : null;
+  const messages = [
+    { role: "system", content: system },
+    { role: "user", content: JSON.stringify(user) },
+  ];
+
+  for (const model of modelChain(env)) {
+    const upstream = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+        "Content-Type": "application/json",
+        "X-OpenRouter-Title": title,
+      },
+      body: JSON.stringify({
+        model,
+        temperature: 0.2,
+        response_format: { type: "json_object" },
+        messages,
+      }),
+    });
+    if (upstream.ok) {
+      const payload = (await upstream.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
+      const content = payload.choices?.[0]?.message?.content;
+      if (typeof content === "string") return content;
+      // Reachable model, unusable answer. Try the next one.
+      continue;
+    }
+    // 429 = rate limited, 5xx = upstream trouble; both may succeed elsewhere.
+    // A 400/401/403 is our request or our key, so every model would fail the
+    // same way -- stop rather than burn the whole chain.
+    if (upstream.status !== 429 && upstream.status < 500) return null;
+  }
+  return null;
 }
 
 function hasValidToken(request: Request, expected: string): boolean {
@@ -375,3 +404,4 @@ function error(status: number): Response {
 
 export const analysisMath = { calculateForecast, calculateAnomalies };
 export const categorization = { isCategorizeRequest, sanitizeCategories };
+export const models = { modelChain, fallbackModels };
