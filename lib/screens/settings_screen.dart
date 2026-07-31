@@ -13,6 +13,9 @@ import '../services/pdf_export_service.dart';
 import '../utils/constants.dart';
 import '../utils/validation.dart';
 import '../widgets/glass_container.dart';
+import 'ai_sign_in_screen.dart';
+import '../services/auth_service.dart';
+import '../utils/design.dart';
 import 'pdf_import_screen.dart';
 import 'profile_screen.dart';
 import 'insights_screen.dart';
@@ -94,16 +97,11 @@ class SettingsScreen extends ConsumerWidget {
           _tile(
             icon: Icons.auto_awesome_outlined,
             title: 'AI Spending Review',
-            subtitle: settings.aiWorkerUrl.isEmpty
-                ? 'Configure your private Cloudflare Worker'
-                : 'Cloudflare Worker connected',
+            subtitle: settings.hasAiAccess
+                ? 'Signed in as ${settings.aiAccountEmail}'
+                : 'Sign in to unlock AI features',
             color: AppColors.secondary,
-            onTap: () => _editAiConnection(
-              context,
-              ref,
-              settings.aiWorkerUrl,
-              settings.aiProxyToken,
-            ),
+            onTap: () => _manageAiAccount(context, ref, settings.hasAiAccess),
           ),
           _tile(
             icon: Icons.picture_as_pdf,
@@ -384,113 +382,70 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Future<void> _editAiConnection(
+
+  /// Signed out: open the sign-in screen. Signed in: show usage and offer to
+  /// sign out.
+  Future<void> _manageAiAccount(
     BuildContext context,
     WidgetRef ref,
-    String currentUrl,
-    String currentToken,
+    bool signedIn,
   ) async {
-    final url = TextEditingController(text: currentUrl);
-    // Left blank on purpose. Prefilling an obscured field looks empty, which is
-    // why re-entering the token felt mandatory on every visit.
-    final token = TextEditingController();
-    final hasToken = currentToken.isNotEmpty;
-    final consented = ref.read(appSettingsProvider).aiCategorizeConsent;
-    await showDialog<void>(
+    if (!signedIn) {
+      await Navigator.push<bool>(
+        context,
+        MaterialPageRoute(builder: (_) => const AiSignInScreen()),
+      );
+      return;
+    }
+
+    final settings = ref.read(appSettingsProvider);
+    final signOut = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('AI Spending Review'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Use the HTTPS Worker URL and proxy token from your Cloudflare deployment. Do not enter an OpenRouter key here.',
-                style: TextStyle(fontSize: 12),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: url,
-                keyboardType: TextInputType.url,
-                autocorrect: false,
-                decoration: const InputDecoration(
-                  labelText: 'Worker URL',
-                  hintText:
-                      'https://spendsmart-ai.example.workers.dev/analyze-spending',
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: token,
-                obscureText: true,
-                autocorrect: false,
-                enableSuggestions: false,
-                decoration: InputDecoration(
-                  labelText: 'Proxy token',
-                  hintText: hasToken ? 'Saved — leave blank to keep' : null,
-                ),
-              ),
-            ],
-          ),
+        title: const Text('AI account'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(settings.aiAccountEmail),
+            const SizedBox(height: AppSpacing.md),
+            FutureBuilder<AiUsage>(
+              future: AuthService.me(settings.aiSessionToken),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Text('Checking usage…');
+                }
+                final usage = snapshot.data;
+                if (usage == null) {
+                  // Offline, or the session expired. Either way this is not
+                  // worth an alarming message.
+                  return const Text('Usage unavailable right now.');
+                }
+                return Text(
+                  '${usage.callsToday} of ${usage.dailyLimit} AI requests '
+                  'used today.',
+                );
+              },
+            ),
+          ],
         ),
         actions: [
-          if (consented)
-            TextButton(
-              onPressed: () async {
-                await ref
-                    .read(appSettingsProvider.notifier)
-                    .setAiCategorizeConsent(false);
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              child: const Text('Ask again'),
-            ),
-          if (currentUrl.isNotEmpty)
-            TextButton(
-              onPressed: () async {
-                await ref
-                    .read(appSettingsProvider.notifier)
-                    .clearAiConnection();
-                if (dialogContext.mounted) Navigator.pop(dialogContext);
-              },
-              child: const Text('Disconnect'),
-            ),
           TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Close'),
           ),
-          ElevatedButton(
-            onPressed: () async {
-              final endpoint = Uri.tryParse(url.text.trim());
-              // Blank means "keep what's saved", so validate whichever token
-              // will actually be persisted.
-              final entered = token.text.trim();
-              final effectiveToken = entered.isEmpty ? currentToken : entered;
-              if (endpoint == null ||
-                  endpoint.scheme != 'https' ||
-                  endpoint.host.isEmpty ||
-                  effectiveToken.length < 16) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text(
-                      'Enter a valid HTTPS Worker URL and proxy token.',
-                    ),
-                  ),
-                );
-                return;
-              }
-              await ref
-                  .read(appSettingsProvider.notifier)
-                  .updateAiConnection(url.text, effectiveToken);
-              if (dialogContext.mounted) Navigator.pop(dialogContext);
-            },
-            child: const Text('Save'),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sign out'),
           ),
         ],
       ),
     );
-    url.dispose();
-    token.dispose();
+
+    if (signOut != true) return;
+    // Tell the server first so the session is revoked, then drop it locally.
+    await AuthService.logout(settings.aiSessionToken);
+    await ref.read(appSettingsProvider.notifier).clearAiSession();
   }
 
   Future<void> _exportPDF(

@@ -4,8 +4,6 @@ class AppSettings {
   final String theme;
   final bool onboardingDone;
   final int startingDayOfMonth;
-  final String aiWorkerUrl;
-  final String aiProxyToken;
   final bool aiCategorizeConsent;
   final String username;
   final String passwordHash;
@@ -17,6 +15,11 @@ class AppSettings {
   final String wrappedKeyByRecovery;
   final String recoverySalt;
 
+  /// AI account session. Empty when signed out, which disables the network AI
+  /// features; everything computed on-device keeps working either way.
+  final String aiSessionToken;
+  final String aiAccountEmail;
+
   /// True once a username and password have been set up.
   bool get hasAccount => username.isNotEmpty && passwordHash.isNotEmpty;
 
@@ -24,14 +27,15 @@ class AppSettings {
   /// encryption shipped have an account but no wrapped key.
   bool get isEncrypted => wrappedKeyByPassword.isNotEmpty;
 
+  /// True when network AI features are available.
+  bool get hasAiAccess => aiSessionToken.isNotEmpty;
+
   AppSettings({
     this.currency = '₹',
     this.monthlyBudget = 0.0,
     this.theme = 'system',
     this.onboardingDone = false,
     this.startingDayOfMonth = 1,
-    this.aiWorkerUrl = '',
-    this.aiProxyToken = '',
     this.aiCategorizeConsent = false,
     this.username = '',
     this.passwordHash = '',
@@ -39,6 +43,8 @@ class AppSettings {
     this.wrappedKeyByPassword = '',
     this.wrappedKeyByRecovery = '',
     this.recoverySalt = '',
+    this.aiSessionToken = '',
+    this.aiAccountEmail = '',
   });
 
   AppSettings copyWith({
@@ -47,8 +53,6 @@ class AppSettings {
     String? theme,
     bool? onboardingDone,
     int? startingDayOfMonth,
-    String? aiWorkerUrl,
-    String? aiProxyToken,
     bool? aiCategorizeConsent,
     String? username,
     String? passwordHash,
@@ -56,6 +60,8 @@ class AppSettings {
     String? wrappedKeyByPassword,
     String? wrappedKeyByRecovery,
     String? recoverySalt,
+    String? aiSessionToken,
+    String? aiAccountEmail,
   }) {
     return AppSettings(
       currency: currency ?? this.currency,
@@ -63,8 +69,6 @@ class AppSettings {
       theme: theme ?? this.theme,
       onboardingDone: onboardingDone ?? this.onboardingDone,
       startingDayOfMonth: startingDayOfMonth ?? this.startingDayOfMonth,
-      aiWorkerUrl: aiWorkerUrl ?? this.aiWorkerUrl,
-      aiProxyToken: aiProxyToken ?? this.aiProxyToken,
       aiCategorizeConsent: aiCategorizeConsent ?? this.aiCategorizeConsent,
       username: username ?? this.username,
       passwordHash: passwordHash ?? this.passwordHash,
@@ -73,6 +77,8 @@ class AppSettings {
           wrappedKeyByPassword ?? this.wrappedKeyByPassword,
       wrappedKeyByRecovery: wrappedKeyByRecovery ?? this.wrappedKeyByRecovery,
       recoverySalt: recoverySalt ?? this.recoverySalt,
+      aiSessionToken: aiSessionToken ?? this.aiSessionToken,
+      aiAccountEmail: aiAccountEmail ?? this.aiAccountEmail,
     );
   }
 }

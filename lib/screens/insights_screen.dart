@@ -107,8 +107,8 @@ class InsightsScreen extends ConsumerWidget {
                   currency: settings.currency,
                   monthlyBudget: settings.monthlyBudget,
                   startingDayOfMonth: settings.startingDayOfMonth,
-                  workerUrl: settings.aiWorkerUrl,
-                  proxyToken: settings.aiProxyToken,
+                  workerUrl: '${AppConfig.workerBaseUrl}/analyze-spending',
+                  proxyToken: settings.aiSessionToken,
                 ),
                 const SizedBox(height: AppSpacing.lg),
 

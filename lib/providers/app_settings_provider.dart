@@ -94,8 +94,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       theme: prefs.getString('theme') ?? 'system',
       onboardingDone: prefs.getBool('onboardingDone') ?? false,
       startingDayOfMonth: prefs.getInt('startingDayOfMonth') ?? 1,
-      aiWorkerUrl: prefs.getString('aiWorkerUrl') ?? '',
-      aiProxyToken: prefs.getString('aiProxyToken') ?? '',
       aiCategorizeConsent: prefs.getBool('aiCategorizeConsent') ?? false,
       username: prefs.getString('username') ?? '',
       passwordHash: prefs.getString('passwordHash') ?? '',
@@ -103,6 +101,8 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       wrappedKeyByPassword: prefs.getString('wrappedKeyByPassword') ?? '',
       wrappedKeyByRecovery: prefs.getString('wrappedKeyByRecovery') ?? '',
       recoverySalt: prefs.getString('recoverySalt') ?? '',
+      aiSessionToken: prefs.getString('aiSessionToken') ?? '',
+      aiAccountEmail: prefs.getString('aiAccountEmail') ?? '',
     );
   }
 
@@ -131,16 +131,6 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
   Future<void> completeOnboarding() async {
     await ref.read(sharedPreferencesProvider).setBool('onboardingDone', true);
     state = state.copyWith(onboardingDone: true);
-  }
-
-  Future<void> updateAiConnection(String workerUrl, String proxyToken) async {
-    final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.setString('aiWorkerUrl', workerUrl.trim());
-    await prefs.setString('aiProxyToken', proxyToken.trim());
-    state = state.copyWith(
-      aiWorkerUrl: workerUrl.trim(),
-      aiProxyToken: proxyToken.trim(),
-    );
   }
 
   Future<void> setAiCategorizeConsent(bool consented) async {
@@ -310,15 +300,24 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     );
   }
 
-  Future<void> clearAiConnection() async {
+  /// Stores the AI session returned by the Worker.
+  Future<void> setAiSession(String token, String email) async {
     final prefs = ref.read(sharedPreferencesProvider);
-    await prefs.remove('aiWorkerUrl');
-    await prefs.remove('aiProxyToken');
-    // Disconnecting revokes consent: a new endpoint must be consented to afresh.
+    await prefs.setString('aiSessionToken', token);
+    await prefs.setString('aiAccountEmail', email);
+    state = state.copyWith(aiSessionToken: token, aiAccountEmail: email);
+  }
+
+  /// Drops the AI session. Consent is reset too: the next sign-in may be a
+  /// different account, which has not agreed to anything yet.
+  Future<void> clearAiSession() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    await prefs.remove('aiSessionToken');
+    await prefs.remove('aiAccountEmail');
     await prefs.remove('aiCategorizeConsent');
     state = state.copyWith(
-      aiWorkerUrl: '',
-      aiProxyToken: '',
+      aiSessionToken: '',
+      aiAccountEmail: '',
       aiCategorizeConsent: false,
     );
   }

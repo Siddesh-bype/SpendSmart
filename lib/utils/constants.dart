@@ -1,5 +1,16 @@
 import 'package:flutter/material.dart';
 
+/// Deployment constants.
+class AppConfig {
+  const AppConfig._();
+
+  /// The AI proxy. Safe to ship in the APK: it is a public URL, and every
+  /// route behind it requires a per-account session token. The credential
+  /// itself is never hardcoded -- anyone can extract a string from an APK.
+  static const String workerBaseUrl =
+      'https://spendsmart-ai-analysis.siddeshshirote30052006.workers.dev';
+}
+
 class AppColors {
   static const Color primary = Color(0xFF123B5D);
   static const Color primaryDark = Color(0xFF16A6C7);

@@ -35,7 +35,9 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
     final appSettings = ref.read(appSettingsProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
 
-    final workerUrl = Uri.tryParse(settings.aiWorkerUrl);
+    final workerUrl = Uri.tryParse(
+      '${AppConfig.workerBaseUrl}/analyze-spending',
+    );
     final batches = AiCategorizationService.buildBatches(
       pending.map((e) => e.title),
     );
@@ -104,7 +106,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
       for (final batch in batches) {
         final suggestions = await AiCategorizationService.categorize(
           endpoint: endpoint,
-          proxyToken: settings.aiProxyToken,
+          proxyToken: settings.aiSessionToken,
           merchants: batch,
         );
         for (final suggestion in suggestions) {
@@ -151,8 +153,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsProvider);
-    final aiConfigured =
-        settings.aiWorkerUrl.isNotEmpty && settings.aiProxyToken.isNotEmpty;
+    final aiConfigured = settings.hasAiAccess;
     final pending = ref
         .watch(expenseProvider)
         .where((e) => e.isUncategorized)
