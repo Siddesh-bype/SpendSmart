@@ -84,7 +84,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 }
                 await ref
                     .read(appSettingsProvider.notifier)
-                    .changePassword(next.text);
+                    .changePassword(current.text, next.text);
                 if (dialogContext.mounted) Navigator.pop(dialogContext, true);
               },
               child: const Text('Update'),

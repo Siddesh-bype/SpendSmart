@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_settings_provider.dart';
+import '../providers/service_provider.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
 import 'main_scaffold.dart';
@@ -41,13 +42,99 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     HapticFeedback.mediumImpact();
     setState(() => _busy = true);
 
-    await ref
+    final recoveryCode = await ref
         .read(appSettingsProvider.notifier)
         .createAccount(_username.text, _password.text);
+
+    // Open the boxes with the new key before anything reads them.
+    final masterKey = await ref
+        .read(appSettingsProvider.notifier)
+        .unlockWithPassword(_password.text);
+    await ref
+        .read(storageServiceProvider)
+        .init(encryptionKey: masterKey == null || masterKey.isEmpty
+            ? null
+            : masterKey);
+
+    if (!mounted) return;
+    setState(() => _busy = false);
+    await _showRecoveryCode(recoveryCode);
 
     if (!mounted) return;
     Navigator.of(context).pushReplacement(
       MaterialPageRoute(builder: (_) => const MainScaffold()),
+    );
+  }
+
+  /// Shown once, and only once. The code is never stored in the clear, so if
+  /// the user dismisses it without writing it down it is gone -- hence the
+  /// explicit confirmation rather than a tap-anywhere dismiss.
+  Future<void> _showRecoveryCode(String code) async {
+    var acknowledged = false;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Save your recovery code'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'This is the only way back in if you forget your password. '
+                'Write it down and keep it somewhere safe — it will not be '
+                'shown again.',
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  borderRadius: AppRadius.smAll,
+                ),
+                child: SelectableText(
+                  code,
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontFamily: 'monospace',
+                    letterSpacing: 1.5,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: code));
+                    HapticFeedback.selectionClick();
+                  },
+                  icon: const Icon(Icons.copy_rounded, size: 16),
+                  label: const Text('Copy'),
+                ),
+              ),
+              CheckboxListTile(
+                value: acknowledged,
+                onChanged: (v) =>
+                    setDialogState(() => acknowledged = v ?? false),
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                title: const Text('I have saved this code'),
+              ),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: acknowledged
+                  ? () => Navigator.pop(dialogContext)
+                  : null,
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

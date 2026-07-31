@@ -20,10 +20,115 @@ class StorageService {
   static const String splitGroupBoxName = 'split_groups';
   static const String groupExpenseBoxName = 'group_expenses';
 
-  Future<void> init() async {
+  /// Opens every box, encrypted when [encryptionKey] is supplied.
+  ///
+  /// Adapters are registered first and unconditionally: they describe the
+  /// binary layout and are needed to read either flavour of box.
+  Future<void> init({List<int>? encryptionKey}) async {
     await Hive.initFlutter();
+    _registerAdapters();
 
-    // Register Adapters
+    final cipher = encryptionKey == null
+        ? null
+        : HiveAesCipher(encryptionKey);
+
+    if (cipher != null) {
+      await _migrateToEncrypted(cipher);
+    }
+
+    await Hive.openBox<Expense>(expenseBoxName, encryptionCipher: cipher);
+    await Hive.openBox<MerchantMemory>(
+      merchantBoxName,
+      encryptionCipher: cipher,
+    );
+    await Hive.openBox<Budget>(budgetBoxName, encryptionCipher: cipher);
+    await Hive.openBox<Lending>(lendingBoxName, encryptionCipher: cipher);
+    await Hive.openBox<Income>(incomeBoxName, encryptionCipher: cipher);
+    await Hive.openBox<RecurringExpense>(
+      recurringBoxName,
+      encryptionCipher: cipher,
+    );
+    await Hive.openBox<SplitGroup>(
+      splitGroupBoxName,
+      encryptionCipher: cipher,
+    );
+    await Hive.openBox<GroupExpense>(
+      groupExpenseBoxName,
+      encryptionCipher: cipher,
+    );
+  }
+
+  /// Copies any surviving plaintext box into its encrypted replacement.
+  ///
+  /// Order matters and is deliberate: write the encrypted copy under a staging
+  /// name, verify the entry count, and only then delete the plaintext and
+  /// rename. A crash at any point leaves the original readable, so the worst
+  /// case is repeating the migration rather than losing expenses.
+  Future<void> _migrateToEncrypted(HiveAesCipher cipher) async {
+    for (final name in _allBoxNames) {
+      if (!await Hive.boxExists(name)) continue;
+
+      // A box that no longer opens in the clear is already encrypted.
+      final Box<dynamic> plain;
+      try {
+        plain = await Hive.openBox<dynamic>(name);
+      } catch (_) {
+        continue;
+      }
+
+      if (plain.isEmpty) {
+        await plain.close();
+        continue;
+      }
+
+      final entries = <dynamic, dynamic>{
+        for (final key in plain.keys) key: plain.get(key),
+      };
+      final expected = entries.length;
+
+      final staging = '${name}_enc';
+      await Hive.deleteBoxFromDisk(staging); // Leftover from a failed attempt.
+      final encrypted = await Hive.openBox<dynamic>(
+        staging,
+        encryptionCipher: cipher,
+      );
+      await encrypted.putAll(entries);
+      if (encrypted.length != expected) {
+        throw StateError(
+          'Migration of "$name" wrote ${encrypted.length} of $expected entries.',
+        );
+      }
+      final migrated = <dynamic, dynamic>{
+        for (final key in encrypted.keys) key: encrypted.get(key),
+      };
+      await encrypted.close();
+
+      // The copy is verified; only now is it safe to drop the plaintext.
+      await plain.close();
+      await Hive.deleteBoxFromDisk(name);
+
+      final replacement = await Hive.openBox<dynamic>(
+        name,
+        encryptionCipher: cipher,
+      );
+      await replacement.putAll(migrated);
+      await replacement.close();
+      await Hive.deleteBoxFromDisk(staging);
+    }
+  }
+
+  static const List<String> _allBoxNames = [
+    expenseBoxName,
+    merchantBoxName,
+    budgetBoxName,
+    lendingBoxName,
+    incomeBoxName,
+    recurringBoxName,
+    splitGroupBoxName,
+    groupExpenseBoxName,
+  ];
+
+  void _registerAdapters() {
     if (!Hive.isAdapterRegistered(0)) {
       Hive.registerAdapter(CategoryAdapter());
     }
@@ -51,16 +156,6 @@ class StorageService {
     if (!Hive.isAdapterRegistered(8)) {
       Hive.registerAdapter(GroupExpenseAdapter());
     }
-
-    // Open Boxes
-    await Hive.openBox<Expense>(expenseBoxName);
-    await Hive.openBox<MerchantMemory>(merchantBoxName);
-    await Hive.openBox<Budget>(budgetBoxName);
-    await Hive.openBox<Lending>(lendingBoxName);
-    await Hive.openBox<Income>(incomeBoxName);
-    await Hive.openBox<RecurringExpense>(recurringBoxName);
-    await Hive.openBox<SplitGroup>(splitGroupBoxName);
-    await Hive.openBox<GroupExpense>(groupExpenseBoxName);
   }
 
   // Expenses

@@ -13,8 +13,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
+  // Boxes are NOT opened here: when a lock is set up the encryption key is
+  // derived from the password, which does not exist until the user unlocks.
+  // StorageService.init is called from the login/signup screens instead.
   final storageService = StorageService();
-  await storageService.init();
 
   runApp(
     ProviderScope(
