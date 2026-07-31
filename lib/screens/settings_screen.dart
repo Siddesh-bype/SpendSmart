@@ -14,6 +14,7 @@ import '../utils/constants.dart';
 import '../utils/validation.dart';
 import '../widgets/glass_container.dart';
 import 'pdf_import_screen.dart';
+import 'profile_screen.dart';
 import 'insights_screen.dart';
 import 'spending_goals_screen.dart';
 
@@ -37,6 +38,20 @@ class SettingsScreen extends ConsumerWidget {
           // ── App info card ──────────────────────────────────────────
           const _AppInfoCard(),
           const SizedBox(height: 24),
+
+          _sectionTitle('Account'),
+          _tile(
+            icon: Icons.person_outline,
+            title: 'Profile',
+            subtitle: settings.username.isEmpty
+                ? 'Not set up'
+                : settings.username,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+            ),
+          ),
+          const SizedBox(height: 16),
 
           _sectionTitle('Preferences'),
           _tile(

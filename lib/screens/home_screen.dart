@@ -13,6 +13,8 @@ import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
 import '../widgets/money_text.dart';
+import '../widgets/spending_calendar.dart';
+import '../widgets/spending_pulse_card.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
 import '../utils/date_extension.dart';
@@ -31,6 +33,15 @@ class HomeScreen extends ConsumerStatefulWidget {
 }
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
+  /// Collapsed by default: the calendar is ~250px and this screen is already
+  /// several viewports long.
+  bool _calendarOpen = false;
+
+  /// Null means "no day filter"; tapping the selected day again clears it.
+  DateTime? _selectedDay;
+
+  static bool _isSameDay(DateTime a, DateTime? b) =>
+      b != null && a.year == b.year && a.month == b.month && a.day == b.day;
   void _handleDelete(Expense expense) {
     HapticFeedback.mediumImpact();
     ref.read(expenseProvider.notifier).deleteExpense(expense.id);
@@ -109,10 +120,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? ((settings.monthlyBudget - totalSpent) / daysLeft)
         : 0.0;
 
-    final recentExpenses = expenses
-        .where((e) => !e.isUncategorized)
-        .take(5)
-        .toList();
+    // A calendar tap narrows this list to that day; otherwise it's the latest 5.
+    final recentExpenses = _selectedDay == null
+        ? expenses.where((e) => !e.isUncategorized).take(5).toList()
+        : expenses
+              .where(
+                (e) => !e.isUncategorized && _isSameDay(e.date, _selectedDay),
+              )
+              .toList();
 
     // Budget check on expense changes
     ref.listen(expenseProvider, (_, newState) {
@@ -437,6 +452,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
 
             SliverToBoxAdapter(
+              child: SpendingPulseCard(
+                monthlyExpenses: monthlyExpenses,
+                allExpenses: expenses,
+                currency: settings.currency,
+                monthlyBudget: settings.monthlyBudget,
+                startingDayOfMonth: settings.startingDayOfMonth,
+                pendingCount: uncategorized.length,
+                onReviewPending: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const PendingScreen()),
+                ),
+              ),
+            ),
+
+            SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: GestureDetector(
@@ -558,6 +588,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
             SliverToBoxAdapter(
               child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _calendarOpen = !_calendarOpen);
+                      },
+                      borderRadius: AppRadius.smAll,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'This month, day by day',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            Icon(
+                              _calendarOpen
+                                  ? Icons.expand_less_rounded
+                                  : Icons.expand_more_rounded,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_calendarOpen)
+                      SpendingCalendar(
+                        month: now,
+                        selectedDay: _selectedDay ?? now,
+                        expenses: monthlyExpenses,
+                        currency: settings.currency,
+                        lastSelectableDay: now,
+                        onDaySelected: (day) => setState(
+                          () => _selectedDay = _isSameDay(day, _selectedDay)
+                              ? null
+                              : day,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
+            SliverToBoxAdapter(
+              child: Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: GestureDetector(
                   onTap: () => Navigator.push(
@@ -638,29 +727,38 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Recent Transactions',
+                        _selectedDay == null
+                            ? 'Recent Transactions'
+                            : DateFormat('EEE, d MMM').format(_selectedDay!),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const TransactionsScreen(),
+                    if (_selectedDay != null)
+                      TextButton.icon(
+                        onPressed: () => setState(() => _selectedDay = null),
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                        label: const Text('Clear'),
+                      )
+                    else
+                      TextButton(
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const TransactionsScreen(),
+                          ),
+                        ),
+                        child: const Text(
+                          'See All',
+                          style: TextStyle(color: AppColors.primary),
                         ),
                       ),
-                      child: const Text(
-                        'See All',
-                        style: TextStyle(color: AppColors.primary),
-                      ),
-                    ),
                   ],
                 ),
               ),

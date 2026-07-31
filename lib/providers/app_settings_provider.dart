@@ -121,6 +121,12 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     return PasswordHasher.constantTimeEquals(hash, state.passwordHash);
   }
 
+  /// Re-hashes with a fresh salt. Callers must verify the current password
+  /// first -- this method trusts that it has already happened.
+  Future<void> changePassword(String password) async {
+    await createAccount(state.username, password);
+  }
+
   Future<void> clearAiConnection() async {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.remove('aiWorkerUrl');
