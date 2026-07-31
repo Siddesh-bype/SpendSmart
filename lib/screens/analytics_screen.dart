@@ -13,6 +13,7 @@ import '../utils/design.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
+import '../widgets/spending_calendar.dart';
 import 'transactions_screen.dart';
 
 Map<Category, double> categoryTotalsForDay(
@@ -488,6 +489,40 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     ),
                   ),
                 ],
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: const SectionHeader(
+                      title: 'Calendar',
+                      subtitle: 'Tap a day to see its breakdown below',
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: SpendingCalendar(
+                      month: _selectedMonth,
+                      selectedDay: _selectedDay,
+                      expenses: monthlyExpenses,
+                      currency: settings.currency,
+                      lastSelectableDay: lastSelectableDay,
+                      onDaySelected: (day) =>
+                          setState(() => _selectedDay = day),
+                    ),
+                  ),
+                ),
 
                 SliverToBoxAdapter(
                   child: Padding(

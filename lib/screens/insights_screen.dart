@@ -1,3 +1,5 @@
+import 'dart:io' show SocketException;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -640,6 +642,7 @@ class _AiReviewCardState extends State<_AiReviewCard> {
   AiSpendingAnalysis? _analysis;
   bool _loading = false;
   bool _failed = false;
+  bool _offline = false;
   bool _hasSufficientHistory = false;
 
   Future<void> _analyze() async {
@@ -661,6 +664,7 @@ class _AiReviewCardState extends State<_AiReviewCard> {
     setState(() {
       _loading = true;
       _failed = false;
+      _offline = false;
     });
     try {
       final analysis = await AiSpendingAnalysisService.analyze(
@@ -674,6 +678,10 @@ class _AiReviewCardState extends State<_AiReviewCard> {
           _hasSufficientHistory = hasSufficientHistory;
         });
       }
+    } on SocketException {
+      // No route to the Worker. Not a misconfiguration -- don't send the user
+      // to Settings to "fix" credentials that are fine.
+      if (mounted) setState(() => _offline = true);
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     } finally {
@@ -728,6 +736,15 @@ class _AiReviewCardState extends State<_AiReviewCard> {
                     _analysis == null ? 'Analyze spending' : 'Refresh analysis',
                   ),
                 ),
+              ),
+            ],
+            if (_offline) ...[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                "You're offline. Everything else on this screen is calculated "
+                'on your device and stays up to date — only this AI summary '
+                'needs a connection.',
+                style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
             if (_failed) ...[

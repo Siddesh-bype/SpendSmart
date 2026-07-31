@@ -21,12 +21,16 @@ extension CustomDateExtension on DateTime {
     return month == currentMonth && year == currentYear;
   }
 
+  /// Whether this date falls in the custom month starting on [startingDay] of
+  /// [targetMonth]/[targetYear].
+  ///
+  /// Half-open: `[start, nextStart)`. Every screen filters whole expense lists
+  /// through here on each rebuild, so this stays allocation-light — two
+  /// DateTimes, no Durations.
   bool isTargetCustomMonth(int targetMonth, int targetYear, int startingDay) {
-    // If we're looking at a specific month, e.g., March 2026, the custom month
-    // starts on March `startingDay` and ends on April `startingDay - 1`.
     final start = DateTime(targetYear, targetMonth, startingDay);
-    final end = DateTime(targetYear, targetMonth + 1, startingDay).subtract(const Duration(seconds: 1));
-    return isAfter(start.subtract(const Duration(seconds: 1))) && isBefore(end.add(const Duration(seconds: 1)));
+    final nextStart = DateTime(targetYear, targetMonth + 1, startingDay);
+    return !isBefore(start) && isBefore(nextStart);
   }
 }
 

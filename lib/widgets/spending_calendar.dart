@@ -1,0 +1,198 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../models/expense.dart';
+import '../utils/constants.dart';
+import '../utils/design.dart';
+
+/// A month grid showing how much was spent each day.
+///
+/// Spend is encoded twice on purpose: as a tinted background and as the amount
+/// itself. Colour alone would fail for colour-blind users and in bright sun,
+/// and the number alone makes it hard to spot the expensive days at a glance.
+class SpendingCalendar extends StatelessWidget {
+  const SpendingCalendar({
+    super.key,
+    required this.month,
+    required this.selectedDay,
+    required this.expenses,
+    required this.currency,
+    required this.onDaySelected,
+    this.lastSelectableDay,
+  });
+
+  /// Any date within the month to render. Only year and month are used.
+  final DateTime month;
+  final DateTime selectedDay;
+
+  /// Expenses for this month; totals are summed per day.
+  final List<Expense> expenses;
+  final String currency;
+  final ValueChanged<DateTime> onDaySelected;
+
+  /// Days after this are shown greyed and are not tappable. Null means the
+  /// whole month is selectable.
+  final DateTime? lastSelectableDay;
+
+  static const _cellSpacing = 3.0;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
+    // DateTime.weekday is 1=Mon..7=Sun, and the grid starts on Monday.
+    final leadingBlanks = DateTime(month.year, month.month).weekday - 1;
+
+    final totals = <int, double>{};
+    for (final expense in expenses) {
+      if (expense.date.year != month.year ||
+          expense.date.month != month.month) {
+        continue;
+      }
+      totals[expense.date.day] = (totals[expense.date.day] ?? 0) +
+          expense.amount;
+    }
+    // Scaled against the busiest day, so the ramp is readable whether the month
+    // peaks at 200 or 20,000.
+    final busiest = totals.values.fold(0.0, (a, b) => a > b ? a : b);
+
+    final cells = <Widget>[
+      for (var i = 0; i < leadingBlanks; i++) const SizedBox.shrink(),
+      for (var day = 1; day <= daysInMonth; day++)
+        _dayCell(context, theme, scheme, day, totals[day] ?? 0, busiest),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            for (final label in const ['M', 'T', 'W', 'T', 'F', 'S', 'S'])
+              Expanded(
+                child: Center(
+                  child: Text(
+                    label,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.xs),
+        GridView.count(
+          crossAxisCount: 7,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: _cellSpacing,
+          crossAxisSpacing: _cellSpacing,
+          padding: EdgeInsets.zero,
+          children: cells,
+        ),
+      ],
+    );
+  }
+
+  Widget _dayCell(
+    BuildContext context,
+    ThemeData theme,
+    ColorScheme scheme,
+    int day,
+    double spent,
+    double busiest,
+  ) {
+    final date = DateTime(month.year, month.month, day);
+    final isSelected = date.year == selectedDay.year &&
+        date.month == selectedDay.month &&
+        date.day == selectedDay.day;
+    final isFuture =
+        lastSelectableDay != null && date.isAfter(lastSelectableDay!);
+
+    // Floor at 0.10 so any spending is visible, not just near-peak days.
+    final intensity = busiest > 0 && spent > 0 ? 0.10 + (spent / busiest) * 0.55 : 0.0;
+    final background = isSelected
+        ? scheme.primary
+        : spent > 0
+            ? AppColors.accent.withValues(alpha: intensity)
+            : Colors.transparent;
+    final foreground = isSelected
+        ? scheme.onPrimary
+        : isFuture
+            ? scheme.onSurfaceVariant.withValues(alpha: 0.4)
+            : scheme.onSurface;
+
+    return Semantics(
+      button: !isFuture,
+      selected: isSelected,
+      label: '$day ${_monthName(month.month)}, '
+          '${spent > 0 ? '$currency${spent.round()} spent' : 'nothing spent'}',
+      child: InkWell(
+        onTap: isFuture
+            ? null
+            : () {
+                HapticFeedback.selectionClick();
+                onDaySelected(date);
+              },
+        borderRadius: AppRadius.smAll,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: AppRadius.smAll,
+            border: isSelected
+                ? null
+                : Border.all(color: scheme.outlineVariant, width: 0.5),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '$day',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: foreground,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+              if (spent > 0)
+                Text(
+                  _compact(spent),
+                  maxLines: 1,
+                  overflow: TextOverflow.clip,
+                  style: TextStyle(
+                    fontSize: AppType.micro,
+                    height: 1.1,
+                    color: foreground,
+                    fontFeatures: AppType.tabular,
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// A cell is ~40px wide, so amounts are abbreviated: 1234 -> 1.2k.
+  static String _compact(double amount) {
+    if (amount >= 100000) return '${(amount / 100000).toStringAsFixed(1)}L';
+    if (amount >= 1000) return '${(amount / 1000).toStringAsFixed(1)}k';
+    return amount.round().toString();
+  }
+
+  static String _monthName(int month) => const [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December',
+      ][month - 1];
+}
