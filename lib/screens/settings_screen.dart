@@ -17,8 +17,6 @@ import 'ai_sign_in_screen.dart';
 import '../services/auth_service.dart';
 import '../utils/design.dart';
 import 'pdf_import_screen.dart';
-import 'profile_screen.dart';
-import 'signup_screen.dart';
 import 'insights_screen.dart';
 import 'spending_goals_screen.dart';
 
@@ -42,24 +40,6 @@ class SettingsScreen extends ConsumerWidget {
           // ── App info card ──────────────────────────────────────────
           const _AppInfoCard(),
           const SizedBox(height: 24),
-
-          _sectionTitle('Account'),
-          _tile(
-            icon: Icons.lock_outline_rounded,
-            title: 'App Lock',
-            subtitle: settings.hasAccount
-                ? 'On — ${settings.username}'
-                : 'Off — anyone with this phone can open the app',
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => settings.hasAccount
-                    ? const ProfileScreen()
-                    : const SignupScreen(),
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
 
           _sectionTitle('Preferences'),
           _tile(

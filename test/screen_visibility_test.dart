@@ -25,7 +25,6 @@ import 'package:spendsmart/screens/home_screen.dart';
 import 'package:spendsmart/screens/income_screen.dart';
 import 'package:spendsmart/screens/insights_screen.dart';
 import 'package:spendsmart/screens/lending_screen.dart';
-import 'package:spendsmart/screens/login_screen.dart';
 import 'package:spendsmart/screens/main_scaffold.dart';
 import 'package:spendsmart/screens/notifications_screen.dart';
 import 'package:spendsmart/screens/onboarding_screen.dart';
@@ -33,7 +32,6 @@ import 'package:spendsmart/screens/pdf_import_screen.dart';
 import 'package:spendsmart/screens/pending_screen.dart';
 import 'package:spendsmart/screens/recurring_expense_screen.dart';
 import 'package:spendsmart/screens/settings_screen.dart';
-import 'package:spendsmart/screens/signup_screen.dart';
 import 'package:spendsmart/screens/spending_goals_screen.dart';
 import 'package:spendsmart/screens/transactions_screen.dart';
 import 'package:spendsmart/services/storage_service.dart';
@@ -100,8 +98,6 @@ void main() {
       'pending': const PendingScreen(),
       'notifications': const NotificationsScreen(),
       'onboarding': const OnboardingScreen(),
-      'signup': const SignupScreen(),
-      'login': const LoginScreen(),
       'AI sign-in': const AiSignInScreen(),
     };
 
