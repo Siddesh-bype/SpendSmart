@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../providers/budget_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
+import '../widgets/money_text.dart';
 import '../utils/constants.dart';
 import '../utils/date_extension.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
 
 class BudgetScreen extends ConsumerWidget {
@@ -34,10 +35,7 @@ class BudgetScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Monthly Budget',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Monthly Budget'),
         actions: [
           IconButton(
             icon: const Icon(Icons.add),
@@ -56,14 +54,16 @@ class BudgetScreen extends ConsumerWidget {
           ),
           Expanded(
             child: Category.values.isEmpty
-                ? const Center(
+                ? Center(
                     child: Text(
                       'No categories',
-                      style: TextStyle(color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   )
                 : ListView(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(AppSpacing.lg),
                     children: Category.values.map((cat) {
                       final budget = budgets.firstWhere(
                         (b) => b.category == cat,
@@ -105,42 +105,62 @@ class BudgetScreen extends ConsumerWidget {
         ? (totalSpent / totalBudget).clamp(0.0, 1.0)
         : 0.0;
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.all(AppSpacing.lg),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.secondary],
+          colors: [AppColors.primary, AppColors.accent],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.lgAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // White-on-gradient is intentional; these do not follow the scheme.
           const Text(
             'Overall Budget',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: Colors.white70, fontSize: AppType.label),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: AppSpacing.xs),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '$currency${NumberFormat('#,##0').format(totalSpent)}',
-                style: const TextStyle(
+              Flexible(
+                child: MoneyText(
+                  totalSpent,
+                  currency: currency,
+                  autoShrink: true,
+                  size: AppType.title,
+                  weight: FontWeight.bold,
                   color: Colors.white,
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
                 ),
               ),
-              Text(
-                'of $currency${NumberFormat('#,##0').format(totalBudget)}',
-                style: const TextStyle(color: Colors.white70, fontSize: 14),
+              const SizedBox(width: AppSpacing.sm),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'of ',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: AppType.body,
+                    ),
+                  ),
+                  MoneyText(
+                    totalBudget,
+                    currency: currency,
+                    size: AppType.body,
+                    color: Colors.white70,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadius.smAll,
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0, end: pct),
               duration: const Duration(milliseconds: 800),
@@ -149,14 +169,18 @@ class BudgetScreen extends ConsumerWidget {
                 value: val,
                 backgroundColor: Colors.white24,
                 color: Colors.white,
-                minHeight: 8,
+                minHeight: AppSpacing.sm,
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: AppSpacing.sm),
           Text(
             '${(pct * 100).toStringAsFixed(0)}% used',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.white70,
+              fontSize: AppType.caption,
+              fontFeatures: AppType.tabular,
+            ),
           ),
         ],
       ),
@@ -174,12 +198,13 @@ class BudgetScreen extends ConsumerWidget {
     final hasLimit = budget.monthlyLimit > 0;
     final pct = hasLimit ? (spent / budget.monthlyLimit).clamp(0.0, 1.0) : 0.0;
     final isOverBudget = hasLimit && spent > budget.monthlyLimit;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -198,24 +223,22 @@ class BudgetScreen extends ConsumerWidget {
                         ),
                         child: Icon(cat.icon, color: cat.color, size: 20),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               cat.displayName,
-                              style: const TextStyle(
+                              style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 15,
                               ),
                             ),
                             if (isOverBudget)
-                              const Text(
+                              Text(
                                 'Over budget!',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 11,
+                                style: theme.textTheme.labelMedium?.copyWith(
+                                  color: AppColors.error,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -232,42 +255,62 @@ class BudgetScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             Wrap(
               alignment: WrapAlignment.spaceBetween,
-              spacing: 12,
-              runSpacing: 4,
+              spacing: AppSpacing.md,
+              runSpacing: AppSpacing.xs,
               children: [
-                Text(
-                  'Spent: $currency${NumberFormat('#,##0').format(spent)}',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: isOverBudget ? Colors.red : null,
-                  ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Spent: ',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: isOverBudget ? AppColors.error : null,
+                      ),
+                    ),
+                    MoneyText(
+                      spent,
+                      currency: currency,
+                      size: AppType.body,
+                      weight: FontWeight.w600,
+                      color: isOverBudget ? AppColors.error : scheme.onSurface,
+                    ),
+                  ],
                 ),
-                Text(
-                  hasLimit
-                      ? 'Limit: $currency${NumberFormat('#,##0').format(budget.monthlyLimit)}'
-                      : 'No limit set',
-                  style: const TextStyle(color: Colors.grey, fontSize: 13),
-                ),
+                if (hasLimit)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('Limit: ', style: theme.textTheme.bodySmall),
+                      MoneyText(
+                        budget.monthlyLimit,
+                        currency: currency,
+                        size: AppType.label,
+                        color: scheme.onSurfaceVariant,
+                      ),
+                    ],
+                  )
+                else
+                  Text('No limit set', style: theme.textTheme.bodySmall),
               ],
             ),
             if (hasLimit) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               ClipRRect(
-                borderRadius: BorderRadius.circular(4),
+                borderRadius: AppRadius.smAll,
                 child: TweenAnimationBuilder<double>(
                   tween: Tween<double>(begin: 0, end: pct),
                   duration: const Duration(milliseconds: 800),
                   curve: Curves.easeOutCubic,
                   builder: (context, val, _) => LinearProgressIndicator(
                     value: val,
-                    backgroundColor: Colors.grey.shade200,
+                    backgroundColor: scheme.outlineVariant,
                     color: isOverBudget
-                        ? Colors.red
-                        : (pct > 0.8 ? Colors.orange : cat.color),
-                    minHeight: 8,
+                        ? AppColors.error
+                        : (pct > 0.8 ? AppColors.warning : cat.color),
+                    minHeight: AppSpacing.sm,
                   ),
                 ),
               ),
@@ -290,15 +333,12 @@ class BudgetScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (sheetContext) => Padding(
         padding: EdgeInsets.only(
           bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-          left: 24,
-          right: 24,
-          top: 24,
+          left: AppSpacing.xl,
+          right: AppSpacing.xl,
+          top: AppSpacing.xl,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -306,19 +346,16 @@ class BudgetScreen extends ConsumerWidget {
           children: [
             Text(
               existing != null ? 'Edit Budget' : 'Set Budget',
-              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             ValueListenableBuilder<Category>(
               valueListenable: catController,
               builder: (ctx, cat, child) => DropdownButtonFormField<Category>(
                 initialValue: cat,
-                decoration: InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
+                decoration: const InputDecoration(labelText: 'Category'),
                 items: Category.values
                     .map(
                       (c) => DropdownMenuItem(
@@ -326,7 +363,7 @@ class BudgetScreen extends ConsumerWidget {
                         child: Row(
                           children: [
                             Icon(c.icon, color: c.color, size: 18),
-                            const SizedBox(width: 8),
+                            const SizedBox(width: AppSpacing.sm),
                             Text(c.name),
                           ],
                         ),
@@ -336,19 +373,16 @@ class BudgetScreen extends ConsumerWidget {
                 onChanged: (v) => catController.value = v!,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
             TextField(
               controller: amountController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: 'Monthly Limit ($currency)',
                 prefixText: '$currency ',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
@@ -383,7 +417,7 @@ class BudgetScreen extends ConsumerWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
           ],
         ),
       ),

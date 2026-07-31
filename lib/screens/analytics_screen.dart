@@ -9,7 +9,10 @@ import '../models/category.dart';
 import '../models/expense.dart';
 import '../utils/constants.dart';
 import '../utils/date_extension.dart';
+import '../utils/design.dart';
 import '../widgets/glass_container.dart';
+import '../widgets/money_text.dart';
+import '../widgets/section_header.dart';
 import 'transactions_screen.dart';
 
 Map<Category, double> categoryTotalsForDay(
@@ -164,12 +167,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final dailyAvg = daysElapsed > 0 ? totalSpent / daysElapsed : 0.0;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Analytics',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Analytics')),
       body: monthlyExpenses.isEmpty && sixMonths.every((m) => m.total == 0)
           ? _emptyState()
           : CustomScrollView(
@@ -178,8 +176,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
+                      horizontal: AppSpacing.sm,
+                      vertical: AppSpacing.xs,
                     ),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -188,39 +186,39 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                           icon: const Icon(Icons.chevron_left),
                           onPressed: () => _changeMonth(-1),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xs),
                         Text(
                           DateFormat('MMMM yyyy').format(_selectedMonth),
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                         if (isCurrentMonth)
                           Container(
-                            margin: const EdgeInsets.only(left: 8),
+                            margin: const EdgeInsets.only(left: AppSpacing.sm),
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
+                              horizontal: AppSpacing.sm,
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(10),
+                              borderRadius: AppRadius.smAll,
                             ),
-                            child: const Text(
+                            child: Text(
                               'Current',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: AppColors.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: AppColors.primary,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                           ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: AppSpacing.xs),
                         IconButton(
                           icon: Icon(
                             Icons.chevron_right,
-                            color: isCurrentMonth ? Colors.grey.shade400 : null,
+                            color: isCurrentMonth
+                                ? Theme.of(context).colorScheme.outline
+                                : null,
                           ),
                           onPressed: isCurrentMonth
                               ? null
@@ -234,7 +232,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 // Total Spent Card
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      0,
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                    ),
                     child: _totalCard(
                       totalSpent,
                       prevTotal,
@@ -248,28 +251,33 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 if (totalSpent > 0)
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        0,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                      ),
                       child: Row(
                         children: [
                           Expanded(
                             child: _statChip(
                               icon: Icons.today_rounded,
                               label: 'Daily Avg',
-                              value:
-                                  '${settings.currency}${NumberFormat('#,##0').format(dailyAvg)}',
+                              amount: dailyAvg,
+                              currency: settings.currency,
                               color: AppColors.secondary,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: AppSpacing.md),
                           if (biggestExpense != null)
                             Expanded(
                               child: _statChip(
                                 icon: Icons.arrow_upward_rounded,
                                 label: 'Top Expense',
-                                value:
-                                    '${settings.currency}${NumberFormat('#,##0').format(biggestExpense.amount)}',
+                                amount: biggestExpense.amount,
+                                currency: settings.currency,
                                 sublabel: biggestExpense.title,
-                                color: Colors.deepOrange,
+                                color: AppColors.warning,
                               ),
                             ),
                         ],
@@ -281,12 +289,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 if (sortedCats.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Text(
-                        'Spending Breakdown',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        0,
+                        AppSpacing.lg,
+                        0,
                       ),
+                      child: const SectionHeader(title: 'Spending Breakdown'),
                     ),
                   ),
                   SliverToBoxAdapter(
@@ -302,7 +311,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                   title:
                                       '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
                                   titleStyle: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: AppType.caption,
                                     color: Colors.white,
                                     fontWeight: FontWeight.bold,
                                   ),
@@ -322,20 +331,27 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 if (sortedCats.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Text(
-                        'By Category',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        0,
                       ),
+                      child: const SectionHeader(title: 'By Category'),
                     ),
                   ),
                   SliverList(
                     delegate: SliverChildBuilderDelegate((context, i) {
                       final e = sortedCats[i];
                       final pct = totalSpent > 0 ? e.value / totalSpent : 0.0;
+                      final theme = Theme.of(context);
                       return Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.lg,
+                          0,
+                          AppSpacing.lg,
+                          AppSpacing.md,
+                        ),
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.lightImpact();
@@ -348,11 +364,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             );
                           },
                           child: GlassContainer(
-                            borderRadius: 16,
+                            borderRadius: AppRadius.md,
                             backgroundColor:
-                                Theme.of(context).cardTheme.color ??
-                                Colors.white,
-                            padding: const EdgeInsets.all(16),
+                                theme.cardTheme.color ?? theme.colorScheme.surface,
+                            padding: const EdgeInsets.all(AppSpacing.lg),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -377,13 +392,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                             size: 20,
                                           ),
                                         ),
-                                        const SizedBox(width: 12),
+                                        const SizedBox(width: AppSpacing.md),
                                         Text(
                                           e.key.name,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w700,
-                                            fontSize: 15,
-                                          ),
+                                          style: theme.textTheme.titleSmall
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                              ),
                                         ),
                                       ],
                                     ),
@@ -391,29 +406,29 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                       crossAxisAlignment:
                                           CrossAxisAlignment.end,
                                       children: [
-                                        Text(
-                                          '${settings.currency}${NumberFormat('#,##0').format(e.value)}',
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.w800,
-                                            fontSize: 16,
-                                          ),
+                                        MoneyText(
+                                          e.value,
+                                          currency: settings.currency,
+                                          size: AppType.headline,
+                                          weight: FontWeight.w800,
+                                          color: theme.colorScheme.onSurface,
+                                          textAlign: TextAlign.right,
                                         ),
                                         const SizedBox(height: 2),
                                         Text(
                                           '${(pct * 100).toStringAsFixed(1)}%',
-                                          style: TextStyle(
-                                            color: Colors.grey.shade500,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 12,
-                                          ),
+                                          style: theme.textTheme.labelMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.bold,
+                                              ),
                                         ),
                                       ],
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: AppSpacing.md),
                                 ClipRRect(
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: AppRadius.smAll,
                                   child: TweenAnimationBuilder<double>(
                                     tween: Tween<double>(begin: 0, end: pct),
                                     duration: const Duration(
@@ -423,7 +438,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                     builder: (context, val, _) =>
                                         LinearProgressIndicator(
                                           value: val,
-                                          backgroundColor: Theme.of(context)
+                                          backgroundColor: theme
                                               .colorScheme
                                               .surfaceContainerHighest
                                               .withValues(alpha: 0.4),
@@ -445,17 +460,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 if (monthlyExpenses.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                      child: Text(
-                        'Daily Spending',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        0,
                       ),
+                      child: const SectionHeader(title: 'Daily Spending'),
                     ),
                   ),
                   SliverToBoxAdapter(
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        0,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
                       child: SizedBox(
                         height: 180,
                         child: _dailySpendingChart(
@@ -470,18 +491,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
 
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text(
-                      'Day by Category',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      0,
                     ),
+                    child: const SectionHeader(title: 'Day by Category'),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
                     child: Row(
                       children: [
                         IconButton(
@@ -496,7 +519,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                             onPressed: _pickDay,
                             icon: const Icon(
                               Icons.calendar_today_outlined,
-                              size: 17,
+                              size: AppType.headline,
                             ),
                             label: Text(
                               DateFormat('EEE, d MMM').format(_selectedDay),
@@ -518,7 +541,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                    ),
                     child: _dailyCategoryCard(dailyCats, settings.currency),
                   ),
                 ),
@@ -526,18 +554,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 // 6-Month Bar Chart
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Text(
-                      '6-Month Overview',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      0,
                     ),
+                    child: const SectionHeader(title: '6-Month Overview'),
                   ),
                 ),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 160),
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      0,
+                      AppSpacing.lg,
+                      160,
+                    ),
                     child: SizedBox(
                       height: 200,
                       child: BarChart(
@@ -565,10 +598,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                   final idx = v.toInt();
                                   if (idx >= 0 && idx < sixMonths.length) {
                                     return Padding(
-                                      padding: const EdgeInsets.only(top: 4),
+                                      padding: const EdgeInsets.only(
+                                        top: AppSpacing.xs,
+                                      ),
                                       child: Text(
                                         sixMonths[idx].label,
-                                        style: const TextStyle(fontSize: 10),
+                                        style: _axisLabelStyle(context),
                                       ),
                                     );
                                   }
@@ -582,7 +617,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                 reservedSize: 44,
                                 getTitlesWidget: (v, m) => Text(
                                   NumberFormat.compact().format(v),
-                                  style: const TextStyle(fontSize: 9),
+                                  style: _axisLabelStyle(context),
                                 ),
                               ),
                             ),
@@ -611,7 +646,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                                         ),
                                   width: 28,
                                   borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(6),
+                                    top: Radius.circular(AppRadius.sm),
                                   ),
                                 ),
                               ],
@@ -627,6 +662,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     );
   }
 
+  /// Chart axis labels: theme-muted, tabular so tick values don't jitter.
+  TextStyle? _axisLabelStyle(BuildContext context) =>
+      Theme.of(context).textTheme.labelSmall?.copyWith(
+        fontFeatures: AppType.tabular,
+      );
+
   Widget _totalCard(
     double total,
     double prevTotal,
@@ -634,10 +675,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     String currency,
   ) {
     final momUp = momChange > 0;
+    // On the navy card: warm for "up" (bad), mint for "down" (good). Both are
+    // read against a dark brand fill, so they stay light rather than
+    // AppColors.error/success which are tuned for surface backgrounds.
+    final momColor = momUp
+        ? const Color(0xFFFCA5A5)
+        : const Color(0xFF4ADE80);
     return GlassContainer(
-      borderRadius: 24,
+      borderRadius: AppRadius.lg,
       backgroundColor: AppColors.primary,
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -647,63 +694,58 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               children: [
                 const Text(
                   'Total Spent',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 4),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '$currency${NumberFormat('#,##0').format(total)}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0,
-                    ),
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: AppType.label,
                   ),
+                ),
+                const SizedBox(height: AppSpacing.xs),
+                MoneyText(
+                  total,
+                  currency: currency,
+                  autoShrink: true,
+                  size: AppType.display,
+                  weight: FontWeight.bold,
+                  color: Colors.white,
                 ),
                 const Text(
                   'This Month',
-                  style: TextStyle(color: Colors.white60, fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white60,
+                    fontSize: AppType.caption,
+                  ),
                 ),
               ],
             ),
           ),
           if (prevTotal > 0)
             Container(
-              margin: const EdgeInsets.only(left: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              margin: const EdgeInsets.only(left: AppSpacing.md),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
               decoration: BoxDecoration(
-                color: momUp
-                    ? Colors.red.shade400.withValues(alpha: 0.2)
-                    : const Color(0xFF4ADE80).withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: momUp
-                      ? Colors.red.shade400.withValues(alpha: 0.5)
-                      : const Color(0xFF4ADE80).withValues(alpha: 0.5),
-                ),
+                color: momColor.withValues(alpha: 0.2),
+                borderRadius: AppRadius.smAll,
+                border: Border.all(color: momColor.withValues(alpha: 0.5)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     momUp ? Icons.show_chart : Icons.trending_down,
-                    color: momUp
-                        ? Colors.red.shade200
-                        : const Color(0xFF4ADE80),
-                    size: 16,
+                    color: momColor,
+                    size: AppType.headline,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: AppSpacing.xs),
                   Text(
                     '${momUp ? '+' : ''}${momChange.toStringAsFixed(1)}%',
                     style: TextStyle(
-                      color: momUp
-                          ? Colors.red.shade100
-                          : const Color(0xFF4ADE80),
+                      color: momColor,
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
+                      fontSize: AppType.label,
+                      fontFeatures: AppType.tabular,
                     ),
                   ),
                 ],
@@ -729,10 +771,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     }
 
     final maxY = dailySpending.reduce((a, b) => a > b ? a : b);
+    final scheme = Theme.of(context).colorScheme;
+    final hairline = Theme.of(context).dividerTheme.thickness ?? 1;
 
     return GlassContainer(
-      borderRadius: 16,
-      padding: const EdgeInsets.all(16),
+      borderRadius: AppRadius.md,
+      padding: const EdgeInsets.all(AppSpacing.lg),
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
@@ -740,7 +784,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
             drawVerticalLine: false,
             horizontalInterval: maxY > 0 ? maxY / 4 : 1,
             getDrawingHorizontalLine: (value) =>
-                FlLine(color: Colors.grey.shade200, strokeWidth: 1),
+                FlLine(color: scheme.outlineVariant, strokeWidth: hairline),
           ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
@@ -753,8 +797,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   if (day <= daysInMonth &&
                       day % ((daysInMonth / 7).ceil()) == 1) {
                     return Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text('$day', style: const TextStyle(fontSize: 9)),
+                      padding: const EdgeInsets.only(top: AppSpacing.xs),
+                      child: Text('$day', style: _axisLabelStyle(context)),
                     );
                   }
                   return const SizedBox();
@@ -767,7 +811,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 reservedSize: 44,
                 getTitlesWidget: (value, meta) => Text(
                   NumberFormat.compact().format(value),
-                  style: const TextStyle(fontSize: 9),
+                  style: _axisLabelStyle(context),
                 ),
               ),
             ),
@@ -800,8 +844,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                     '${spot.x.toInt() + 1}: $currency${NumberFormat('#,##0').format(spot.y)}',
                     const TextStyle(
                       color: Colors.white,
-                      fontSize: 11,
+                      fontSize: AppType.caption,
                       fontWeight: FontWeight.bold,
+                      fontFeatures: AppType.tabular,
                     ),
                   );
                 }).toList();
@@ -819,14 +864,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   ) {
     if (categories.isEmpty) {
       return GlassContainer(
-        borderRadius: 16,
-        padding: const EdgeInsets.all(20),
-        child: const Row(
+        borderRadius: AppRadius.md,
+        padding: const EdgeInsets.all(AppSpacing.xl),
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.event_busy_outlined, color: Colors.grey),
-            SizedBox(width: 10),
-            Text('No spending recorded for this day'),
+            Icon(
+              Icons.event_busy_outlined,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+            const SizedBox(width: AppSpacing.sm),
+            const Flexible(
+              child: Text('No spending recorded for this day'),
+            ),
           ],
         ),
       );
@@ -835,9 +885,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     final maxY = categories
         .map((entry) => entry.value)
         .reduce((a, b) => a > b ? a : b);
+    final scheme = Theme.of(context).colorScheme;
+    final hairline = Theme.of(context).dividerTheme.thickness ?? 1;
     return GlassContainer(
-      borderRadius: 16,
-      padding: const EdgeInsets.fromLTRB(12, 16, 12, 12),
+      borderRadius: AppRadius.md,
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.lg,
+        AppSpacing.md,
+        AppSpacing.md,
+      ),
       child: Column(
         children: [
           SizedBox(
@@ -849,10 +906,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                 gridData: FlGridData(
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-                  getDrawingHorizontalLine: (_) => FlLine(
-                    color: Colors.grey.withValues(alpha: 0.18),
-                    strokeWidth: 1,
-                  ),
+                  getDrawingHorizontalLine: (_) =>
+                      FlLine(color: scheme.outlineVariant, strokeWidth: hairline),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -862,7 +917,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       reservedSize: 40,
                       getTitlesWidget: (value, _) => Text(
                         NumberFormat.compact().format(value),
-                        style: const TextStyle(fontSize: 9),
+                        style: _axisLabelStyle(context),
                       ),
                     ),
                   ),
@@ -877,11 +932,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         }
                         final category = categories[index].key;
                         return Padding(
-                          padding: const EdgeInsets.only(top: 6),
+                          padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Icon(
                             category.icon,
                             color: category.color,
-                            size: 17,
+                            size: AppType.headline,
                           ),
                         );
                       },
@@ -903,6 +958,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
+                          fontFeatures: AppType.tabular,
                         ),
                       );
                     },
@@ -918,7 +974,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         color: category.color,
                         width: 22,
                         borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(5),
+                          top: Radius.circular(AppRadius.sm),
                         ),
                       ),
                     ],
@@ -927,24 +983,28 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Wrap(
             alignment: WrapAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
             children: categories.map((entry) {
               return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.sm,
+                  vertical: AppSpacing.xs,
+                ),
                 decoration: BoxDecoration(
                   color: entry.key.color.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: AppRadius.smAll,
                 ),
                 child: Text(
                   '${entry.key.displayName} $currency${NumberFormat.compact().format(entry.value)}',
                   style: TextStyle(
                     color: entry.key.color,
-                    fontSize: 11,
+                    fontSize: AppType.caption,
                     fontWeight: FontWeight.w700,
+                    fontFeatures: AppType.tabular,
                   ),
                 ),
               );
@@ -959,18 +1019,19 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
     child: Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Icon(Icons.bar_chart_rounded, size: 72, color: Colors.grey.shade300),
-        const SizedBox(height: 16),
-        const Text(
-          'No data yet',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Icon(
+          Icons.bar_chart_rounded,
+          size: 72,
+          color: Theme.of(context).colorScheme.outline,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.lg),
+        Text('No data yet', style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: AppSpacing.sm),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 32),
+          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xxl),
           child: Text(
             'Add expenses to see your analytics here.',
-            style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            style: Theme.of(context).textTheme.bodySmall,
             textAlign: TextAlign.center,
           ),
         ),
@@ -981,48 +1042,49 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
   Widget _statChip({
     required IconData icon,
     required String label,
-    required String value,
+    required double amount,
+    required String currency,
     String? sublabel,
     required Color color,
   }) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.md,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.mdAll,
         border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(AppSpacing.xs),
             decoration: BoxDecoration(
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 16),
+            child: Icon(icon, color: color, size: AppType.headline),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                ),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: color,
-                  ),
+                Text(label, style: theme.textTheme.labelMedium),
+                MoneyText(
+                  amount,
+                  currency: currency,
+                  size: AppType.body,
+                  weight: FontWeight.w800,
+                  color: color,
                 ),
                 if (sublabel != null)
                   Text(
                     sublabel,
-                    style: const TextStyle(fontSize: 10, color: Colors.grey),
+                    style: theme.textTheme.labelSmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

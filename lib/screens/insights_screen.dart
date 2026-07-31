@@ -10,6 +10,9 @@ import '../services/ai_spending_analysis_service.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../utils/constants.dart';
 import '../utils/date_extension.dart';
+import '../utils/design.dart';
+import '../widgets/money_text.dart';
+import '../widgets/section_header.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -77,21 +80,16 @@ class InsightsScreen extends ConsumerWidget {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Spending Insights',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-      ),
+      appBar: AppBar(title: const Text('Spending Insights')),
       body: expenses.isEmpty
-          ? const Center(
+          ? Center(
               child: Text(
                 'Add some expenses to see insights!',
-                style: TextStyle(color: Colors.grey),
+                style: Theme.of(context).textTheme.bodySmall,
               ),
             )
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppSpacing.lg),
               children: [
                 // Month comparison card
                 _comparisonCard(
@@ -100,7 +98,7 @@ class InsightsScreen extends ConsumerWidget {
                   change,
                   settings.currency,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
                 _AiReviewCard(
                   expenses: expenses,
@@ -110,7 +108,7 @@ class InsightsScreen extends ConsumerWidget {
                   workerUrl: settings.aiWorkerUrl,
                   proxyToken: settings.aiProxyToken,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
                 // On-device merchant spikes. Renders nothing when there are no
                 // anomalies, which is the common case.
@@ -124,6 +122,7 @@ class InsightsScreen extends ConsumerWidget {
                 // Top spending category
                 if (topCat != null)
                   _infoCard(
+                    context,
                     icon: topCat.key.icon,
                     color: topCat.key.color,
                     title: 'Top Category: ${topCat.key.displayName}',
@@ -131,26 +130,20 @@ class InsightsScreen extends ConsumerWidget {
                         '${settings.currency}${NumberFormat('#,##0').format(topCat.value)} this month'
                         ' (${thisTotal > 0 ? (topCat.value / thisTotal * 100).toStringAsFixed(0) : 0}% of spending)',
                   ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
 
                 // Recurring subscriptions
                 if (recurring.isNotEmpty) ...[
-                  const Text(
-                    'Recurring Expenses Detected',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  const SectionHeader(title: 'Recurring Expenses Detected'),
+                  ...recurring.map(
+                    (r) => _recurringTile(context, r, settings.currency),
                   ),
-                  const SizedBox(height: 8),
-                  ...recurring.map((r) => _recurringTile(r, settings.currency)),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                 ],
 
                 // Smart Tips
-                const Text(
-                  'Smart Tips',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                ...insights.map((i) => _tipCard(i)),
+                const SectionHeader(title: 'Smart Tips'),
+                ...insights.map((i) => _tipCard(context, i)),
               ],
             ),
     );
@@ -164,66 +157,95 @@ class InsightsScreen extends ConsumerWidget {
   ) {
     final isUp = change > 0;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(AppSpacing.xl),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: isUp
               ? [const Color(0xFFDC2626), const Color(0xFFEF4444)]
               : [const Color(0xFF059669), const Color(0xFF10B981)],
         ),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: AppRadius.lgAll,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
             'vs Last Month',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: Colors.white70, fontSize: AppType.label),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             children: [
               Icon(
                 isUp ? Icons.trending_up : Icons.trending_down,
                 color: Colors.white,
-                size: 28,
+                size: AppType.title,
               ),
-              const SizedBox(width: 8),
-              Text(
-                '${isUp ? '+' : ''}${change.toStringAsFixed(1)}%',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
+              const SizedBox(width: AppSpacing.sm),
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    '${isUp ? '+' : ''}${change.toStringAsFixed(1)}%',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: AppType.display,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: AppType.tabular,
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            'This month: $currency${NumberFormat('#,##0').format(thisMonth)}',
-            style: const TextStyle(color: Colors.white70),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              const Text(
+                'This month: ',
+                style: TextStyle(color: Colors.white70),
+              ),
+              MoneyText(
+                thisMonth,
+                currency: currency,
+                size: AppType.body,
+                color: Colors.white70,
+              ),
+            ],
           ),
-          Text(
-            'Last month: $currency${NumberFormat('#,##0').format(lastMonth)}',
-            style: const TextStyle(color: Colors.white70),
+          Row(
+            children: [
+              const Text(
+                'Last month: ',
+                style: TextStyle(color: Colors.white70),
+              ),
+              MoneyText(
+                lastMonth,
+                currency: currency,
+                size: AppType.body,
+                color: Colors.white70,
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  Widget _infoCard({
+  Widget _infoCard(
+    BuildContext context, {
     required IconData icon,
     required Color color,
     required String title,
     required String subtitle,
   }) {
+    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.mdAll,
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
@@ -235,25 +257,21 @@ class InsightsScreen extends ConsumerWidget {
               color: color.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 22),
+            child: Icon(icon, color: color, size: AppType.title),
           ),
-          const SizedBox(width: 14),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
+                  style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  subtitle,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                ),
+                Text(subtitle, style: theme.textTheme.labelMedium),
               ],
             ),
           ),
@@ -262,39 +280,46 @@ class InsightsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _recurringTile(Map<String, dynamic> r, String currency) {
+  Widget _recurringTile(
+    BuildContext context,
+    Map<String, dynamic> r,
+    String currency,
+  ) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 8),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: ListTile(
         leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: Colors.purple.withValues(alpha: 0.1),
+            color: AppColors.bills.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
-          child: const Icon(Icons.autorenew, color: Colors.purple, size: 20),
+          child: const Icon(
+            Icons.autorenew,
+            color: AppColors.bills,
+            size: 20,
+          ),
         ),
-        title: Text(
-          r['name'],
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-        ),
+        title: Text(r['name']),
         subtitle: Text(
           '~${r['frequency']} - Monthly ~$currency${NumberFormat('#,##0').format(r['amount'])}',
-          style: const TextStyle(fontSize: 12, color: Colors.grey),
         ),
-        trailing: const Icon(Icons.repeat, size: 16, color: Colors.purple),
+        trailing: const Icon(
+          Icons.repeat,
+          size: AppType.headline,
+          color: AppColors.bills,
+        ),
       ),
     );
   }
 
-  Widget _tipCard(Map<String, dynamic> tip) {
+  Widget _tipCard(BuildContext context, Map<String, dynamic> tip) {
+    final theme = Theme.of(context);
     return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -311,27 +336,19 @@ class InsightsScreen extends ConsumerWidget {
                 size: 20,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     tip['title'],
-                    style: const TextStyle(
+                    style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      fontSize: 14,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    tip['body'],
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 13,
-                      height: 1.4,
-                    ),
-                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(tip['body'], style: theme.textTheme.bodySmall),
                 ],
               ),
             ),
@@ -539,18 +556,15 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Merchant Alerts',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        const SizedBox(height: 4),
+        Text('Merchant Alerts', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: AppSpacing.xs),
         Text(
           'These merchants are running well ahead of their usual pace.',
-          style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+          style: Theme.of(context).textTheme.labelMedium,
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
         ..._anomalies.map(_alertTile),
-        const SizedBox(height: 8),
+        const SizedBox(height: AppSpacing.sm),
       ],
     );
   }
@@ -561,18 +575,18 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
         : AppColors.warning;
     final money = NumberFormat('#,##0');
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: AppRadius.mdAll,
         border: Border.all(color: color.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.warning_amber_rounded, color: color, size: 20),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -583,17 +597,14 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   softWrap: false,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  style: Theme.of(context).textTheme.titleSmall,
                 ),
                 const SizedBox(height: 2),
                 Text(
                   '${widget.currency}${money.format(anomaly.currentAmount)}'
                   ' vs ${widget.currency}${money.format(anomaly.baselineAmount)}'
                   ' expected by now',
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+                  style: Theme.of(context).textTheme.labelMedium,
                 ),
               ],
             ),
@@ -677,34 +688,31 @@ class _AiReviewCardState extends State<_AiReviewCard> {
     final colors = Theme.of(context).colorScheme;
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Icon(Icons.auto_awesome_outlined, color: colors.secondary),
-                const SizedBox(width: 10),
-                const Expanded(
+                const SizedBox(width: AppSpacing.sm),
+                Expanded(
                   child: Text(
                     'AI spending review',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    style: Theme.of(context).textTheme.titleSmall,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: AppSpacing.xs),
             Text(
               configured
                   ? 'Sends category totals and your budget only. Nothing is saved automatically.'
                   : 'Configure your Cloudflare Worker in Settings to enable private AI analysis.',
-              style: TextStyle(
-                color: Theme.of(context).hintColor,
-                fontSize: 12,
-              ),
+              style: Theme.of(context).textTheme.labelMedium,
             ),
             if (configured) ...[
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               Align(
                 alignment: Alignment.centerLeft,
                 child: ElevatedButton.icon(
@@ -723,36 +731,41 @@ class _AiReviewCardState extends State<_AiReviewCard> {
               ),
             ],
             if (_failed) ...[
-              const SizedBox(height: 12),
-              const Text(
+              const SizedBox(height: AppSpacing.md),
+              Text(
                 'AI analysis is unavailable. Check the Worker URL and proxy token, then try again.',
-                style: TextStyle(color: Colors.red, fontSize: 12),
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(color: AppColors.error),
               ),
             ],
             if (_analysis != null) ...[
-              const SizedBox(height: 16),
-              Text(_analysis!.summary, style: const TextStyle(height: 1.35)),
-              const SizedBox(height: 12),
-              _forecast(_analysis!.forecast),
-              const SizedBox(height: 16),
-              const Text(
-                'Category comparison',
-                style: TextStyle(fontWeight: FontWeight.bold),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                _analysis!.summary,
+                style: Theme.of(context).textTheme.bodyMedium,
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.md),
+              _forecast(_analysis!.forecast),
+              const SizedBox(height: AppSpacing.lg),
+              Text(
+                'Category comparison',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: AppSpacing.sm),
               if (!_hasSufficientHistory)
-                const Text(
+                Text(
                   'Track spending for three completed months to compare category patterns.',
-                  style: TextStyle(fontSize: 12),
+                  style: Theme.of(context).textTheme.labelMedium,
                 )
               else if (_analysis!.anomalies.isEmpty)
-                const Text(
+                Text(
                   'No categories are unusually high at this point in the month.',
-                  style: TextStyle(fontSize: 12),
+                  style: Theme.of(context).textTheme.labelMedium,
                 )
               else
                 ..._analysis!.anomalies.map(_anomaly),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               ..._analysis!.insights.map(_insight),
             ],
           ],
@@ -763,17 +776,17 @@ class _AiReviewCardState extends State<_AiReviewCard> {
 
   Widget _insight(AiSpendingInsight insight) {
     final color = switch (insight.tone) {
-      'positive' => Colors.green,
-      'warning' => Colors.orange,
-      _ => Colors.blue,
+      'positive' => AppColors.success,
+      'warning' => AppColors.warning,
+      _ => AppColors.accent,
     };
     return Padding(
-      padding: const EdgeInsets.only(top: 10),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.circle, size: 10, color: color),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text.rich(
               TextSpan(
@@ -813,16 +826,16 @@ class _AiReviewCardState extends State<_AiReviewCard> {
         : '${widget.currency}${NumberFormat('#,##0').format(forecast.projectedSpend)}';
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.smAll,
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(Icons.trending_up_rounded, color: color),
-          const SizedBox(width: 10),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -837,7 +850,7 @@ class _AiReviewCardState extends State<_AiReviewCard> {
                   forecast.confidence == 'unavailable'
                       ? 'Add expenses on at least three days for a forecast.'
                       : '${forecast.confidence[0].toUpperCase()}${forecast.confidence.substring(1)} confidence',
-                  style: const TextStyle(fontSize: 12),
+                  style: Theme.of(context).textTheme.labelMedium,
                 ),
               ],
             ),
@@ -852,16 +865,16 @@ class _AiReviewCardState extends State<_AiReviewCard> {
         ? AppColors.error
         : AppColors.warning;
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: AppSpacing.sm),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(Icons.warning_amber_rounded, size: 18, color: color),
-          const SizedBox(width: 8),
+          const SizedBox(width: AppSpacing.sm),
           Expanded(
             child: Text(
               '${anomaly.category}: ${widget.currency}${NumberFormat('#,##0').format(anomaly.currentAmount)} so far, compared with ${widget.currency}${NumberFormat('#,##0').format(anomaly.baselineAmount)} expected at this point.',
-              style: const TextStyle(fontSize: 12),
+              style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
         ],

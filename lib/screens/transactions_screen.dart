@@ -9,8 +9,10 @@ import '../models/category.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/money_text.dart';
 import '../utils/constants.dart';
 import '../utils/date_extension.dart';
+import '../utils/design.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   final Category? initialCategory;
@@ -42,7 +44,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         content: Text('Deleted "${expense.title}"'),
         duration: const Duration(seconds: 6),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         action: SnackBarAction(
           label: 'UNDO',
           textColor: AppColors.accent,
@@ -95,10 +96,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Transactions',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
+        title: const Text('Transactions'),
         actions: [
           IconButton(
             icon: Icon(
@@ -151,13 +149,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: 'Search transactions...',
                     prefixIcon: const Icon(Icons.search),
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: AppRadius.mdAll,
                     ),
                     isDense: true,
                     filled: true,
@@ -167,7 +170,12 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               if (_dateRange != null)
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSpacing.lg,
+                    0,
+                    AppSpacing.lg,
+                    AppSpacing.xs,
+                  ),
                   child: Row(
                     children: [
                       const Icon(
@@ -175,21 +183,26 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         size: 14,
                         color: AppColors.secondary,
                       ),
-                      const SizedBox(width: 6),
+                      const SizedBox(width: AppSpacing.sm),
                       Text(
                         '${DateFormat('MMM d').format(_dateRange!.start)} - ${DateFormat('MMM d, yyyy').format(_dateRange!.end)}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: AppColors.secondary,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: AppColors.secondary,
+                              fontWeight: FontWeight.w600,
+                            ),
                       ),
                     ],
                   ),
                 ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
                 child: Row(
                   children: [
                     FilterChip(
@@ -201,10 +214,10 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         setState(() => _selectedCategory = null);
                       },
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: AppSpacing.sm),
                     ...Category.values.map(
                       (cat) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: FilterChip(
                           label: Text(cat.displayName),
                           selected: _selectedCategory == cat,
@@ -236,24 +249,31 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.xs,
+                      ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
                             month,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
-                          Text(
-                            '${settings.currency}${NumberFormat('#,##0').format(monthTotal)}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.secondary,
-                            ),
+                          MoneyText(
+                            monthTotal,
+                            currency: settings.currency,
+                            size: AppType.body,
+                            weight: FontWeight.bold,
+                            color: AppColors.secondary,
+                            textAlign: TextAlign.right,
                           ),
                         ],
                       ),
@@ -307,9 +327,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
       builder: (_) => EditExpenseSheet(expense: expense),
     );
   }
