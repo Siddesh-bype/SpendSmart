@@ -3,7 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
 import '../providers/app_settings_provider.dart';
-import 'signup_screen.dart';
+import '../providers/service_provider.dart';
+import 'main_scaffold.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -74,15 +75,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     _pageAnimCtrl.forward(from: 0);
   }
 
-  /// Completes onboarding, then hands off to account creation.
-  /// mounted check prevents using context after async gap.
+  /// Completes onboarding and opens the app.
+  ///
+  /// No password is asked for here: the lock is optional and lives in Settings.
+  /// Requiring one before the first expense would gate the whole app on a
+  /// decision the user has no context for yet.
   Future<void> _finish() async {
     HapticFeedback.mediumImpact();
     await ref.read(appSettingsProvider.notifier).completeOnboarding();
+    await ref.read(storageServiceProvider).init();
     if (!mounted) return;
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const SignupScreen()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScaffold()));
   }
 
   @override

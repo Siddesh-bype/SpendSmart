@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
+import '../providers/service_provider.dart';
 import 'login_screen.dart';
+import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
-import 'signup_screen.dart';
 import '../providers/app_settings_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -45,15 +46,17 @@ class _SplashScreenState extends State<SplashScreen>
     final container = ProviderScope.containerOf(context);
     final settings = container.read(appSettingsProvider);
 
-    // Onboarding -> create the local lock -> unlock. An existing account always
-    // goes through login, so reopening the app never skips the password.
+    // The lock is optional. Without one the app opens straight to the data, as
+    // it always did; only an install that has set a password sees the unlock
+    // screen. Boxes are opened here because no key is needed in that case.
     final Widget next;
     if (!settings.onboardingDone) {
       next = const OnboardingScreen();
-    } else if (!settings.hasAccount) {
-      next = const SignupScreen();
-    } else {
+    } else if (settings.hasAccount) {
       next = const LoginScreen();
+    } else {
+      await container.read(storageServiceProvider).init();
+      next = const MainScaffold();
     }
 
     if (!mounted) return;

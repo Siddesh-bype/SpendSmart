@@ -6,7 +6,6 @@ import '../providers/app_settings_provider.dart';
 import '../providers/service_provider.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
-import 'main_scaffold.dart';
 
 /// One-time account creation, shown on first launch after onboarding.
 ///
@@ -46,13 +45,15 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
         .read(appSettingsProvider.notifier)
         .createAccount(_username.text, _password.text);
 
-    // Open the boxes with the new key before anything reads them.
+    // The boxes are already open and unencrypted at this point, because the
+    // app ran without a lock. Re-open them with the new key so the existing
+    // data is migrated rather than left in the clear.
     final masterKey = await ref
         .read(appSettingsProvider.notifier)
         .unlockWithPassword(_password.text);
     await ref
         .read(storageServiceProvider)
-        .init(encryptionKey: masterKey == null || masterKey.isEmpty
+        .reopen(encryptionKey: masterKey == null || masterKey.isEmpty
             ? null
             : masterKey);
 
@@ -61,9 +62,7 @@ class _SignupScreenState extends ConsumerState<SignupScreen> {
     await _showRecoveryCode(recoveryCode);
 
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const MainScaffold()),
-    );
+    Navigator.of(context).pop(true);
   }
 
   /// Shown once, and only once. The code is never stored in the clear, so if

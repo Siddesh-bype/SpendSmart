@@ -133,6 +133,32 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     state = state.copyWith(onboardingDone: true);
   }
 
+  /// Forgets the app-lock credential and its key wrapping.
+  ///
+  /// Callers must decrypt the boxes first: once the wrapped key is gone the
+  /// master key cannot be derived again, and encrypted data would be lost.
+  Future<void> removeAccount() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+    for (final key in const [
+      'username',
+      'passwordHash',
+      'passwordSalt',
+      'wrappedKeyByPassword',
+      'wrappedKeyByRecovery',
+      'recoverySalt',
+    ]) {
+      await prefs.remove(key);
+    }
+    state = state.copyWith(
+      username: '',
+      passwordHash: '',
+      passwordSalt: '',
+      wrappedKeyByPassword: '',
+      wrappedKeyByRecovery: '',
+      recoverySalt: '',
+    );
+  }
+
   Future<void> setAiCategorizeConsent(bool consented) async {
     await ref
         .read(sharedPreferencesProvider)

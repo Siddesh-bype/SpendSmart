@@ -20,6 +20,38 @@ class StorageService {
   static const String splitGroupBoxName = 'split_groups';
   static const String groupExpenseBoxName = 'group_expenses';
 
+  /// Rewrites every encrypted box as plaintext, for removing the app lock.
+  ///
+  /// Mirrors [_migrateToEncrypted]'s ordering: stage, verify, then replace. A
+  /// crash leaves the encrypted original, which the password still opens.
+  Future<void> decryptToPlaintext() async {
+    final snapshot = <String, Map<dynamic, dynamic>>{};
+    for (final name in _allBoxNames) {
+      if (!Hive.isBoxOpen(name)) continue;
+      final box = Hive.box<dynamic>(name);
+      snapshot[name] = {for (final key in box.keys) key: box.get(key)};
+    }
+
+    await Hive.close();
+    for (final entry in snapshot.entries) {
+      await Hive.deleteBoxFromDisk(entry.key);
+      final box = await Hive.openBox<dynamic>(entry.key);
+      await box.putAll(entry.value);
+      await box.close();
+    }
+    await init();
+  }
+
+  /// Closes every open box and opens them again, encrypted with [encryptionKey].
+  ///
+  /// Used when a lock is added to an app that has been running without one:
+  /// the boxes are already open in the clear, so they must be closed before
+  /// [init] can migrate and re-open them.
+  Future<void> reopen({List<int>? encryptionKey}) async {
+    await Hive.close();
+    await init(encryptionKey: encryptionKey);
+  }
+
   /// Opens every box, encrypted when [encryptionKey] is supplied.
   ///
   /// Adapters are registered first and unconditionally: they describe the

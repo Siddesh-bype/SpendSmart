@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../providers/app_settings_provider.dart';
+import '../providers/service_provider.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
 import 'login_screen.dart';
@@ -192,8 +193,85 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
             trailing: const Icon(Icons.chevron_right_rounded),
             onTap: _signOut,
           ),
+          ListTile(
+            leading: const Icon(Icons.lock_open_outlined),
+            title: const Text('Remove app lock'),
+            subtitle: const Text('Stop asking for a password on open'),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: _removeLock,
+          ),
         ],
       ),
+    );
+  }
+
+  /// Turning the lock off also decrypts, since the key is derived from the
+  /// password being removed. Requires the password: otherwise anyone holding
+  /// an unlocked phone could strip the lock outright.
+  Future<void> _removeLock() async {
+    final password = TextEditingController();
+    var wrong = false;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Remove app lock?'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Your expenses will no longer be encrypted, and anyone with '
+                'this phone will be able to open the app.',
+              ),
+              const SizedBox(height: AppSpacing.md),
+              TextField(
+                controller: password,
+                obscureText: true,
+                autocorrect: false,
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  errorText: wrong ? 'Incorrect password' : null,
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                final ok = await ref
+                    .read(appSettingsProvider.notifier)
+                    .verifyPassword(password.text);
+                if (!ok) {
+                  setDialogState(() => wrong = true);
+                  return;
+                }
+                if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Remove'),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    password.dispose();
+    if (confirmed != true || !mounted) return;
+
+    // Decrypt first, then forget the credential. The reverse order would leave
+    // the boxes encrypted under a key nothing can derive any more.
+    await ref.read(storageServiceProvider).decryptToPlaintext();
+    await ref.read(appSettingsProvider.notifier).removeAccount();
+
+    if (!mounted) return;
+    Navigator.of(context).pop();
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('App lock removed')),
     );
   }
 }
