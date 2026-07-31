@@ -1,5 +1,12 @@
 {
   "name": "spendsmart-ai-analysis",
   "main": "src/index.ts",
-  "compatibility_date": "2026-07-18"
+  "compatibility_date": "2026-07-18",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "spendsmart-auth",
+      "database_id": "d1613539-69cd-4bb9-8554-601ed38f3293"
+    }
+  ]
 }

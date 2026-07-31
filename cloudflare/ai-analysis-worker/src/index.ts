@@ -1,4 +1,18 @@
-interface Env {
+import {
+  authConstants,
+  authenticate,
+  consumeQuota,
+  createUser,
+  isValidEmail,
+  isValidPassword,
+  resolveSession,
+  revokeSession,
+  usageToday,
+  type AuthEnv,
+  type SessionUser,
+} from "./auth.ts";
+
+interface Env extends AuthEnv {
   APP_PROXY_TOKEN: string;
   OPENROUTER_API_KEY: string;
   OPENROUTER_MODEL?: string;
@@ -83,6 +97,18 @@ const allowedCategories = new Set([
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (request.method === "POST" && url.pathname === "/auth/signup") {
+      return signup(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/auth/login") {
+      return login(request, env);
+    }
+    if (request.method === "POST" && url.pathname === "/auth/logout") {
+      return logout(request, env);
+    }
+    if (request.method === "GET" && url.pathname === "/auth/me") {
+      return me(request, env);
+    }
     if (request.method === "POST" && url.pathname === "/analyze-spending") {
       return analyzeSpending(request, env);
     }
@@ -92,6 +118,98 @@ export default {
     return new Response("Not found", { status: 404 });
   },
 };
+
+async function signup(request: Request, env: Env): Promise<Response> {
+  const body = await readJsonBody(request);
+  if (body === null) return authError(400, "Malformed request.");
+
+  const { email, password, displayName } = body as Record<string, unknown>;
+  if (!isValidEmail(email)) {
+    return authError(400, "Enter a valid email address.");
+  }
+  if (!isValidPassword(password)) {
+    return authError(
+      400,
+      `Password must be at least ${authConstants.minPasswordLength} characters.`,
+    );
+  }
+  const name =
+    typeof displayName === "string" && displayName.trim().length > 0
+      ? displayName.trim().slice(0, 64)
+      : null;
+
+  const session = await createUser(env, email, password, name);
+  // Null means the address is taken. Reported as the generic credentials
+  // error so signup cannot be used to enumerate registered emails.
+  if (!session) return authError(409, authConstants.credentialsError);
+
+  return Response.json(
+    { ...session, email: email.trim().toLowerCase(), displayName: name },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+async function login(request: Request, env: Env): Promise<Response> {
+  const body = await readJsonBody(request);
+  if (body === null) return authError(400, "Malformed request.");
+
+  const { email, password } = body as Record<string, unknown>;
+  if (typeof email !== "string" || typeof password !== "string") {
+    return authError(401, authConstants.credentialsError);
+  }
+
+  const session = await authenticate(env, email, password);
+  if (!session) return authError(401, authConstants.credentialsError);
+
+  return Response.json(
+    { ...session, email: email.trim().toLowerCase() },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+async function logout(request: Request, env: Env): Promise<Response> {
+  const token = bearerToken(request);
+  if (token) await revokeSession(env, token);
+  // Always 200: a caller discarding an already-invalid token is not an error.
+  return Response.json({ ok: true }, { headers: { "Cache-Control": "no-store" } });
+}
+
+async function me(request: Request, env: Env): Promise<Response> {
+  const token = bearerToken(request);
+  const user = token ? await resolveSession(env, token) : null;
+  if (!user) return authError(401, "Sign in to continue.");
+
+  return Response.json(
+    {
+      email: user.email,
+      displayName: user.displayName,
+      callsToday: await usageToday(env, user.id),
+      dailyLimit: authConstants.defaultDailyLimit,
+    },
+    { headers: { "Cache-Control": "no-store" } },
+  );
+}
+
+function bearerToken(request: Request): string | null {
+  const header = request.headers.get("authorization") ?? "";
+  if (!/^Bearer\s+/i.test(header)) return null;
+  const token = header.replace(/^Bearer\s+/i, "").trim();
+  return token.length > 0 ? token : null;
+}
+
+/// Bounded read for the auth routes, which take small bodies.
+async function readJsonBody(request: Request): Promise<unknown | null> {
+  if (Number(request.headers.get("content-length")) > maxBodyBytes) return null;
+  try {
+    return await readBoundedJson(request);
+  } catch {
+    return null;
+  }
+}
+
+function authError(status: number, message: string): Response {
+  return Response.json({ error: message }, { status });
+}
 
 async function analyzeSpending(request: Request, env: Env): Promise<Response> {
   const gate = await authorizeAndReadBody(request, env);
@@ -146,12 +264,43 @@ async function categorizeMerchants(request: Request, env: Env): Promise<Response
   }
 }
 
+/// Authorizes an AI request and reads its body.
+///
+/// Two credentials are accepted: a per-account session token, which is the
+/// normal path and is quota-limited, and APP_PROXY_TOKEN, kept as an admin
+/// bypass for curl checks and for installs configured before accounts existed.
 async function authorizeAndReadBody(
   request: Request,
   env: Env,
 ): Promise<{ body: unknown } | { response: Response }> {
-  if (!hasValidToken(request, env.APP_PROXY_TOKEN)) return { response: error(401) };
-  if (Number(request.headers.get("content-length")) > maxBodyBytes) return { response: error(413) };
+  const token = bearerToken(request);
+  if (!token) return { response: error(401) };
+
+  const isAdmin = hasValidToken(request, env.APP_PROXY_TOKEN);
+  let user: SessionUser | null = null;
+
+  if (!isAdmin) {
+    user = await resolveSession(env, token);
+    if (!user) return { response: error(401) };
+
+    const quota = await consumeQuota(env, user.id);
+    if (!quota.allowed) {
+      return {
+        response: Response.json(
+          {
+            error:
+              `Daily AI limit reached (${quota.limit} requests). ` +
+              "It resets at midnight UTC.",
+          },
+          { status: 429 },
+        ),
+      };
+    }
+  }
+
+  if (Number(request.headers.get("content-length")) > maxBodyBytes) {
+    return { response: error(413) };
+  }
   try {
     return { body: await readBoundedJson(request) };
   } catch (exception) {
@@ -202,7 +351,10 @@ async function requestCompletion(
   return null;
 }
 
-function hasValidToken(request: Request, expected: string): boolean {
+function hasValidToken(request: Request, expected: string | undefined): boolean {
+  // An unset APP_PROXY_TOKEN must never authorize anything, or removing the
+  // secret would silently open the admin bypass to everyone.
+  if (!expected || expected.length < 16) return false;
   const token = request.headers.get("authorization")?.replace(/^Bearer\s+/, "") || "";
   if (token.length !== expected.length || token.length < 16) return false;
   let difference = 0;
