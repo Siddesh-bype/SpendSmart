@@ -1,6 +1,19 @@
+import 'package:flutter/foundation.dart' show compute;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/app_settings.dart';
+import '../services/password_hasher.dart';
+
+/// Sendable across an isolate boundary, unlike a closure over provider state.
+class _HashRequest {
+  const _HashRequest({required this.password, required this.salt});
+  final String password;
+  final String salt;
+}
+
+/// Isolate entry point: must stay top-level.
+String _hashInIsolate(_HashRequest request) =>
+    PasswordHasher.hash(request.password, request.salt);
 
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
   throw UnimplementedError('SharedPreferences not initialized');
@@ -26,6 +39,9 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       aiWorkerUrl: prefs.getString('aiWorkerUrl') ?? '',
       aiProxyToken: prefs.getString('aiProxyToken') ?? '',
       aiCategorizeConsent: prefs.getBool('aiCategorizeConsent') ?? false,
+      username: prefs.getString('username') ?? '',
+      passwordHash: prefs.getString('passwordHash') ?? '',
+      passwordSalt: prefs.getString('passwordSalt') ?? '',
     );
   }
 
@@ -71,6 +87,38 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
         .read(sharedPreferencesProvider)
         .setBool('aiCategorizeConsent', consented);
     state = state.copyWith(aiCategorizeConsent: consented);
+  }
+
+  /// Stores the username and a PBKDF2 digest of [password]. The password itself
+  /// is never persisted. Hashing runs in an isolate -- 100k HMAC rounds would
+  /// otherwise drop frames.
+  Future<void> createAccount(String username, String password) async {
+    final salt = PasswordHasher.generateSalt();
+    final hash = await compute(
+      _hashInIsolate,
+      _HashRequest(password: password, salt: salt),
+    );
+    final prefs = ref.read(sharedPreferencesProvider);
+    final trimmed = username.trim();
+    await prefs.setString('username', trimmed);
+    await prefs.setString('passwordHash', hash);
+    await prefs.setString('passwordSalt', salt);
+    state = state.copyWith(
+      username: trimmed,
+      passwordHash: hash,
+      passwordSalt: salt,
+    );
+  }
+
+  /// Verifies [password] against the stored digest. Returns false when no
+  /// account exists, so a missing credential can never read as a valid unlock.
+  Future<bool> verifyPassword(String password) async {
+    if (!state.hasAccount) return false;
+    final hash = await compute(
+      _hashInIsolate,
+      _HashRequest(password: password, salt: state.passwordSalt),
+    );
+    return PasswordHasher.constantTimeEquals(hash, state.passwordHash);
   }
 
   Future<void> clearAiConnection() async {

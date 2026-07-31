@@ -7,6 +7,12 @@ class AppSettings {
   final String aiWorkerUrl;
   final String aiProxyToken;
   final bool aiCategorizeConsent;
+  final String username;
+  final String passwordHash;
+  final String passwordSalt;
+
+  /// True once a username and password have been set up.
+  bool get hasAccount => username.isNotEmpty && passwordHash.isNotEmpty;
 
   AppSettings({
     this.currency = '₹',
@@ -17,6 +23,9 @@ class AppSettings {
     this.aiWorkerUrl = '',
     this.aiProxyToken = '',
     this.aiCategorizeConsent = false,
+    this.username = '',
+    this.passwordHash = '',
+    this.passwordSalt = '',
   });
 
   AppSettings copyWith({
@@ -28,6 +37,9 @@ class AppSettings {
     String? aiWorkerUrl,
     String? aiProxyToken,
     bool? aiCategorizeConsent,
+    String? username,
+    String? passwordHash,
+    String? passwordSalt,
   }) {
     return AppSettings(
       currency: currency ?? this.currency,
@@ -38,6 +50,9 @@ class AppSettings {
       aiWorkerUrl: aiWorkerUrl ?? this.aiWorkerUrl,
       aiProxyToken: aiProxyToken ?? this.aiProxyToken,
       aiCategorizeConsent: aiCategorizeConsent ?? this.aiCategorizeConsent,
+      username: username ?? this.username,
+      passwordHash: passwordHash ?? this.passwordHash,
+      passwordSalt: passwordSalt ?? this.passwordSalt,
     );
   }
 }

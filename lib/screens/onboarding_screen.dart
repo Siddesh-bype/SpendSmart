@@ -3,7 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
 import '../providers/app_settings_provider.dart';
-import 'main_scaffold.dart';
+import 'signup_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -74,7 +74,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     _pageAnimCtrl.forward(from: 0);
   }
 
-  /// Completes onboarding and navigates to MainScaffold.
+  /// Completes onboarding, then hands off to account creation.
   /// mounted check prevents using context after async gap.
   Future<void> _finish() async {
     HapticFeedback.mediumImpact();
@@ -82,7 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     if (!mounted) return;
     Navigator.of(
       context,
-    ).pushReplacement(MaterialPageRoute(builder: (_) => const MainScaffold()));
+    ).pushReplacement(MaterialPageRoute(builder: (_) => const SignupScreen()));
   }
 
   @override

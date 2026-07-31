@@ -8,6 +8,7 @@ environment:
 
 dependencies:
   csv: ^7.2.0
+  crypto: ^3.0.7
   file_picker: ^8.0.7
   fl_chart: ^1.1.1
   flutter:

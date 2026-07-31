@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
-import 'main_scaffold.dart';
+import 'login_screen.dart';
 import 'onboarding_screen.dart';
+import 'signup_screen.dart';
 import '../providers/app_settings_provider.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -44,14 +45,21 @@ class _SplashScreenState extends State<SplashScreen>
     final container = ProviderScope.containerOf(context);
     final settings = container.read(appSettingsProvider);
 
+    // Onboarding -> create the local lock -> unlock. An existing account always
+    // goes through login, so reopening the app never skips the password.
+    final Widget next;
+    if (!settings.onboardingDone) {
+      next = const OnboardingScreen();
+    } else if (!settings.hasAccount) {
+      next = const SignupScreen();
+    } else {
+      next = const LoginScreen();
+    }
+
     if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => settings.onboardingDone
-            ? const MainScaffold()
-            : const OnboardingScreen(),
-      ),
-    );
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (_) => next));
   }
 
   @override
