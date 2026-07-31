@@ -25,13 +25,14 @@ class PendingScreen extends ConsumerStatefulWidget {
 class _PendingScreenState extends ConsumerState<PendingScreen> {
   bool _loading = false;
 
-  /// Opt-in bulk categorization. Never runs on its own: one confirmation per
-  /// tap, no stored consent flag.
+  /// Opt-in bulk categorization. Asks once, then remembers the answer until the
+  /// connection is disconnected or consent is revoked in Settings.
   Future<void> _categorizeWithAi(List<Expense> pending) async {
     // Everything provider-shaped is read before the first await.
     final settings = ref.read(appSettingsProvider);
     final expenses = ref.read(expenseProvider.notifier);
     final merchants = ref.read(merchantNotifierProvider.notifier);
+    final appSettings = ref.read(appSettingsProvider.notifier);
     final messenger = ScaffoldMessenger.of(context);
 
     final workerUrl = Uri.tryParse(settings.aiWorkerUrl);
@@ -44,32 +45,53 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
     }
     final sentCount = batches.fold(0, (sum, batch) => sum + batch.length);
 
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Categorize with AI?'),
-        content: Text(
-          '${_plural(sentCount, 'merchant name')} from your '
-          '${_plural(pending.length, 'pending transaction')} will be sent to '
-          'your own Cloudflare Worker, and on to OpenRouter, to suggest '
-          'categories.\n\n'
-          'No amounts, dates, or notes are sent.\n\n'
-          'Only high-confidence suggestions are applied. Anything else stays '
-          'here for you to categorize yourself.',
+    if (!settings.aiCategorizeConsent) {
+      var remember = false;
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => StatefulBuilder(
+          builder: (context, setDialogState) => AlertDialog(
+            title: const Text('Categorize with AI?'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${_plural(sentCount, 'merchant name')} from your '
+                  '${_plural(pending.length, 'pending transaction')} will be '
+                  'sent to your own Cloudflare Worker, and on to OpenRouter, '
+                  'to suggest categories.\n\n'
+                  'No amounts, dates, or notes are sent.\n\n'
+                  'Only high-confidence suggestions are applied. Anything '
+                  'else stays here for you to categorize yourself.',
+                ),
+                CheckboxListTile(
+                  value: remember,
+                  onChanged: (v) =>
+                      setDialogState(() => remember = v ?? false),
+                  contentPadding: EdgeInsets.zero,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  title: const Text("Don't ask again"),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Send'),
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Send'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !mounted) return;
+      );
+      if (confirmed != true || !mounted) return;
+      if (remember) await appSettings.setAiCategorizeConsent(true);
+      if (!mounted) return;
+    }
 
     setState(() => _loading = true);
 

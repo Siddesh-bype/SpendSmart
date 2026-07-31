@@ -1,26 +1,33 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:uuid/uuid.dart';
 import '../models/expense.dart';
 import '../utils/validation.dart';
 import 'category_classifier.dart';
 
+/// Isolate entry point: must stay top-level and take sendable args only.
+String _extractTextFromBytes(Uint8List bytes) {
+  final document = PdfDocument(inputBytes: bytes);
+  try {
+    return PdfTextExtractor(document).extractText();
+  } finally {
+    document.dispose();
+  }
+}
+
 class PdfImportService {
   static const _uuid = Uuid();
   static const maxPdfBytes = 10 * 1024 * 1024;
 
-  /// Extracts all text from the PDF file
+  /// Extracts all text from the PDF file. The decode runs in an isolate — a
+  /// multi-page statement blocks the UI thread for seconds otherwise.
   static Future<String> extractText(File file) async {
     if (await file.length() > maxPdfBytes) {
       throw const FormatException('PDF file is too large.');
     }
     final bytes = await file.readAsBytes();
-    final document = PdfDocument(inputBytes: bytes);
-    try {
-      return PdfTextExtractor(document).extractText();
-    } finally {
-      document.dispose();
-    }
+    return compute(_extractTextFromBytes, bytes);
   }
 
   /// Parses a bank statement PDF and returns a list of expenses.

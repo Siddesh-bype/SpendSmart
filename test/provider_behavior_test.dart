@@ -141,6 +141,13 @@ class _FakeStorage extends StorageService {
   }
 
   @override
+  Future<void> saveExpenses(Iterable<Expense> toSave) async {
+    for (final e in toSave) {
+      await saveExpense(e);
+    }
+  }
+
+  @override
   List<SplitGroup> getAllSplitGroups() => List.of(groups);
 
   @override

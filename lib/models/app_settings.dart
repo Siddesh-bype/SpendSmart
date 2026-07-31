@@ -6,6 +6,7 @@ class AppSettings {
   final int startingDayOfMonth;
   final String aiWorkerUrl;
   final String aiProxyToken;
+  final bool aiCategorizeConsent;
 
   AppSettings({
     this.currency = '₹',
@@ -15,6 +16,7 @@ class AppSettings {
     this.startingDayOfMonth = 1,
     this.aiWorkerUrl = '',
     this.aiProxyToken = '',
+    this.aiCategorizeConsent = false,
   });
 
   AppSettings copyWith({
@@ -25,6 +27,7 @@ class AppSettings {
     int? startingDayOfMonth,
     String? aiWorkerUrl,
     String? aiProxyToken,
+    bool? aiCategorizeConsent,
   }) {
     return AppSettings(
       currency: currency ?? this.currency,
@@ -34,6 +37,7 @@ class AppSettings {
       startingDayOfMonth: startingDayOfMonth ?? this.startingDayOfMonth,
       aiWorkerUrl: aiWorkerUrl ?? this.aiWorkerUrl,
       aiProxyToken: aiProxyToken ?? this.aiProxyToken,
+      aiCategorizeConsent: aiCategorizeConsent ?? this.aiCategorizeConsent,
     );
   }
 }

@@ -60,15 +60,10 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
   Future<int> importExpenses(List<Expense> expenses) async {
     final storage = ref.read(storageServiceProvider);
     final seen = state.map(_expenseKey).toSet();
-    var inserted = 0;
-    for (final expense in expenses) {
-      if (seen.add(_expenseKey(expense))) {
-        await storage.saveExpense(expense);
-        inserted++;
-      }
-    }
+    final fresh = expenses.where((e) => seen.add(_expenseKey(e))).toList();
+    if (fresh.isNotEmpty) await storage.saveExpenses(fresh);
     _loadExpenses();
-    return inserted;
+    return fresh.length;
   }
 
   String _expenseKey(Expense e) {

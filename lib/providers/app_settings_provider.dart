@@ -25,6 +25,7 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
       startingDayOfMonth: prefs.getInt('startingDayOfMonth') ?? 1,
       aiWorkerUrl: prefs.getString('aiWorkerUrl') ?? '',
       aiProxyToken: prefs.getString('aiProxyToken') ?? '',
+      aiCategorizeConsent: prefs.getBool('aiCategorizeConsent') ?? false,
     );
   }
 
@@ -65,10 +66,23 @@ class AppSettingsNotifier extends Notifier<AppSettings> {
     );
   }
 
+  Future<void> setAiCategorizeConsent(bool consented) async {
+    await ref
+        .read(sharedPreferencesProvider)
+        .setBool('aiCategorizeConsent', consented);
+    state = state.copyWith(aiCategorizeConsent: consented);
+  }
+
   Future<void> clearAiConnection() async {
     final prefs = ref.read(sharedPreferencesProvider);
     await prefs.remove('aiWorkerUrl');
     await prefs.remove('aiProxyToken');
-    state = state.copyWith(aiWorkerUrl: '', aiProxyToken: '');
+    // Disconnecting revokes consent: a new endpoint must be consented to afresh.
+    await prefs.remove('aiCategorizeConsent');
+    state = state.copyWith(
+      aiWorkerUrl: '',
+      aiProxyToken: '',
+      aiCategorizeConsent: false,
+    );
   }
 }

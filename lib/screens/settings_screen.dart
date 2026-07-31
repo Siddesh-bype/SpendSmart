@@ -376,7 +376,11 @@ class SettingsScreen extends ConsumerWidget {
     String currentToken,
   ) async {
     final url = TextEditingController(text: currentUrl);
-    final token = TextEditingController(text: currentToken);
+    // Left blank on purpose. Prefilling an obscured field looks empty, which is
+    // why re-entering the token felt mandatory on every visit.
+    final token = TextEditingController();
+    final hasToken = currentToken.isNotEmpty;
+    final consented = ref.read(appSettingsProvider).aiCategorizeConsent;
     await showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -407,12 +411,25 @@ class SettingsScreen extends ConsumerWidget {
                 obscureText: true,
                 autocorrect: false,
                 enableSuggestions: false,
-                decoration: const InputDecoration(labelText: 'Proxy token'),
+                decoration: InputDecoration(
+                  labelText: 'Proxy token',
+                  hintText: hasToken ? 'Saved — leave blank to keep' : null,
+                ),
               ),
             ],
           ),
         ),
         actions: [
+          if (consented)
+            TextButton(
+              onPressed: () async {
+                await ref
+                    .read(appSettingsProvider.notifier)
+                    .setAiCategorizeConsent(false);
+                if (dialogContext.mounted) Navigator.pop(dialogContext);
+              },
+              child: const Text('Ask again'),
+            ),
           if (currentUrl.isNotEmpty)
             TextButton(
               onPressed: () async {
@@ -430,10 +447,14 @@ class SettingsScreen extends ConsumerWidget {
           ElevatedButton(
             onPressed: () async {
               final endpoint = Uri.tryParse(url.text.trim());
+              // Blank means "keep what's saved", so validate whichever token
+              // will actually be persisted.
+              final entered = token.text.trim();
+              final effectiveToken = entered.isEmpty ? currentToken : entered;
               if (endpoint == null ||
                   endpoint.scheme != 'https' ||
                   endpoint.host.isEmpty ||
-                  token.text.trim().length < 16) {
+                  effectiveToken.length < 16) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text(
@@ -445,7 +466,7 @@ class SettingsScreen extends ConsumerWidget {
               }
               await ref
                   .read(appSettingsProvider.notifier)
-                  .updateAiConnection(url.text, token.text);
+                  .updateAiConnection(url.text, effectiveToken);
               if (dialogContext.mounted) Navigator.pop(dialogContext);
             },
             child: const Text('Save'),

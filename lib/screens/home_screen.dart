@@ -12,7 +12,9 @@ import '../models/category.dart';
 import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
+import '../widgets/money_text.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/date_extension.dart';
 import 'pending_screen.dart';
 import 'transactions_screen.dart';
@@ -266,24 +268,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Container(
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                      colors: [
-                        Color(0xFF1565C0),
-                        Color(0xFF1E88E5),
-                        Color(0xFF42A5F5),
-                      ],
+                      colors: [AppColors.primary, AppColors.accent],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
-                    borderRadius: BorderRadius.circular(24),
+                    borderRadius: AppRadius.lgAll,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF1565C0).withValues(alpha: 0.4),
+                        color: AppColors.primary.withValues(alpha: 0.32),
                         blurRadius: 20,
                         offset: const Offset(0, 8),
                       ),
                     ],
                   ),
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -305,13 +303,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 FittedBox(
                                   fit: BoxFit.scaleDown,
                                   alignment: Alignment.centerLeft,
-                                  child: Text(
-                                    '${settings.currency}${NumberFormat('#,##0').format(totalSpent)}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 32,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                                  child: MoneyText(
+                                    totalSpent,
+                                    currency: settings.currency,
+                                    size: AppType.display,
+                                    weight: FontWeight.bold,
+                                    color: Colors.white,
                                   ),
                                 ),
                               ],

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show compute;
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 
@@ -10,6 +11,10 @@ import '../models/category.dart';
 import '../models/expense.dart';
 import '../utils/validation.dart';
 import 'category_classifier.dart';
+
+/// Isolate entry point: must stay top-level and take sendable args only.
+List<List<dynamic>> _decodeCsv(String csvString) =>
+    const CsvDecoder(skipEmptyLines: true).convert(csvString);
 
 class CsvImportResult {
   final List<Expense> imported;
@@ -75,7 +80,7 @@ class CsvImportService {
       );
     }
 
-    return parse(csvString, memoryLookup: memoryLookup);
+    return parseInBackground(csvString, memoryLookup: memoryLookup);
   }
 
   static Future<String?> _readSelectedFile(PlatformFile file) async {
@@ -85,6 +90,26 @@ class CsvImportService {
     final path = file.path;
     if (path == null || path.isEmpty) return null;
     return File(path).readAsString();
+  }
+
+  /// Same as [parse], but the CSV tokenizer — the expensive part on a large
+  /// file — runs in an isolate. Categorization stays on the main thread because
+  /// [memoryLookup] closes over Hive state and cannot cross the boundary.
+  static Future<CsvImportResult> parseInBackground(
+    String csvString, {
+    MerchantCategoryLookup? memoryLookup,
+  }) async {
+    final List<List<dynamic>> rows;
+    try {
+      rows = await compute(_decodeCsv, csvString);
+    } catch (_) {
+      return const CsvImportResult(
+        imported: [],
+        skipped: 0,
+        errors: ['File is not valid CSV.'],
+      );
+    }
+    return _parseRows(rows, memoryLookup: memoryLookup);
   }
 
   /// Parses [csvString] into expenses.
@@ -102,7 +127,7 @@ class CsvImportService {
   }) {
     final List<List<dynamic>> rows;
     try {
-      rows = const CsvDecoder(skipEmptyLines: true).convert(csvString);
+      rows = _decodeCsv(csvString);
     } catch (_) {
       return const CsvImportResult(
         imported: [],
@@ -110,8 +135,13 @@ class CsvImportService {
         errors: ['File is not valid CSV.'],
       );
     }
+    return _parseRows(rows, memoryLookup: memoryLookup);
+  }
 
-    if (rows.length < 2) {
+  static CsvImportResult _parseRows(
+    List<List<dynamic>> rows, {
+    MerchantCategoryLookup? memoryLookup,
+  }) {    if (rows.length < 2) {
       return const CsvImportResult(
         imported: [],
         skipped: 0,

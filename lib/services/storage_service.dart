@@ -70,6 +70,11 @@ class StorageService {
     await expenseBox.put(expense.id, expense);
   }
 
+  /// One box write for a whole import instead of N awaits.
+  Future<void> saveExpenses(Iterable<Expense> expenses) async {
+    await expenseBox.putAll({for (final e in expenses) e.id: e});
+  }
+
   Future<void> deleteExpense(String id) async {
     await expenseBox.delete(id);
   }
