@@ -124,8 +124,9 @@ assert.equal(
   "midnight UTC starts a new quota day",
 );
 
-// Login and signup share one message, so neither reveals whether an address
-// is already registered.
+// Login uses one message for "no such account" and "wrong password", so it
+// cannot be used to discover which addresses are registered. Signup is exempt:
+// it has to tell the user the address is taken or the form is unusable.
 assert.equal(authConstants.credentialsError, "Incorrect email or password.");
 
 console.log("auth_test: ok");

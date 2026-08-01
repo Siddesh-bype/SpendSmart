@@ -5,12 +5,14 @@ import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/daily_goal_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/income_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
+import '../widgets/day_detail_sheet.dart';
 import '../widgets/edit_expense_sheet.dart';
 import '../widgets/money_text.dart';
 import '../widgets/spending_calendar.dart';
@@ -83,6 +85,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final budgets = ref.watch(budgetProvider);
     final notifications = ref.watch(notificationProvider);
     final incomes = ref.watch(incomeProvider);
+    final dailyGoals = ref.watch(dailyGoalProvider);
     final unreadCount = notifications.where((n) => !n.isRead).length;
     final uncategorized = expenses.where((e) => e.isUncategorized).toList();
     final now = DateTime.now();
@@ -438,6 +441,78 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  0,
+                  AppSpacing.lg,
+                  AppSpacing.sm,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _calendarOpen = !_calendarOpen);
+                      },
+                      borderRadius: AppRadius.smAll,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                'This month, day by day',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                            Icon(
+                              _calendarOpen
+                                  ? Icons.expand_less_rounded
+                                  : Icons.expand_more_rounded,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (_calendarOpen)
+                      SpendingCalendar(
+                        month: now,
+                        selectedDay: _selectedDay ?? now,
+                        expenses: monthlyExpenses,
+                        currency: settings.currency,
+                        lastSelectableDay: now,
+                        goals: dailyGoals,
+                        onDaySelected: (day) {
+                          setState(
+                            () => _selectedDay =
+                                _isSameDay(day, _selectedDay) ? null : day,
+                          );
+                          showModalBottomSheet<void>(
+                            context: context,
+                            isScrollControlled: true,
+                            builder: (_) => DayDetailSheet(
+                              day: day,
+                              currency: settings.currency,
+                              expenses: monthlyExpenses
+                                  .where((e) => _isSameDay(e.date, day))
+                                  .toList(),
+                            ),
+                          );
+                        },
+                      ),
+                  ],
+                ),
+              ),
+            ),
+
             if (settings.monthlyBudget > 0 &&
                 totalSpent > settings.monthlyBudget * 0.8)
               SliverToBoxAdapter(
@@ -586,64 +661,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
 
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  0,
-                  AppSpacing.lg,
-                  AppSpacing.sm,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    InkWell(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        setState(() => _calendarOpen = !_calendarOpen);
-                      },
-                      borderRadius: AppRadius.smAll,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                          vertical: AppSpacing.sm,
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                'This month, day by day',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                            ),
-                            Icon(
-                              _calendarOpen
-                                  ? Icons.expand_less_rounded
-                                  : Icons.expand_more_rounded,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    if (_calendarOpen)
-                      SpendingCalendar(
-                        month: now,
-                        selectedDay: _selectedDay ?? now,
-                        expenses: monthlyExpenses,
-                        currency: settings.currency,
-                        lastSelectableDay: now,
-                        onDaySelected: (day) => setState(
-                          () => _selectedDay = _isSameDay(day, _selectedDay)
-                              ? null
-                              : day,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
 
             SliverToBoxAdapter(
               child: Padding(

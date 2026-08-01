@@ -139,9 +139,15 @@ async function signup(request: Request, env: Env): Promise<Response> {
       : null;
 
   const session = await createUser(env, email, password, name);
-  // Null means the address is taken. Reported as the generic credentials
-  // error so signup cannot be used to enumerate registered emails.
-  if (!session) return authError(409, authConstants.credentialsError);
+  // A usable signup form has to say the address is taken -- the generic
+  // credentials error reads as nonsense here, since nothing was "incorrect".
+  // Enumeration protection stays on /auth/login, where it costs nothing.
+  if (!session) {
+    return authError(
+      409,
+      'An account with this email already exists. Sign in instead.',
+    );
+  }
 
   return Response.json(
     { ...session, email: email.trim().toLowerCase(), displayName: name },

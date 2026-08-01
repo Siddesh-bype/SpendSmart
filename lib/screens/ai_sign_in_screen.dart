@@ -63,6 +63,11 @@ class _AiSignInScreenState extends ConsumerState<AiSignInScreen> {
       setState(() {
         _busy = false;
         _error = failure.message;
+        // The address is already registered, so flip to sign-in and keep what
+        // was typed -- the password field is very likely already correct.
+        if (_creatingAccount && failure.message.contains('already exists')) {
+          _creatingAccount = false;
+        }
       });
     } catch (_) {
       if (!mounted) return;
@@ -145,7 +150,6 @@ class _AiSignInScreenState extends ConsumerState<AiSignInScreen> {
                     onFieldSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
                       labelText: 'Password',
-                      errorText: _error,
                       prefixIcon: const Icon(Icons.key_outlined),
                       suffixIcon: IconButton(
                         tooltip: _obscure ? 'Show password' : 'Hide password',
@@ -161,6 +165,28 @@ class _AiSignInScreenState extends ConsumerState<AiSignInScreen> {
                         ? 'Use at least 8 characters'
                         : null,
                   ),
+                  if (_error != null) ...[
+                    const SizedBox(height: AppSpacing.md),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 16,
+                          color: AppColors.error,
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            _error!,
+                            style: theme.textTheme.labelMedium?.copyWith(
+                              color: AppColors.error,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   const SizedBox(height: AppSpacing.xl),
                   FilledButton(
                     onPressed: _busy ? null : _submit,

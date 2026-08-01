@@ -19,6 +19,7 @@ class SpendingCalendar extends StatelessWidget {
     required this.currency,
     required this.onDaySelected,
     this.lastSelectableDay,
+    this.goals = const {},
   });
 
   /// Any date within the month to render. Only year and month are used.
@@ -33,6 +34,10 @@ class SpendingCalendar extends StatelessWidget {
   /// Days after this are shown greyed and are not tappable. Null means the
   /// whole month is selectable.
   final DateTime? lastSelectableDay;
+
+  /// Per-day limits keyed 'YYYY-MM-DD'. Days with one get a marker, and go red
+  /// when spending passes it.
+  final Map<String, double> goals;
 
   static const _cellSpacing = 3.0;
 
@@ -111,13 +116,21 @@ class SpendingCalendar extends StatelessWidget {
     final isFuture =
         lastSelectableDay != null && date.isAfter(lastSelectableDay!);
 
+    final goal = goals[
+        '${date.year.toString().padLeft(4, '0')}-'
+        '${date.month.toString().padLeft(2, '0')}-'
+        '${date.day.toString().padLeft(2, '0')}'];
+    final overGoal = goal != null && spent > goal;
+
     // Floor at 0.10 so any spending is visible, not just near-peak days.
     final intensity = busiest > 0 && spent > 0 ? 0.10 + (spent / busiest) * 0.55 : 0.0;
     final background = isSelected
         ? scheme.primary
-        : spent > 0
-            ? AppColors.accent.withValues(alpha: intensity)
-            : Colors.transparent;
+        : overGoal
+            ? AppColors.error.withValues(alpha: 0.18)
+            : spent > 0
+                ? AppColors.accent.withValues(alpha: intensity)
+                : Colors.transparent;
     final foreground = isSelected
         ? scheme.onPrimary
         : isFuture
@@ -143,30 +156,55 @@ class SpendingCalendar extends StatelessWidget {
             borderRadius: AppRadius.smAll,
             border: isSelected
                 ? null
-                : Border.all(color: scheme.outlineVariant, width: 0.5),
+                : Border.all(
+                    color: overGoal
+                        ? AppColors.error.withValues(alpha: 0.5)
+                        : scheme.outlineVariant,
+                    width: overGoal ? 1 : 0.5,
+                  ),
           ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+          child: Stack(
             children: [
-              Text(
-                '$day',
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: foreground,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                ),
-              ),
-              if (spent > 0)
-                Text(
-                  _compact(spent),
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: TextStyle(
-                    fontSize: AppType.micro,
-                    height: 1.1,
-                    color: foreground,
-                    fontFeatures: AppType.tabular,
+              if (goal != null)
+                Positioned(
+                  top: 3,
+                  right: 3,
+                  child: Icon(
+                    Icons.flag,
+                    size: 8,
+                    color: isSelected
+                        ? scheme.onPrimary
+                        : overGoal
+                            ? AppColors.error
+                            : scheme.onSurfaceVariant,
                   ),
                 ),
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    '$day',
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: foreground,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                  if (spent > 0)
+                    Text(
+                      _compact(spent),
+                      maxLines: 1,
+                      overflow: TextOverflow.clip,
+                      style: TextStyle(
+                        fontSize: AppType.micro,
+                        height: 1.1,
+                        color: foreground,
+                        fontFeatures: AppType.tabular,
+                      ),
+                    ),
+                ],
+              ),
             ],
           ),
         ),

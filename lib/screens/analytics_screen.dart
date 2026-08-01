@@ -40,7 +40,25 @@ class AnalyticsScreen extends ConsumerStatefulWidget {
   ConsumerState<AnalyticsScreen> createState() => _AnalyticsScreenState();
 }
 
-class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
+class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
+    with SingleTickerProviderStateMixin {
+  // Built in initState rather than `late final`: with a lazy initialiser the
+  // empty-state path never touches _tabs, so dispose() would construct a
+  // controller during teardown and look up a deactivated ancestor.
+  late final TabController _tabs;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    super.dispose();
+  }
+
   DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
   DateTime _selectedDay = DateTime.now();
 
@@ -171,11 +189,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
       appBar: AppBar(title: const Text('Analytics')),
       body: monthlyExpenses.isEmpty && sixMonths.every((m) => m.total == 0)
           ? _emptyState()
-          : CustomScrollView(
-              slivers: [
+          : Column(
+              children: [
                 // Month Switcher
-                SliverToBoxAdapter(
-                  child: Padding(
+                Padding(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.sm,
                       vertical: AppSpacing.xs,
@@ -228,8 +245,21 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                       ],
                     ),
                   ),
+                TabBar(
+                  controller: _tabs,
+                  tabs: const [
+                    Tab(text: 'Overview'),
+                    Tab(text: 'Categories'),
+                    Tab(text: 'Trends'),
+                  ],
                 ),
-
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabs,
+                    children: [
+                      CustomScrollView(
+                        key: const PageStorageKey('analytics-overview'),
+                        slivers: [
                 // Total Spent Card
                 SliverToBoxAdapter(
                   child: Padding(
@@ -287,6 +317,140 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
 
                 // Pie Chart
+                // Daily Spending Chart
+                if (monthlyExpenses.isNotEmpty) ...[
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        AppSpacing.lg,
+                        0,
+                      ),
+                      child: const SectionHeader(title: 'Daily Spending'),
+                    ),
+                  ),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(
+                        AppSpacing.lg,
+                        0,
+                        AppSpacing.lg,
+                        AppSpacing.sm,
+                      ),
+                      child: SizedBox(
+                        height: 180,
+                        child: _dailySpendingChart(
+                          monthlyExpenses,
+                          daysInMonth,
+                          settings.currency,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: const SectionHeader(
+                      title: 'Calendar',
+                      subtitle: 'Tap a day to see its breakdown below',
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: SpendingCalendar(
+                      month: _selectedMonth,
+                      selectedDay: _selectedDay,
+                      expenses: monthlyExpenses,
+                      currency: settings.currency,
+                      lastSelectableDay: lastSelectableDay,
+                      onDaySelected: (day) =>
+                          setState(() => _selectedDay = day),
+                    ),
+                  ),
+                ),
+
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                      0,
+                    ),
+                    child: const SectionHeader(title: 'Day by Category'),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.lg,
+                    ),
+                    child: Row(
+                      children: [
+                        IconButton(
+                          tooltip: 'Previous day',
+                          onPressed: canSelectPreviousDay
+                              ? () => _changeDay(-1)
+                              : null,
+                          icon: const Icon(Icons.chevron_left_rounded),
+                        ),
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            onPressed: _pickDay,
+                            icon: const Icon(
+                              Icons.calendar_today_outlined,
+                              size: AppType.headline,
+                            ),
+                            label: Text(
+                              DateFormat('EEE, d MMM').format(_selectedDay),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          tooltip: 'Next day',
+                          onPressed: canSelectNextDay
+                              ? () => _changeDay(1)
+                              : null,
+                          icon: const Icon(Icons.chevron_right_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                      AppSpacing.lg,
+                      AppSpacing.lg,
+                    ),
+                    child: _dailyCategoryCard(dailyCats, settings.currency),
+                  ),
+                ),
+
+                        ],
+                      ),
+                      CustomScrollView(
+                        key: const PageStorageKey('analytics-categories'),
+                        slivers: [
                 if (sortedCats.isNotEmpty) ...[
                   SliverToBoxAdapter(
                     child: Padding(
@@ -457,135 +621,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                   ),
                 ],
 
-                // Daily Spending Chart
-                if (monthlyExpenses.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        0,
+                        ],
                       ),
-                      child: const SectionHeader(title: 'Daily Spending'),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: SizedBox(
-                        height: 180,
-                        child: _dailySpendingChart(
-                          monthlyExpenses,
-                          daysInMonth,
-                          settings.currency,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: const SectionHeader(
-                      title: 'Calendar',
-                      subtitle: 'Tap a day to see its breakdown below',
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: SpendingCalendar(
-                      month: _selectedMonth,
-                      selectedDay: _selectedDay,
-                      expenses: monthlyExpenses,
-                      currency: settings.currency,
-                      lastSelectableDay: lastSelectableDay,
-                      onDaySelected: (day) =>
-                          setState(() => _selectedDay = day),
-                    ),
-                  ),
-                ),
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: const SectionHeader(title: 'Day by Category'),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Previous day',
-                          onPressed: canSelectPreviousDay
-                              ? () => _changeDay(-1)
-                              : null,
-                          icon: const Icon(Icons.chevron_left_rounded),
-                        ),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _pickDay,
-                            icon: const Icon(
-                              Icons.calendar_today_outlined,
-                              size: AppType.headline,
-                            ),
-                            label: Text(
-                              DateFormat('EEE, d MMM').format(_selectedDay),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: 'Next day',
-                          onPressed: canSelectNextDay
-                              ? () => _changeDay(1)
-                              : null,
-                          icon: const Icon(Icons.chevron_right_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                    ),
-                    child: _dailyCategoryCard(dailyCats, settings.currency),
-                  ),
-                ),
-
+                      CustomScrollView(
+                        key: const PageStorageKey('analytics-trends'),
+                        slivers: [
                 // 6-Month Bar Chart
                 SliverToBoxAdapter(
                   child: Padding(
@@ -690,6 +730,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen> {
                         ),
                       ),
                     ),
+                  ),
+                ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
