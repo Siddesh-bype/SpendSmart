@@ -73,6 +73,22 @@ void main() {
     expect(storage.expenses.map((e) => e.title), containsAll(['Coffee', 'Lunch']));
   });
 
+  test('regenerating a recurring occurrence is a no-op', () async {
+    final storage = _FakeStorage();
+    final container = ProviderContainer(
+      overrides: [storageServiceProvider.overrideWithValue(storage)],
+    );
+    addTearDown(container.dispose);
+    final notifier = container.read(expenseProvider.notifier);
+
+    // Deterministic occurrence ids: the same rule and due date twice, as
+    // happens when a generation run is killed between the two writes.
+    final occurrence = _expense('recurring:rent:2026-07-01', 'Rent');
+    expect(await notifier.addMissingById([occurrence]), 1);
+    expect(await notifier.addMissingById([occurrence]), 0);
+    expect(storage.expenses, hasLength(1));
+  });
+
   test('deleting a group also removes its expenses', () async {
     final group = SplitGroup(
       id: 'group',

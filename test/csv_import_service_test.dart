@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsmart/services/csv_import_service.dart';
+import 'package:spendsmart/services/export_service.dart';
 
 void main() {
   test('CSV parser accepts explicit aliases and skips malformed rows', () {
@@ -24,5 +25,23 @@ Update,Paid By,Total
 
     expect(result.imported, isEmpty);
     expect(result.errors.single, contains('Missing required columns'));
+  });
+
+  test('a formula title survives an export/import round trip unchanged', () {
+    const evil = '=1+1';
+    final cell = ExportService.sanitizeCell(evil);
+    expect(cell, "'$evil");
+
+    final result = CsvImportService.parse(
+      'Date,Title,Amount\n2026-07-10,"$cell",100\n',
+    );
+    expect(result.imported.single.title, evil);
+  });
+
+  test('a title that legitimately starts with an apostrophe is preserved', () {
+    final result = CsvImportService.parse(
+      "Date,Title,Amount\n2026-07-10,\"'Tis a shop\",100\n",
+    );
+    expect(result.imported.single.title, "'Tis a shop");
   });
 }

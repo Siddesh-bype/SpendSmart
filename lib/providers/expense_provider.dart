@@ -83,6 +83,20 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
     return fresh.length;
   }
 
+  /// Saves [expenses] whose ids are not already stored, in one pass.
+  ///
+  /// Unlike [importExpenses] this keys on the id alone and never rewrites one:
+  /// callers pass deterministic ids so that re-running a generation is a no-op
+  /// rather than a duplicate.
+  Future<int> addMissingById(List<Expense> expenses) async {
+    final known = state.map((e) => e.id).toSet();
+    final fresh = expenses.where((e) => known.add(e.id)).toList();
+    if (fresh.isEmpty) return 0;
+    await ref.read(storageServiceProvider).saveExpenses(fresh);
+    _loadExpenses();
+    return fresh.length;
+  }
+
   String _expenseKey(Expense e) {
     final day = DateTime(e.date.year, e.date.month, e.date.day);
     return '${e.title.trim().toLowerCase()}|${e.amount.toStringAsFixed(2)}|${day.toIso8601String()}';

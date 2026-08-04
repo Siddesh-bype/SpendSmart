@@ -211,7 +211,7 @@ class CsvImportService {
           continue;
         }
 
-        final title = row[titleIdx].toString().trim();
+        final title = _unescapeCell(row[titleIdx].toString().trim());
         if (title.isEmpty) {
           skipped++;
           errors.add('Row ${i + 1}: empty title');
@@ -254,7 +254,7 @@ class CsvImportService {
             ? row[manIdx].toString().toLowerCase() == 'true'
             : true;
         final note = noteIdx >= 0 && noteIdx < row.length
-            ? row[noteIdx].toString().trim()
+            ? _unescapeCell(row[noteIdx].toString().trim())
             : '';
 
         imported.add(
@@ -282,6 +282,17 @@ class CsvImportService {
       errors: errors,
     );
   }
+
+  /// Undoes [ExportService.sanitizeCell] so a round-trip through our own
+  /// export does not accumulate apostrophes on every pass.
+  static String _unescapeCell(String value) =>
+      value.length > 1 &&
+          value.startsWith("'") &&
+          _formulaStart.hasMatch(value.substring(1))
+      ? value.substring(1)
+      : value;
+
+  static final _formulaStart = RegExp(r'^[=+\-@\t\r]');
 
   /// See [parse] for the resolution order. Returns the category and the
   /// `isUncategorized` flag: only a step-4 fallback leaves a row for the user.
