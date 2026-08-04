@@ -2,7 +2,8 @@
 
 This Worker keeps the OpenRouter API key out of the Android APK, and owns the
 account system that gates AI access. It stores no expense data — the app keeps
-that on-device, encrypted. The only thing in D1 is who may call the AI routes.
+that on-device and never uploads it. The only thing in D1 is who may call the
+AI routes.
 
 ## Routes
 

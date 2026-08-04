@@ -23,9 +23,9 @@ void main() async {
   );
   await prefs.remove('aiSessionToken');
 
-  // Boxes are NOT opened here: when a lock is set up the encryption key is
-  // derived from the password, which does not exist until the user unlocks.
-  // StorageService.init is called from the login/signup screens instead.
+  // Boxes are NOT opened here. Opening them is slow enough to stall the first
+  // frame, so SplashScreen and OnboardingScreen call init() where a spinner is
+  // already on screen and an open failure has somewhere to be reported.
   final storageService = StorageService();
 
   runApp(

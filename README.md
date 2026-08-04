@@ -2,6 +2,8 @@
 
 SpendSmart is a local-first Flutter expense tracker for Android. Financial data stays in Hive storage on the device unless the user explicitly exports or shares a report.
 
+That local storage is not encrypted. The app has no password to derive a key from, so records are protected by Android's per-app sandbox only — a rooted device, a full-device backup, or physical access to an unlocked phone can read them.
+
 ## Features
 
 - Add, edit, delete, search, filter, and categorize expenses.
@@ -14,14 +16,16 @@ SpendSmart is a local-first Flutter expense tracker for Android. Financial data 
 - Export expense reports as PDF or CSV and share them through Android apps.
 - Light, dark, and system themes with reduced-motion support.
 
-SpendSmart does not currently provide accounts, cloud synchronization, automatic SMS monitoring, or cross-device backup.
+SpendSmart does not provide cloud synchronization, automatic SMS monitoring, or
+cross-device backup. An account exists only to unlock the optional AI features;
+it holds no financial data, and the app works fully offline without one.
 
 ## Optional AI Review
 
-The Android app never contains an OpenRouter key. Deploy the Worker in
-`cloudflare/ai-analysis-worker`, set its `OPENROUTER_API_KEY` and
-`APP_PROXY_TOKEN` as Cloudflare secrets, then enter the Worker URL and proxy token
-in Settings. You deploy and own that Worker.
+The Android app never contains an OpenRouter key. It ships with the public URL of
+the Worker in `cloudflare/ai-analysis-worker`, which holds the key as a Cloudflare
+secret. Sign in from Settings to unlock the AI features; the session token is kept
+in the Android Keystore and is capped by a per-account daily quota.
 
 Two actions can send data to it. Both are opt-in: each runs only when you tap it,
 never automatically and never in the background. They send different data.

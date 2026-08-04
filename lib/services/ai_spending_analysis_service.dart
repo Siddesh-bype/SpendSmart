@@ -123,7 +123,7 @@ class AiSpendingAnalysisService {
       throw const FormatException('An HTTPS Worker URL is required.');
     }
     if (proxyToken.trim().length < 16) {
-      throw const FormatException('A valid proxy token is required.');
+      throw const FormatException('A valid session token is required.');
     }
 
     final client = HttpClient();

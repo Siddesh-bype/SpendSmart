@@ -1,7 +1,7 @@
 -- SpendSmart AI access accounts.
 --
 -- This database exists only to decide who may call the AI routes. No expense
--- data is stored here: the app keeps that on-device, encrypted.
+-- data is stored here: the app keeps that on-device and never uploads it.
 --
 -- This migration reproduces the schema that is ALREADY live (it is the former
 -- schema.sql verbatim). Every statement is IF NOT EXISTS, so applying it to

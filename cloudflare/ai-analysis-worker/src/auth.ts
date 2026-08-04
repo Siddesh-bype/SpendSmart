@@ -1,7 +1,7 @@
 /// Account handling for AI access.
 ///
 /// This module decides *who* may call the AI routes. It stores no expense
-/// data -- the app keeps that on-device, encrypted.
+/// data -- the app keeps that on-device and never uploads it.
 
 export interface AuthEnv {
   DB: D1Database;

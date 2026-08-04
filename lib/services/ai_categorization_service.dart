@@ -101,7 +101,7 @@ class AiCategorizationService {
       throw const FormatException('An HTTPS Worker URL is required.');
     }
     if (proxyToken.trim().length < 16) {
-      throw const FormatException('A valid proxy token is required.');
+      throw const FormatException('A valid session token is required.');
     }
     if (merchants.isEmpty || merchants.length > _maxBatchSize) {
       throw const FormatException('A batch of 1-50 merchants is required.');
