@@ -7,11 +7,10 @@ import '../providers/merchant_memory_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../services/ai_categorization_service.dart';
+import '../services/ai_failure.dart';
 import '../utils/constants.dart';
 
-const _aiFailureMessage =
-    'AI categorization is unavailable. '
-    'Check the Worker URL and proxy token in Settings.';
+const _aiFailureMessage = 'AI is unavailable right now. Try again.';
 
 String _plural(int count, String word) => '$count $word${count == 1 ? '' : 's'}';
 
@@ -100,7 +99,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
     // Keyed by lowercased merchant so one suggestion fans out to every pending
     // expense sharing that merchant -- buildBatches deduped them on the way out.
     final learned = <String, Category>{};
-    var failed = false;
+    AiFailureException? failure;
     try {
       final endpoint = AiCategorizationService.categorizeEndpoint(workerUrl);
       for (final batch in batches) {
@@ -115,9 +114,14 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
           }
         }
       }
-    } catch (_) {
+    } on AiFailureException catch (e) {
       // Batches already collected still get applied below.
-      failed = true;
+      failure = e;
+    } catch (_) {
+      failure = const AiFailureException(
+        AiFailure.unknown,
+        'AI is unavailable right now. Try again.',
+      );
     }
 
     var applied = 0;
@@ -131,7 +135,10 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
         applied++;
       }
     } catch (_) {
-      failed = true;
+      failure ??= const AiFailureException(
+        AiFailure.unknown,
+        'Some categories could not be saved.',
+      );
     }
 
     if (!mounted) return;
@@ -140,11 +147,11 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          failed && applied == 0
-              ? _aiFailureMessage
+          failure != null && applied == 0
+              ? failure.message
               : 'Categorized $applied of ${pending.length}'
                     '${remaining == 0 ? '.' : ' — $remaining still need review.'}'
-                    '${failed ? ' The connection failed partway through.' : ''}',
+                    '${failure != null ? ' ${failure.message}' : ''}',
         ),
       ),
     );

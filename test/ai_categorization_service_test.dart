@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:spendsmart/models/category.dart';
 import 'package:spendsmart/services/ai_categorization_service.dart';
+import 'package:spendsmart/services/ai_failure.dart';
 
 void main() {
   group('parseResponse', () {
@@ -334,6 +335,27 @@ void main() {
         ),
         throwsFormatException,
       );
+    });
+  });
+
+  group('AiFailureException.fromStatus', () {
+    test('separates the states the user can act on', () {
+      // 401/403 must not read as "the service is down": the fix is signing in.
+      expect(AiFailureException.fromStatus(401).failure, AiFailure.signedOut);
+      expect(AiFailureException.fromStatus(403).failure, AiFailure.signedOut);
+      expect(
+        AiFailureException.fromStatus(429).failure,
+        AiFailure.quotaExhausted,
+      );
+      expect(AiFailureException.fromStatus(500).failure, AiFailure.serverError);
+      expect(AiFailureException.fromStatus(503).failure, AiFailure.serverError);
+      expect(AiFailureException.fromStatus(418).failure, AiFailure.unknown);
+    });
+
+    test('every message tells the user what to do next', () {
+      for (final status in [401, 429, 500, 418]) {
+        expect(AiFailureException.fromStatus(status).message, isNotEmpty);
+      }
     });
   });
 }

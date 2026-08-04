@@ -5,6 +5,7 @@ import 'dart:io';
 import '../models/category.dart';
 import '../models/expense.dart';
 import '../utils/financial_period.dart';
+import 'ai_failure.dart';
 
 class AiSpendingInsight {
   const AiSpendingInsight({
@@ -137,11 +138,14 @@ class AiSpendingAnalysisService {
       final response = await call.close().timeout(const Duration(seconds: 20));
       final body = await _readBounded(response);
       if (response.statusCode != HttpStatus.ok) {
-        throw const HttpException('AI analysis is temporarily unavailable.');
+        throw AiFailureException.fromStatus(response.statusCode);
       }
       return parseResponse(body);
     } on TimeoutException {
-      throw const HttpException('AI analysis timed out.');
+      throw const AiFailureException(
+        AiFailure.serverError,
+        'AI analysis timed out. Try again.',
+      );
     } finally {
       client.close(force: true);
     }

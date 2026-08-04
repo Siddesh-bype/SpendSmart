@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../models/category.dart';
+import 'ai_failure.dart';
 
 class MerchantSuggestion {
   const MerchantSuggestion({
@@ -118,11 +119,14 @@ class AiCategorizationService {
       final response = await call.close().timeout(const Duration(seconds: 20));
       final body = await _readBounded(response);
       if (response.statusCode != HttpStatus.ok) {
-        throw const HttpException('AI categorization is unavailable.');
+        throw AiFailureException.fromStatus(response.statusCode);
       }
       return parseResponse(body);
     } on TimeoutException {
-      throw const HttpException('AI categorization timed out.');
+      throw const AiFailureException(
+        AiFailure.serverError,
+        'AI categorization timed out. Try again.',
+      );
     } finally {
       client.close(force: true);
     }

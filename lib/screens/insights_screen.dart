@@ -8,6 +8,7 @@ import '../providers/budget_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
+import '../services/ai_failure.dart';
 import '../services/ai_spending_analysis_service.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../utils/constants.dart';
@@ -15,6 +16,7 @@ import '../utils/design.dart';
 import '../utils/financial_period.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
+import 'ai_sign_in_screen.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -628,14 +630,22 @@ class _AiReviewCard extends StatefulWidget {
 class _AiReviewCardState extends State<_AiReviewCard> {
   AiSpendingAnalysis? _analysis;
   bool _loading = false;
-  bool _failed = false;
   bool _offline = false;
+
+  /// Non-null when the last attempt failed for a reason the user can act on.
+  AiFailureException? _failure;
+
   bool _hasSufficientHistory = false;
 
   Future<void> _analyze() async {
     final endpoint = Uri.tryParse(widget.workerUrl);
     if (endpoint == null) {
-      setState(() => _failed = true);
+      setState(
+        () => _failure = const AiFailureException(
+          AiFailure.unknown,
+          'AI is unavailable right now. Try again.',
+        ),
+      );
       return;
     }
     final request = AiSpendingAnalysisService.buildRequest(
@@ -650,7 +660,7 @@ class _AiReviewCardState extends State<_AiReviewCard> {
     );
     setState(() {
       _loading = true;
-      _failed = false;
+      _failure = null;
       _offline = false;
     });
     try {
@@ -669,8 +679,17 @@ class _AiReviewCardState extends State<_AiReviewCard> {
       // No route to the Worker. Not a misconfiguration -- don't send the user
       // to Settings to "fix" credentials that are fine.
       if (mounted) setState(() => _offline = true);
+    } on AiFailureException catch (e) {
+      if (mounted) setState(() => _failure = e);
     } catch (_) {
-      if (mounted) setState(() => _failed = true);
+      if (mounted) {
+        setState(
+          () => _failure = const AiFailureException(
+            AiFailure.unknown,
+            'AI is unavailable right now. Try again.',
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -703,7 +722,7 @@ class _AiReviewCardState extends State<_AiReviewCard> {
             Text(
               configured
                   ? 'Sends category totals and your budget only. Nothing is saved automatically.'
-                  : 'Configure your Cloudflare Worker in Settings to enable private AI analysis.',
+                  : 'Sign in from Settings to enable AI analysis.',
               style: Theme.of(context).textTheme.labelMedium,
             ),
             if (configured) ...[
@@ -734,14 +753,28 @@ class _AiReviewCardState extends State<_AiReviewCard> {
                 style: Theme.of(context).textTheme.labelMedium,
               ),
             ],
-            if (_failed) ...[
+            if (_failure != null) ...[
               const SizedBox(height: AppSpacing.md),
               Text(
-                'AI analysis is unavailable. Check the Worker URL and proxy token, then try again.',
+                _failure!.message,
                 style: Theme.of(
                   context,
                 ).textTheme.labelMedium?.copyWith(color: AppColors.error),
               ),
+              if (_failure!.failure == AiFailure.signedOut) ...[
+                const SizedBox(height: AppSpacing.xs),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: TextButton(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const AiSignInScreen(),
+                      ),
+                    ),
+                    child: const Text('Sign in'),
+                  ),
+                ),
+              ],
             ],
             if (_analysis != null) ...[
               const SizedBox(height: AppSpacing.lg),
