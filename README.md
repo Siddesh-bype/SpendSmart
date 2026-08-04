@@ -46,6 +46,12 @@ never automatically and never in the background. They send different data.
 - Flutter SDK compatible with Dart `3.10.7` or newer.
 - Android SDK with API 36 installed.
 
+Android is the only supported target. The `web/`, `windows/`, `linux/`, `macos/`
+and `ios/` directories are Flutter's default scaffolding and are not built or
+tested. In particular the Worker sends no CORS headers, so a browser build
+cannot reach the AI routes — adding CORS would mean opening the endpoints to
+arbitrary origins for a target nobody ships.
+
 ## Development
 
 ```powershell
