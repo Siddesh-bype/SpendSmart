@@ -4,7 +4,7 @@ import 'dart:io';
 
 import '../models/category.dart';
 import '../models/expense.dart';
-import '../utils/date_extension.dart';
+import '../utils/financial_period.dart';
 
 class AiSpendingInsight {
   const AiSpendingInsight({
@@ -69,28 +69,14 @@ class AiSpendingAnalysisService {
     DateTime? now,
   }) {
     final date = now ?? DateTime.now();
-    final periodStart = _periodStart(date, startingDayOfMonth);
-    final periodEnd = DateTime(
-      periodStart.year,
-      periodStart.month + 1,
-      startingDayOfMonth,
-    ).subtract(const Duration(days: 1));
-    final today = DateTime(date.year, date.month, date.day);
-    final totalDays = periodEnd.difference(periodStart).inDays + 1;
-    final daysElapsed = today.difference(periodStart).inDays + 1;
+    final period = FinancialPeriod.containing(date, startingDayOfMonth);
+    final totalDays = period.totalDays;
+    final daysElapsed = period.daysElapsed(date);
 
-    final currentMonth = _monthSummary(
-      expenses,
-      periodStart,
-      startingDayOfMonth,
-    );
+    final currentMonth = _monthSummary(expenses, period);
     final history = List.generate(
       3,
-      (index) => _monthSummary(
-        expenses,
-        DateTime(periodStart.year, periodStart.month - index - 1),
-        startingDayOfMonth,
-      ),
+      (index) => _monthSummary(expenses, period.shifted(-index - 1)),
     );
 
     return {
@@ -106,25 +92,13 @@ class AiSpendingAnalysisService {
     };
   }
 
-  static DateTime _periodStart(DateTime date, int startingDayOfMonth) {
-    return date.day >= startingDayOfMonth
-        ? DateTime(date.year, date.month, startingDayOfMonth)
-        : DateTime(date.year, date.month - 1, startingDayOfMonth);
-  }
-
   static Map<String, dynamic> _monthSummary(
     Iterable<Expense> expenses,
-    DateTime month,
-    int startingDayOfMonth,
+    FinancialPeriod period,
   ) {
     final totals = <String, double>{};
     for (final expense in expenses) {
-      if (expense.isUncategorized ||
-          !expense.date.isTargetCustomMonth(
-            month.month,
-            month.year,
-            startingDayOfMonth,
-          )) {
+      if (expense.isUncategorized || !period.contains(expense.date)) {
         continue;
       }
       final name = expense.category.displayName;

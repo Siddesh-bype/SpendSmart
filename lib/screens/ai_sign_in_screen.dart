@@ -55,7 +55,7 @@ class _AiSignInScreenState extends ConsumerState<AiSignInScreen> {
             );
       await ref
           .read(appSettingsProvider.notifier)
-          .setAiSession(account.token, account.email);
+          .setAiSession(account.token, account.email, account.expiresAt);
       if (!mounted) return;
       Navigator.of(context).pop(true);
     } on AuthFailure catch (failure) {

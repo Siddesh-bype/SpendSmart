@@ -8,8 +8,8 @@ import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
 import '../utils/constants.dart';
-import '../utils/date_extension.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 import '../widgets/glass_container.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
@@ -104,26 +104,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     final settings = ref.watch(appSettingsProvider);
     final now = DateTime.now();
 
+    // _selectedMonth names which period to show, so it resolves through
+    // startingIn rather than containing.
+    final period = FinancialPeriod.startingIn(
+      _selectedMonth.year,
+      _selectedMonth.month,
+      settings.startingDayOfMonth,
+    );
+    final currentPeriod = FinancialPeriod.containing(
+      now,
+      settings.startingDayOfMonth,
+    );
+
     final monthlyExpenses = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            _selectedMonth.month,
-            _selectedMonth.year,
-            settings.startingDayOfMonth,
-          ),
-        )
+        .where((e) => period.contains(e.date))
         .toList();
 
-    // Previous month for MoM comparison
-    final prevMonth = DateTime(_selectedMonth.year, _selectedMonth.month - 1);
+    final previousPeriod = period.previous;
     final prevExpenses = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            prevMonth.month,
-            prevMonth.year,
-            settings.startingDayOfMonth,
-          ),
-        )
+        .where((e) => previousPeriod.contains(e.date))
         .toList();
 
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
@@ -131,18 +130,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     final momChange = prevTotal > 0
         ? ((totalSpent - prevTotal) / prevTotal * 100)
         : 0.0;
-    final isCurrentMonth =
-        _selectedMonth.month == now.month && _selectedMonth.year == now.year;
-    final firstSelectableDay = DateTime(
-      _selectedMonth.year,
-      _selectedMonth.month,
-    );
-    final monthLastDay = DateTime(
-      _selectedMonth.year,
-      _selectedMonth.month + 1,
-      0,
-    );
-    final lastSelectableDay = isCurrentMonth ? now : monthLastDay;
+    final isCurrentMonth = period == currentPeriod;
+    // The calendar and day picker walk the period, not the calendar month, so
+    // the days shown are the days the totals above are made of.
+    final firstSelectableDay = period.start;
+    final lastSelectableDay = isCurrentMonth
+        ? now
+        : period.endExclusive.subtract(const Duration(days: 1));
     final canSelectPreviousDay = _selectedDay.isAfter(firstSelectableDay);
     final canSelectNextDay = _selectedDay.isBefore(lastSelectableDay);
 
@@ -160,29 +154,25 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
 
     // 6-month bar data — keep list so index maps to DateTime for tap
     final sixMonths = List.generate(6, (i) {
-      final m = DateTime(now.year, now.month - (5 - i));
+      final bucket = currentPeriod.shifted(i - 5);
       final total = expenses
-          .where(
-            (e) => e.date.isTargetCustomMonth(
-              m.month,
-              m.year,
-              settings.startingDayOfMonth,
-            ),
-          )
+          .where((e) => bucket.contains(e.date))
           .fold(0.0, (a, b) => a + b.amount);
-      return (month: m, label: DateFormat('MMM').format(m), total: total);
+      return (
+        month: bucket.start,
+        label: DateFormat('MMM').format(bucket.start),
+        total: total,
+      );
     });
 
     // Biggest single expense this month
     final biggestExpense = monthlyExpenses.isNotEmpty
         ? monthlyExpenses.reduce((a, b) => a.amount > b.amount ? a : b)
         : null;
-    final daysInMonth = DateTime(
-      _selectedMonth.year,
-      _selectedMonth.month + 1,
-      0,
-    ).day;
-    final daysElapsed = isCurrentMonth ? now.day : daysInMonth;
+    // Averaged over the period's own days, not the calendar month's.
+    final daysElapsed = isCurrentMonth
+        ? period.daysElapsed(now)
+        : period.totalDays;
     final dailyAvg = daysElapsed > 0 ? totalSpent / daysElapsed : 0.0;
 
     return Scaffold(
@@ -342,7 +332,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                         height: 180,
                         child: _dailySpendingChart(
                           monthlyExpenses,
-                          daysInMonth,
+                          period,
                           settings.currency,
                         ),
                       ),
@@ -373,7 +363,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                       0,
                     ),
                     child: SpendingCalendar(
-                      month: _selectedMonth,
+                      period: period,
                       selectedDay: _selectedDay,
                       expenses: monthlyExpenses,
                       currency: settings.currency,
@@ -836,17 +826,34 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     );
   }
 
-  Widget _dailySpendingChart(List expenses, int daysInMonth, String currency) {
-    final dailySpending = List<double>.filled(daysInMonth, 0);
+  /// One point per day of [period].
+  ///
+  /// Bins by offset from the period start, not by day-of-month: a custom cycle
+  /// spans two calendar months, so day-of-month binning stacked July 15 and
+  /// August 15 onto the same bar.
+  Widget _dailySpendingChart(
+    List expenses,
+    FinancialPeriod period,
+    String currency,
+  ) {
+    final totalDays = period.totalDays;
+    final startDay = DateTime(
+      period.start.year,
+      period.start.month,
+      period.start.day,
+    );
+    final dailySpending = List<double>.filled(totalDays, 0);
     for (final e in expenses) {
-      final day = e.date.day - 1;
-      if (day >= 0 && day < daysInMonth) {
+      final day = DateTime(e.date.year, e.date.month, e.date.day)
+          .difference(startDay)
+          .inDays;
+      if (day >= 0 && day < totalDays) {
         dailySpending[day] += e.amount;
       }
     }
 
     final spots = <FlSpot>[];
-    for (int i = 0; i < daysInMonth; i++) {
+    for (int i = 0; i < totalDays; i++) {
       spots.add(FlSpot(i.toDouble(), dailySpending[i]));
     }
 
@@ -871,11 +878,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
               sideTitles: SideTitles(
                 showTitles: true,
                 reservedSize: 22,
-                interval: (daysInMonth / 7).ceilToDouble(),
+                interval: (totalDays / 7).ceilToDouble(),
                 getTitlesWidget: (value, meta) {
-                  final day = value.toInt() + 1;
-                  if (day <= daysInMonth &&
-                      day % ((daysInMonth / 7).ceil()) == 1) {
+                  final offset = value.toInt();
+                  if (offset >= 0 &&
+                      offset < totalDays &&
+                      offset % (totalDays / 7).ceil() == 0) {
+                    // Label with the calendar day, which is what the user
+                    // recognises; the axis itself is an offset into the period.
+                    final day = startDay.add(Duration(days: offset)).day;
                     return Padding(
                       padding: const EdgeInsets.only(top: AppSpacing.xs),
                       child: Text('$day', style: _axisLabelStyle(context)),

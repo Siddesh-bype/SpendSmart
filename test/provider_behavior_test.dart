@@ -50,6 +50,29 @@ void main() {
     },
   );
 
+  test('an imported id that collides with a stored one is regenerated', () async {
+    final existing = _expense('shared-id', 'Coffee');
+    final storage = _FakeStorage(expenses: [existing]);
+    final container = ProviderContainer(
+      overrides: [storageServiceProvider.overrideWithValue(storage)],
+    );
+    addTearDown(container.dispose);
+
+    // Same id, different content: a hand-edited or re-exported CSV. Storage is
+    // keyed by id, so without the guard this overwrites the coffee expense.
+    final inserted = await container
+        .read(expenseProvider.notifier)
+        .importExpenses([_expense('shared-id', 'Lunch')]);
+
+    expect(inserted, 1);
+    expect(storage.expenses.length, 2);
+    expect(
+      storage.expenses.singleWhere((e) => e.id == 'shared-id').title,
+      'Coffee',
+    );
+    expect(storage.expenses.map((e) => e.title), containsAll(['Coffee', 'Lunch']));
+  });
+
   test('deleting a group also removes its expenses', () async {
     final group = SplitGroup(
       id: 'group',
@@ -116,6 +139,39 @@ void main() {
       expect(container.read(notificationProvider), hasLength(2));
     },
   );
+
+  test('an expired AI session is not treated as access', () async {
+    SharedPreferences.setMockInitialValues({
+      'aiAccountEmail': 'user@example.com',
+      'aiSessionExpiresAt': DateTime.now()
+          .subtract(const Duration(days: 1))
+          .millisecondsSinceEpoch,
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        initialSessionTokenProvider.overrideWithValue('stale-token'),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(appSettingsProvider).hasAiAccess, isFalse);
+  });
+
+  test('a session with no expiry is trusted until the server says otherwise', () async {
+    SharedPreferences.setMockInitialValues({'aiSessionExpiresAt': 0});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(prefs),
+        initialSessionTokenProvider.overrideWithValue('live-token'),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    expect(container.read(appSettingsProvider).hasAiAccess, isTrue);
+  });
 }
 
 class _FakeStorage extends StorageService {

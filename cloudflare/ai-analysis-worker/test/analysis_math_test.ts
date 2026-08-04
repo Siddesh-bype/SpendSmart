@@ -41,3 +41,5 @@ assert.deepEqual(
   analysisMath.calculateAnomalies({ ...input, history: [input.history[0], input.history[1], { total: 0, categories: {} }] }),
   [],
 );
+
+console.log("analysis_math_test: ok");

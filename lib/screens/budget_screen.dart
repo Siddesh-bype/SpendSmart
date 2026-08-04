@@ -7,8 +7,8 @@ import '../models/budget.dart';
 import '../models/category.dart';
 import '../widgets/money_text.dart';
 import '../utils/constants.dart';
-import '../utils/date_extension.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 import '../utils/validation.dart';
 
 class BudgetScreen extends ConsumerWidget {
@@ -22,15 +22,12 @@ class BudgetScreen extends ConsumerWidget {
         .where((e) => !e.isUncategorized)
         .toList();
     final settings = ref.watch(appSettingsProvider);
-    final now = DateTime.now();
+    final period = FinancialPeriod.containing(
+      DateTime.now(),
+      settings.startingDayOfMonth,
+    );
     final monthlyExpenses = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            now.month,
-            now.year,
-            settings.startingDayOfMonth,
-          ),
-        )
+        .where((e) => period.contains(e.date))
         .toList();
 
     return Scaffold(

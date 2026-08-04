@@ -7,7 +7,7 @@ import '../providers/spending_goal_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
-import '../utils/date_extension.dart';
+import '../utils/financial_period.dart';
 import '../utils/validation.dart';
 
 class SpendingGoalsScreen extends ConsumerStatefulWidget {
@@ -36,14 +36,9 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
         .where((e) => !e.isUncategorized)
         .toList();
     final now = DateTime.now();
+    final period = FinancialPeriod.containing(now, settings.startingDayOfMonth);
     final monthlyExpenses = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            now.month,
-            now.year,
-            settings.startingDayOfMonth,
-          ),
-        )
+        .where((e) => period.contains(e.date))
         .toList();
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
 

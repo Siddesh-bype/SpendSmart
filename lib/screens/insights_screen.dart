@@ -11,8 +11,8 @@ import '../models/expense.dart';
 import '../services/ai_spending_analysis_service.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../utils/constants.dart';
-import '../utils/date_extension.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
 
@@ -29,26 +29,13 @@ class InsightsScreen extends ConsumerWidget {
     final budgets = ref.watch(budgetProvider);
     final settings = ref.watch(appSettingsProvider);
     final now = DateTime.now();
+    final period = FinancialPeriod.containing(now, settings.startingDayOfMonth);
 
-    final thisMonth = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            now.month,
-            now.year,
-            settings.startingDayOfMonth,
-          ),
-        )
-        .toList();
+    final thisMonth = expenses.where((e) => period.contains(e.date)).toList();
 
-    final lmDate = DateTime(now.year, now.month - 1);
+    final previous = period.previous;
     final lastMonth = expenses
-        .where(
-          (e) => e.date.isTargetCustomMonth(
-            lmDate.month,
-            lmDate.year,
-            settings.startingDayOfMonth,
-          ),
-        )
+        .where((e) => previous.contains(e.date))
         .toList();
 
     final thisTotal = thisMonth.fold(0.0, (a, b) => a + b.amount);

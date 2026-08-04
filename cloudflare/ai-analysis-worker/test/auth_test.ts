@@ -129,4 +129,26 @@ assert.equal(
 // it has to tell the user the address is taken or the form is unusable.
 assert.equal(authConstants.credentialsError, "Incorrect email or password.");
 
+// --- throttle and retention bounds ---
+
+// The email bound must be the tighter one: an IP is shared by households,
+// offices, and carrier NAT, so a strict IP bound locks out innocents, while
+// the email bound is what actually stops a run against one account.
+assert.ok(
+  authConstants.authEmailAttemptsPerWindow < authConstants.authIpAttemptsPerWindow,
+  "the per-email bound must be tighter than the per-IP bound",
+);
+assert.ok(
+  authConstants.authEmailAttemptsPerWindow >= 3,
+  "fewer than a few tries locks out a user who fat-fingers their password",
+);
+assert.ok(
+  authConstants.authWindowSeconds <= 300,
+  "a long window turns a typo into a long lockout",
+);
+assert.ok(
+  authConstants.usageRetentionDays >= authConstants.sessionDays,
+  "usage must outlive the sessions that produced it, or audit trails vanish first",
+);
+
 console.log("auth_test: ok");

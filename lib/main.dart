@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'providers/app_settings_provider.dart';
 import 'providers/service_provider.dart';
 import 'screens/splash_screen.dart';
+import 'services/session_store.dart';
 import 'services/storage_service.dart';
 import 'utils/globals.dart';
 import 'utils/theme.dart';
@@ -13,6 +14,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   final prefs = await SharedPreferences.getInstance();
+  // The session token lives in the keystore, but AppSettingsNotifier.build is
+  // synchronous, so it is read here and injected.
+  const sessionStore = SessionStore();
+  final sessionToken = await sessionStore.loadMigrating(
+    prefs.getString('aiSessionToken'),
+    expiresAt: prefs.getInt('aiSessionExpiresAt') ?? 0,
+  );
+  await prefs.remove('aiSessionToken');
+
   // Boxes are NOT opened here: when a lock is set up the encryption key is
   // derived from the password, which does not exist until the user unlocks.
   // StorageService.init is called from the login/signup screens instead.
@@ -22,6 +32,8 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(prefs),
+        sessionStoreProvider.overrideWithValue(sessionStore),
+        initialSessionTokenProvider.overrideWithValue(sessionToken),
         storageServiceProvider.overrideWithValue(storageService),
       ],
       child: const SpendSmartApp(),

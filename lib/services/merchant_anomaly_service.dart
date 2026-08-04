@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import '../models/expense.dart';
-import '../utils/date_extension.dart';
+import '../utils/financial_period.dart';
 import 'category_classifier.dart';
 
 class MerchantAnomaly {
@@ -54,27 +54,17 @@ class MerchantAnomalyService {
     DateTime? now,
   }) {
     final date = now ?? DateTime.now();
-    final periodStart = _periodStart(date, startingDayOfMonth);
-    final periodEnd = DateTime(
-      periodStart.year,
-      periodStart.month + 1,
-      startingDayOfMonth,
-    ).subtract(const Duration(days: 1));
-    final today = DateTime(date.year, date.month, date.day);
-    final totalDays = periodEnd.difference(periodStart).inDays + 1;
-    final daysElapsed = today.difference(periodStart).inDays + 1;
+    final period = FinancialPeriod.containing(date, startingDayOfMonth);
+    final totalDays = period.totalDays;
+    final daysElapsed = period.daysElapsed(date);
     if (totalDays <= 0 || daysElapsed <= 0) return const [];
 
-    final current = _monthTotals(expenses, periodStart, startingDayOfMonth);
+    final current = _monthTotals(expenses, period);
     if (current.amounts.isEmpty) return const [];
 
     final history = List.generate(
       _historyMonths,
-      (index) => _monthTotals(
-        expenses,
-        DateTime(periodStart.year, periodStart.month - index - 1),
-        startingDayOfMonth,
-      ),
+      (index) => _monthTotals(expenses, period.shifted(-index - 1)),
     );
     if (history.any((month) => month.total <= 0)) return const [];
 
@@ -115,18 +105,11 @@ class MerchantAnomalyService {
     return anomalies.take(_maxResults).toList(growable: false);
   }
 
-  static DateTime _periodStart(DateTime date, int startingDayOfMonth) {
-    return date.day >= startingDayOfMonth
-        ? DateTime(date.year, date.month, startingDayOfMonth)
-        : DateTime(date.year, date.month - 1, startingDayOfMonth);
-  }
-
-  /// Merchant totals for one custom month, excluding uncategorized expenses the
+  /// Merchant totals for one period, excluding uncategorized expenses the
   /// way `AiSpendingAnalysisService._monthSummary` does.
   static _MonthTotals _monthTotals(
     Iterable<Expense> expenses,
-    DateTime month,
-    int startingDayOfMonth,
+    FinancialPeriod period,
   ) {
     final amounts = <String, double>{};
     final titles = <String, String>{};
@@ -135,11 +118,7 @@ class MerchantAnomalyService {
       if (expense.isUncategorized ||
           !expense.amount.isFinite ||
           expense.amount <= 0 ||
-          !expense.date.isTargetCustomMonth(
-            month.month,
-            month.year,
-            startingDayOfMonth,
-          )) {
+          !period.contains(expense.date)) {
         continue;
       }
       final key = CategoryClassifier.normalizeMerchant(expense.title);

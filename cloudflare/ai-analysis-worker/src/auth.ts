@@ -19,6 +19,17 @@ const defaultDailyLimit = 50;
 const maxEmailLength = 254;
 const minPasswordLength = 8;
 const maxPasswordLength = 200;
+/// Usage rows are kept long enough to answer "why was I charged" and to spot
+/// abuse, then dropped. Nothing downstream reads a row older than today.
+const usageRetentionDays = 90;
+/// Throttle window for the unauthenticated auth routes. Short on purpose: it
+/// blunts a flood without locking a real user out for long after a typo.
+const authWindowSeconds = 60;
+/// Per-window ceilings. The IP bound is looser because a household, an office,
+/// or a carrier NAT shares one address; the email bound is what actually stops
+/// a password-guessing run against a single account.
+const authIpAttemptsPerWindow = 20;
+const authEmailAttemptsPerWindow = 6;
 
 /// Deliberately identical for "no such account" and "wrong password". A
 /// distinct message would let anyone enumerate which emails are registered.
@@ -88,6 +99,26 @@ export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+/// True only for a real UNIQUE-constraint rejection. D1 surfaces the SQLite
+/// message verbatim ("UNIQUE constraint failed: users.email"), sometimes
+/// wrapped in "D1_ERROR: ...". Everything else -- missing table, unbound
+/// binding, D1 outage -- must NOT be reported as a duplicate email.
+function isUniqueViolation(exception: unknown): boolean {
+  const message = exception instanceof Error ? exception.message : String(exception);
+  return /UNIQUE constraint failed/i.test(message);
+}
+
+/// Thrown when the database itself is unreachable or broken, so the route can
+/// answer 503 rather than inventing a reason the request failed.
+export class StorageError extends Error {
+  constructor(operation: string) {
+    super(`storage unavailable: ${operation}`);
+    this.name = "StorageError";
+  }
+}
+
+/// Returns null only when the email is already registered. Any other database
+/// failure throws StorageError.
 export async function createUser(
   env: AuthEnv,
   email: string,
@@ -106,11 +137,13 @@ export async function createUser(
     )
       .bind(id, normalizeEmail(email), hash, salt, displayName, now)
       .run();
-  } catch {
-    // UNIQUE violation: the address is taken. Reported to the caller as the
-    // same generic failure as a bad password, so signup cannot be used to
-    // discover which emails exist.
-    return null;
+  } catch (exception) {
+    if (isUniqueViolation(exception)) return null;
+    // The signup route turns null into a specific "email already taken"
+    // message -- deliberately, because a signup form that will not say the
+    // address is taken is unusable. So every other failure has to be a
+    // different signal, or an outage masquerades as a duplicate account.
+    throw new StorageError("createUser");
   }
 
   return issueSession(env, id);
@@ -198,28 +231,43 @@ export function utcDay(now: number = Date.now()): string {
 /// Increments today's counter and reports whether the call is allowed.
 ///
 /// Increment-then-check, so a burst of concurrent requests cannot each read a
-/// stale count and collectively overshoot the limit.
+/// stale count and collectively overshoot the limit. The `WHERE calls < limit`
+/// guard stops the counter at the ceiling, so a client that keeps hammering a
+/// spent quota cannot push `/auth/me` above the limit it reports. `RETURNING`
+/// gives the new value from the same statement; a follow-up SELECT would be a
+/// second round trip that could read a value another request had moved.
 export async function consumeQuota(
   env: AuthEnv,
   userId: string,
   limit: number = defaultDailyLimit,
 ): Promise<{ allowed: boolean; calls: number; limit: number }> {
-  const day = utcDay();
-  await env.DB.prepare(
-    `INSERT INTO usage (user_id, day, calls) VALUES (?, ?, 1)
-     ON CONFLICT(user_id, day) DO UPDATE SET calls = calls + 1`,
-  )
-    .bind(userId, day)
-    .run();
-
   const row = await env.DB.prepare(
-    `SELECT calls FROM usage WHERE user_id = ? AND day = ?`,
+    `INSERT INTO usage (user_id, day, calls) VALUES (?, ?, 1)
+     ON CONFLICT(user_id, day) DO UPDATE SET calls = calls + 1
+       WHERE calls < ?
+     RETURNING calls`,
   )
-    .bind(userId, day)
+    .bind(userId, utcDay(), limit)
     .first<{ calls: number }>();
 
-  const calls = row?.calls ?? 0;
-  return { allowed: calls <= limit, calls, limit };
+  // No row means the guard blocked the update: already at the ceiling.
+  if (!row) return { allowed: false, calls: limit, limit };
+  return { allowed: true, calls: row.calls, limit };
+}
+
+/// Gives a consumed call back.
+///
+/// Used when the upstream model never answered: the user got nothing, so
+/// charging them for it would let an OpenRouter outage silently eat a day's
+/// allowance. Clamped at zero -- a refund racing the midnight rollover must
+/// not drive the new day negative and hand out free calls.
+export async function releaseQuota(env: AuthEnv, userId: string): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE usage SET calls = calls - 1
+      WHERE user_id = ? AND day = ? AND calls > 0`,
+  )
+    .bind(userId, utcDay())
+    .run();
 }
 
 export async function usageToday(
@@ -232,6 +280,75 @@ export async function usageToday(
     .bind(userId, utcDay())
     .first<{ calls: number }>();
   return row?.calls ?? 0;
+}
+
+/// Throttles the unauthenticated auth routes.
+///
+/// /auth/signup and /auth/login each run a 100k-iteration PBKDF2, which is
+/// expensive on purpose -- that makes them a CPU amplifier for anyone who can
+/// call them in a loop. A Cloudflare rate-limit rule is the real defence (see
+/// README) but it lives in the dashboard, outside this repo, so it is not a
+/// deployment guarantee. This is the in-Worker floor underneath it.
+///
+/// ponytail: one D1 row per (identifier, window) rather than per attempt, so
+/// the throttle is a single upsert, not an append. That write is far cheaper
+/// than the PBKDF2 it guards, and it runs BEFORE the hash, so the flood it is
+/// meant to stop never reaches the expensive part. If D1 write volume ever
+/// becomes the bottleneck, swap the body of this function for a Workers
+/// Rate Limiting binding (`ratelimits` in wrangler.jsonc) -- same signature.
+export async function throttle(
+  env: AuthEnv,
+  identifier: string,
+  limit: number,
+  now: number = Date.now(),
+): Promise<{ allowed: boolean; retryAfterSeconds: number }> {
+  const windowMs = authWindowSeconds * 1000;
+  const windowStart = Math.floor(now / windowMs) * windowMs;
+  const retryAfterSeconds = Math.max(
+    1,
+    Math.ceil((windowStart + windowMs - now) / 1000),
+  );
+
+  let row: { attempts: number } | null = null;
+  try {
+    row = await env.DB.prepare(
+      `INSERT INTO auth_attempts (identifier, window_start, attempts) VALUES (?, ?, 1)
+       ON CONFLICT(identifier, window_start) DO UPDATE SET attempts = attempts + 1
+         WHERE attempts < ?
+       RETURNING attempts`,
+    )
+      .bind(identifier, windowStart, limit)
+      .first<{ attempts: number }>();
+  } catch {
+    // Fail open. A throttle that 500s when its own table is missing would
+    // take down login entirely; the dashboard rule still covers the flood.
+    return { allowed: true, retryAfterSeconds };
+  }
+
+  return { allowed: row !== null, retryAfterSeconds };
+}
+
+/// Deletes rows nothing will read again: expired sessions, spent throttle
+/// windows, and usage older than the retention period. Called from the cron
+/// handler -- see wrangler.jsonc `triggers.crons`.
+export async function cleanupExpired(
+  env: AuthEnv,
+  now: number = Date.now(),
+): Promise<{ sessions: number; attempts: number; usage: number }> {
+  const cutoffDay = utcDay(now - usageRetentionDays * 24 * 60 * 60 * 1000);
+  const [sessions, attempts, usage] = await env.DB.batch([
+    env.DB.prepare(`DELETE FROM sessions WHERE expires_at < ?`).bind(now),
+    env.DB.prepare(`DELETE FROM auth_attempts WHERE window_start < ?`).bind(
+      now - authWindowSeconds * 1000,
+    ),
+    env.DB.prepare(`DELETE FROM usage WHERE day < ?`).bind(cutoffDay),
+  ]);
+  const changes = (result: D1Result) => result.meta?.changes ?? 0;
+  return {
+    sessions: changes(sessions),
+    attempts: changes(attempts),
+    usage: changes(usage),
+  };
 }
 
 export function constantTimeEquals(a: string, b: string): boolean {
@@ -265,4 +382,8 @@ export const authConstants = {
   minPasswordLength,
   maxPasswordLength,
   sessionDays,
+  usageRetentionDays,
+  authWindowSeconds,
+  authIpAttemptsPerWindow,
+  authEmailAttemptsPerWindow,
 };

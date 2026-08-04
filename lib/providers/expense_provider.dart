@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import 'service_provider.dart';
@@ -56,11 +57,27 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
     _loadExpenses();
   }
 
-  /// Batch-import: saves all non-duplicate expenses in one pass, then reloads state once.
+  /// Batch-import: saves all non-duplicate expenses in one pass, then reloads
+  /// state once.
+  ///
+  /// Imported ids are regenerated whenever they collide with a stored one.
+  /// A CSV carries whatever id the file says, and storage is keyed by id, so a
+  /// hand-edited or re-exported file could silently overwrite unrelated
+  /// expenses. Content-level duplicates are still dropped by [_expenseKey], so
+  /// re-importing the same file remains a no-op rather than a duplication.
   Future<int> importExpenses(List<Expense> expenses) async {
     final storage = ref.read(storageServiceProvider);
     final seen = state.map(_expenseKey).toSet();
-    final fresh = expenses.where((e) => seen.add(_expenseKey(e))).toList();
+    final usedIds = state.map((e) => e.id).toSet();
+    final fresh = <Expense>[];
+    for (final expense in expenses) {
+      if (!seen.add(_expenseKey(expense))) continue;
+      final safe = usedIds.add(expense.id)
+          ? expense
+          : expense.copyWith(id: const Uuid().v4());
+      if (safe.id != expense.id) usedIds.add(safe.id);
+      fresh.add(safe);
+    }
     if (fresh.isNotEmpty) await storage.saveExpenses(fresh);
     _loadExpenses();
     return fresh.length;

@@ -19,7 +19,7 @@ import '../widgets/spending_calendar.dart';
 import '../widgets/spending_pulse_card.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
-import '../utils/date_extension.dart';
+import '../utils/financial_period.dart';
 import 'pending_screen.dart';
 import 'transactions_screen.dart';
 import 'notifications_screen.dart';
@@ -89,24 +89,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final unreadCount = notifications.where((n) => !n.isRead).length;
     final uncategorized = expenses.where((e) => e.isUncategorized).toList();
     final now = DateTime.now();
+    final period = FinancialPeriod.containing(now, settings.startingDayOfMonth);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final monthlyExpenses = expenses
-        .where(
-          (e) =>
-              e.date.isTargetCustomMonth(
-                now.month,
-                now.year,
-                settings.startingDayOfMonth,
-              ) &&
-              !e.isUncategorized,
-        )
+        .where((e) => period.contains(e.date) && !e.isUncategorized)
         .toList();
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
 
-    // Monthly income for current month
+    // Income is summed over the same period as spending. Mixing a custom
+    // spending window with calendar-month income made the net balance compare
+    // two different date ranges.
     final monthlyIncome = incomes
-        .where((i) => i.date.month == now.month && i.date.year == now.year)
+        .where((i) => period.contains(i.date))
         .fold(0.0, (s, i) => s + i.amount);
 
     // Use income-based net if income is tracked, else fall back to budget-based savings
@@ -117,8 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final netLabel = hasIncome ? 'Net Balance' : 'Savings';
 
     // Daily budget remaining
-    final daysInMonth = DateTime(now.year, now.month + 1, 0).day;
-    final daysLeft = (daysInMonth - now.day + 1).clamp(1, daysInMonth);
+    final daysLeft = period.daysRemaining(now);
     final dailyLeft = settings.monthlyBudget > 0
         ? ((settings.monthlyBudget - totalSpent) / daysLeft)
         : 0.0;
@@ -141,16 +135,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final currentBudgets = ref.read(budgetProvider);
         final now = DateTime.now();
         final settings = ref.read(appSettingsProvider);
+        final currentPeriod = FinancialPeriod.containing(
+          now,
+          settings.startingDayOfMonth,
+        );
         final currentMonthly = currentExpenses
-            .where(
-              (e) =>
-                  e.date.isTargetCustomMonth(
-                    now.month,
-                    now.year,
-                    settings.startingDayOfMonth,
-                  ) &&
-                  !e.isUncategorized,
-            )
+            .where((e) => currentPeriod.contains(e.date) && !e.isUncategorized)
             .toList();
         final Map<Category, double> spending = {};
         for (var e in currentMonthly) {
@@ -484,7 +474,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
                     if (_calendarOpen)
                       SpendingCalendar(
-                        month: now,
+                        period: period,
                         selectedDay: _selectedDay ?? now,
                         expenses: monthlyExpenses,
                         currency: settings.currency,

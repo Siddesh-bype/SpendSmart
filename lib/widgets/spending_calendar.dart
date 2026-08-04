@@ -4,16 +4,22 @@ import 'package:flutter/services.dart';
 import '../models/expense.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 
-/// A month grid showing how much was spent each day.
+/// A grid showing how much was spent each day of a [FinancialPeriod].
 ///
 /// Spend is encoded twice on purpose: as a tinted background and as the amount
 /// itself. Colour alone would fail for colour-blind users and in bright sun,
 /// and the number alone makes it hard to spot the expensive days at a glance.
+///
+/// The grid walks the period, not the calendar month. With a custom starting
+/// day those differ, and rendering the calendar month instead left the days
+/// before the start looking empty while the days after the month boundary --
+/// which the totals above the calendar *do* count -- had no cell at all.
 class SpendingCalendar extends StatelessWidget {
   const SpendingCalendar({
     super.key,
-    required this.month,
+    required this.period,
     required this.selectedDay,
     required this.expenses,
     required this.currency,
@@ -22,17 +28,17 @@ class SpendingCalendar extends StatelessWidget {
     this.goals = const {},
   });
 
-  /// Any date within the month to render. Only year and month are used.
-  final DateTime month;
+  /// The cycle to render, one cell per day.
+  final FinancialPeriod period;
   final DateTime selectedDay;
 
-  /// Expenses for this month; totals are summed per day.
+  /// Expenses to sum per day. Anything outside [period] is ignored.
   final List<Expense> expenses;
   final String currency;
   final ValueChanged<DateTime> onDaySelected;
 
   /// Days after this are shown greyed and are not tappable. Null means the
-  /// whole month is selectable.
+  /// whole period is selectable.
   final DateTime? lastSelectableDay;
 
   /// Per-day limits keyed 'YYYY-MM-DD'. Days with one get a marker, and go red
@@ -41,32 +47,45 @@ class SpendingCalendar extends StatelessWidget {
 
   static const _cellSpacing = 3.0;
 
+  static String _dayKey(DateTime date) =>
+      '${date.year.toString().padLeft(4, '0')}-'
+      '${date.month.toString().padLeft(2, '0')}-'
+      '${date.day.toString().padLeft(2, '0')}';
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
 
-    final daysInMonth = DateTime(month.year, month.month + 1, 0).day;
     // DateTime.weekday is 1=Mon..7=Sun, and the grid starts on Monday.
-    final leadingBlanks = DateTime(month.year, month.month).weekday - 1;
+    final leadingBlanks = period.start.weekday - 1;
 
-    final totals = <int, double>{};
+    final totals = <String, double>{};
     for (final expense in expenses) {
-      if (expense.date.year != month.year ||
-          expense.date.month != month.month) {
-        continue;
-      }
-      totals[expense.date.day] = (totals[expense.date.day] ?? 0) +
-          expense.amount;
+      if (!period.contains(expense.date)) continue;
+      final key = _dayKey(expense.date);
+      totals[key] = (totals[key] ?? 0) + expense.amount;
     }
-    // Scaled against the busiest day, so the ramp is readable whether the month
-    // peaks at 200 or 20,000.
+    // Scaled against the busiest day, so the ramp is readable whether the
+    // period peaks at 200 or 20,000.
     final busiest = totals.values.fold(0.0, (a, b) => a > b ? a : b);
+
+    final days = [
+      for (var i = 0; i < period.totalDays; i++)
+        DateTime(period.start.year, period.start.month, period.start.day + i),
+    ];
 
     final cells = <Widget>[
       for (var i = 0; i < leadingBlanks; i++) const SizedBox.shrink(),
-      for (var day = 1; day <= daysInMonth; day++)
-        _dayCell(context, theme, scheme, day, totals[day] ?? 0, busiest),
+      for (final date in days)
+        _dayCell(
+          context,
+          theme,
+          scheme,
+          date,
+          totals[_dayKey(date)] ?? 0,
+          busiest,
+        ),
     ];
 
     return Column(
@@ -105,21 +124,17 @@ class SpendingCalendar extends StatelessWidget {
     BuildContext context,
     ThemeData theme,
     ColorScheme scheme,
-    int day,
+    DateTime date,
     double spent,
     double busiest,
   ) {
-    final date = DateTime(month.year, month.month, day);
     final isSelected = date.year == selectedDay.year &&
         date.month == selectedDay.month &&
         date.day == selectedDay.day;
     final isFuture =
         lastSelectableDay != null && date.isAfter(lastSelectableDay!);
 
-    final goal = goals[
-        '${date.year.toString().padLeft(4, '0')}-'
-        '${date.month.toString().padLeft(2, '0')}-'
-        '${date.day.toString().padLeft(2, '0')}'];
+    final goal = goals[_dayKey(date)];
     final overGoal = goal != null && spent > goal;
 
     // Floor at 0.10 so any spending is visible, not just near-peak days.
@@ -140,7 +155,7 @@ class SpendingCalendar extends StatelessWidget {
     return Semantics(
       button: !isFuture,
       selected: isSelected,
-      label: '$day ${_monthName(month.month)}, '
+      label: '${date.day} ${_monthName(date.month)}, '
           '${spent > 0 ? '$currency${spent.round()} spent' : 'nothing spent'}',
       child: InkWell(
         onTap: isFuture
@@ -183,7 +198,7 @@ class SpendingCalendar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    '$day',
+                    '${date.day}',
                     style: theme.textTheme.labelMedium?.copyWith(
                       color: foreground,
                       fontWeight: isSelected

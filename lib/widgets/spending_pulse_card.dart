@@ -5,6 +5,7 @@ import '../models/expense.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 import 'money_text.dart';
 
 /// Compact insight card for the home screen.
@@ -194,19 +195,25 @@ class SpendingPulseCard extends StatelessWidget {
     );
   }
 
-  /// Pro-rates spend so far across the whole month, mirroring the arithmetic
+  /// Pro-rates spend so far across the whole period, mirroring the arithmetic
   /// the Worker applies in `calculateForecast`. Needs 3 days of data before it
   /// says anything -- one big Monday would otherwise project an alarming month.
+  ///
+  /// Both the elapsed and total day counts come from the period, so a custom
+  /// cycle projects against its own length. Using calendar-month days here
+  /// pro-rated a 31-day cycle over the wrong denominator.
   _Projection? _projectMonthEnd() {
     if (monthlyExpenses.isEmpty) return null;
-    final now = DateTime.now();
-    final totalDays = DateTime(now.year, now.month + 1, 0).day;
-    final elapsed = now.day;
+    final period = FinancialPeriod.containing(
+      DateTime.now(),
+      startingDayOfMonth,
+    );
+    final elapsed = period.daysElapsed(DateTime.now());
     if (elapsed < 3) return null;
 
     final spent = monthlyExpenses.fold(0.0, (sum, e) => sum + e.amount);
     if (spent <= 0) return null;
-    return _Projection(spent / elapsed * totalDays);
+    return _Projection(spent / elapsed * period.totalDays);
   }
 }
 

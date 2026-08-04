@@ -1,4 +1,7 @@
+import 'dart:io';
+
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:path_provider/path_provider.dart';
 import '../models/expense.dart';
 import '../models/merchant_memory.dart';
 import '../models/budget.dart';
@@ -20,6 +23,17 @@ class StorageService {
   static const String splitGroupBoxName = 'split_groups';
   static const String groupExpenseBoxName = 'group_expenses';
 
+  /// Boxes that could not be opened, with the error that stopped them.
+  ///
+  /// Non-empty means some of the user's records are on disk but unreadable.
+  /// The app still runs on the boxes that did open, and the UI warns instead of
+  /// pretending the data was never there.
+  final Map<String, String> openFailures = {};
+
+  /// Where unreadable box files were moved. Shown to the user so the data is
+  /// findable rather than silently gone.
+  final List<String> quarantinedFiles = [];
+
   /// Opens every box.
   ///
   /// Data is stored unencrypted: the app has no password, so there is no
@@ -28,6 +42,8 @@ class StorageService {
   Future<void> init() async {
     await Hive.initFlutter();
     _registerAdapters();
+    openFailures.clear();
+    quarantinedFiles.clear();
 
     await _open<Expense>(expenseBoxName);
     await _open<MerchantMemory>(merchantBoxName);
@@ -39,19 +55,55 @@ class StorageService {
     await _open<GroupExpense>(groupExpenseBoxName);
   }
 
-  /// Opens one box, recovering rather than crash-looping on an unreadable file.
+  /// Opens one box. Never deletes data.
   ///
-  /// A build that encrypted its boxes leaves files this build cannot decrypt,
-  /// since the key came from a password that no longer exists. Such a box is
-  /// discarded so the app still starts; the alternative is failing on every
-  /// launch with no way out.
+  /// An open can fail for reasons that are nobody's fault and often temporary:
+  /// disk full, a half-finished OS write, a file still locked, an adapter that
+  /// does not match a file written by another build. Deleting the file in
+  /// response would turn any of those into permanent loss of the user's
+  /// expenses, so instead the file is moved aside, an empty box takes its
+  /// place, and the failure is recorded for the UI to surface.
+  ///
+  /// The quarantined copy keeps the data recoverable: a later build with the
+  /// right adapter can read it, and support can ask for it.
   Future<void> _open<T>(String name) async {
     try {
       await Hive.openBox<T>(name);
-    } catch (_) {
-      await Hive.deleteBoxFromDisk(name);
-      await Hive.openBox<T>(name);
+      return;
+    } catch (error) {
+      openFailures[name] = error.toString();
     }
+
+    // Nothing below is allowed to throw: a failure here must not stop the
+    // remaining boxes, which usually hold most of the user's data.
+    try {
+      final moved = await _quarantine(name);
+      if (moved != null) quarantinedFiles.add(moved);
+      await Hive.openBox<T>(name);
+    } catch (error) {
+      openFailures[name] = '${openFailures[name]} (recovery failed: $error)';
+    }
+  }
+
+  /// Renames a box's files out of the way and returns the new path of the
+  /// data file, or null if there was nothing to move.
+  Future<String?> _quarantine(String name) async {
+    final dir = await getApplicationDocumentsDirectory();
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[:.]'), '-');
+    String? movedDataFile;
+
+    // Hive writes '<name>.hive' plus a '<name>.lock' sidecar. Both must move
+    // or the reopened box inherits the stale lock.
+    for (final extension in const ['.hive', '.lock']) {
+      final file = File('${dir.path}/$name$extension');
+      if (!await file.exists()) continue;
+      final target = '${dir.path}/$name.corrupt-$stamp$extension';
+      await file.rename(target);
+      if (extension == '.hive') movedDataFile = target;
+    }
+    return movedDataFile;
   }
 
   void _registerAdapters() {
