@@ -35,11 +35,20 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   // ref is always valid here; parent is still alive
-  void _handleDelete(Expense expense) {
+  Future<void> _handleDelete(Expense expense) async {
     HapticFeedback.mediumImpact();
-    ref.read(expenseProvider.notifier).deleteExpense(expense.id);
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(expenseProvider.notifier).deleteExpense(expense.id);
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not delete "${expense.title}".')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Deleted "${expense.title}"'),
         duration: const Duration(seconds: 6),
@@ -49,8 +58,18 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
           textColor: AppColors.accent,
           onPressed: () {
             HapticFeedback.lightImpact();
-            // ref is always valid here; parent is still alive
-            ref.read(expenseProvider.notifier).addExpense(expense);
+            // A failed restore is the one case that loses user data outright,
+            // so it is surfaced rather than swallowed.
+            ref
+                .read(expenseProvider.notifier)
+                .addExpense(expense)
+                .catchError(
+                  (_) => messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not restore "${expense.title}".'),
+                    ),
+                  ),
+                );
           },
         ),
       ),

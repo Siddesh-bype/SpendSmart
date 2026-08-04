@@ -44,11 +44,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   static bool _isSameDay(DateTime a, DateTime? b) =>
       b != null && a.year == b.year && a.month == b.month && a.day == b.day;
-  void _handleDelete(Expense expense) {
+  Future<void> _handleDelete(Expense expense) async {
     HapticFeedback.mediumImpact();
-    ref.read(expenseProvider.notifier).deleteExpense(expense.id);
-    ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await ref.read(expenseProvider.notifier).deleteExpense(expense.id);
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not delete "${expense.title}".')),
+      );
+      return;
+    }
+    if (!mounted) return;
+    messenger.clearSnackBars();
+    messenger.showSnackBar(
       SnackBar(
         content: Text('Deleted "${expense.title}"'),
         duration: const Duration(seconds: 15),
@@ -59,7 +68,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           textColor: AppColors.accent,
           onPressed: () {
             HapticFeedback.lightImpact();
-            ref.read(expenseProvider.notifier).addExpense(expense);
+            // A failed restore is the one case that loses user data outright,
+            // so it is surfaced rather than swallowed.
+            ref
+                .read(expenseProvider.notifier)
+                .addExpense(expense)
+                .catchError(
+                  (_) => messenger.showSnackBar(
+                    SnackBar(
+                      content: Text('Could not restore "${expense.title}".'),
+                    ),
+                  ),
+                );
           },
         ),
       ),

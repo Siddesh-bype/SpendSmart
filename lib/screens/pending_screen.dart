@@ -323,23 +323,7 @@ class _PendingTile extends ConsumerWidget {
               children: Category.values
                   .map(
                     (cat) => GestureDetector(
-                      onTap: () {
-                        final expenses = ref.read(expenseProvider.notifier);
-                        final merchants = ref.read(
-                          merchantNotifierProvider.notifier,
-                        );
-                        // categorizeExpense also clears isUncategorized.
-                        expenses.categorizeExpense(expense.id, cat);
-                        merchants.correctMerchant(expense.title, cat);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              '${expense.title} -> ${cat.displayName}',
-                            ),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      },
+                      onTap: () => _categorize(context, ref, cat),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 12,
@@ -374,6 +358,37 @@ class _PendingTile extends ConsumerWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  /// Confirms only after both writes land.
+  ///
+  /// The tile used to fire both and show the snackbar immediately, so a failed
+  /// Hive write still read as success and the expense stayed in the pending
+  /// list with no explanation.
+  Future<void> _categorize(
+    BuildContext context,
+    WidgetRef ref,
+    Category cat,
+  ) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final expenses = ref.read(expenseProvider.notifier);
+    final merchants = ref.read(merchantNotifierProvider.notifier);
+    try {
+      // categorizeExpense also clears isUncategorized.
+      await expenses.categorizeExpense(expense.id, cat);
+      await merchants.correctMerchant(expense.title, cat);
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not save ${expense.title}.')),
+      );
+      return;
+    }
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('${expense.title} -> ${cat.displayName}'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
