@@ -8,6 +8,8 @@ import '../providers/group_provider.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
+import '../widgets/glass_container.dart';
 import 'add_group_sheet.dart';
 import 'group_detail_screen.dart';
 
@@ -39,39 +41,25 @@ class GroupsScreen extends ConsumerWidget {
       ),
       body: Column(children: [
         // Summary banner
-        Container(
-          width: double.infinity,
-          margin: const EdgeInsets.all(16),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [AppColors.primary, AppColors.secondary],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primary.withValues(alpha: 0.35),
-                blurRadius: 14,
-                offset: const Offset(0, 5),
-              ),
-            ],
-          ),
+        GlassContainer(
+          borderRadius: AppRadius.lg,
+          backgroundColor: AppColors.primary,
+          margin: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.all(AppSpacing.lg),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _summaryCol(
                 'Owed to You',
                 totalOwedToYou,
-                Colors.green.shade200,
+                AppColors.positiveGreen,
                 currency,
               ),
               Container(width: 1, height: 40, color: Colors.white24),
               _summaryCol(
                 'You Owe',
                 totalYouOwe,
-                Colors.red.shade200,
+                AppColors.negativeCoral,
                 currency,
               ),
             ],
@@ -88,12 +76,12 @@ class GroupsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   const Text(
                     'No groups yet',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create a group to start splitting expenses',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.label),
                   ),
                 ],
               ),
@@ -147,7 +135,7 @@ class GroupsScreen extends ConsumerWidget {
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 11,
+                                            fontSize: AppType.caption,
                                           ),
                                         ),
                                       ),
@@ -163,7 +151,7 @@ class GroupsScreen extends ConsumerWidget {
                                           style: const TextStyle(
                                             color: Colors.white,
                                             fontWeight: FontWeight.bold,
-                                            fontSize: 10,
+                                            fontSize: AppType.micro,
                                           ),
                                         ),
                                       ),
@@ -178,11 +166,11 @@ class GroupsScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     group.name,
-                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: AppType.headline),
                                   ),
                                   Text(
                                     '${group.participants.length} members',
-                                    style: TextStyle(color: Colors.grey.shade500, fontSize: 12),
+                                    style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.caption),
                                   ),
                                 ],
                               ),
@@ -196,15 +184,15 @@ class GroupsScreen extends ConsumerWidget {
                                       : '-$currency${NumberFormat('#,##0.##').format(netYou.abs())}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: netYou >= 0 ? Colors.green : Colors.red,
+                                    fontSize: AppType.headline,
+                                    color: netYou >= 0 ? AppColors.success : AppColors.error,
                                   ),
                                 ),
                                 Text(
                                   netYou >= 0 ? 'you are owed' : 'you owe',
                                   style: TextStyle(
                                     color: Colors.grey.shade500,
-                                    fontSize: 11,
+                                    fontSize: AppType.caption,
                                   ),
                                 ),
                               ],
@@ -227,7 +215,7 @@ class GroupsScreen extends ConsumerWidget {
                                   Expanded(
                                     child: Text(
                                       e.description,
-                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                      style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade600),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -235,7 +223,7 @@ class GroupsScreen extends ConsumerWidget {
                                   Text(
                                     '$currency${NumberFormat('#,##0.##').format(e.totalAmount)}',
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: AppType.caption,
                                       fontWeight: FontWeight.w600,
                                       color: e.isSettled ? Colors.grey : AppColors.primary,
                                     ),
@@ -274,11 +262,11 @@ class GroupsScreen extends ConsumerWidget {
 
   Widget _summaryCol(String label, double amount, Color valueColor, String currency) {
     return Column(children: [
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11)),
+      Text(label, style: const TextStyle(color: Colors.white70, fontSize: AppType.caption)),
       const SizedBox(height: 4),
       Text(
         '$currency${NumberFormat('#,##0').format(amount)}',
-        style: TextStyle(color: valueColor, fontSize: 20, fontWeight: FontWeight.bold),
+        style: TextStyle(color: valueColor, fontSize: AppType.title, fontWeight: FontWeight.bold),
       ),
     ]);
   }

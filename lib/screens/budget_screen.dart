@@ -6,6 +6,7 @@ import '../providers/app_settings_provider.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
 import '../widgets/money_text.dart';
+import '../widgets/glass_container.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
@@ -101,17 +102,11 @@ class BudgetScreen extends ConsumerWidget {
     final pct = totalBudget > 0
         ? (totalSpent / totalBudget).clamp(0.0, 1.0)
         : 0.0;
-    return Container(
+    return GlassContainer(
       margin: const EdgeInsets.all(AppSpacing.lg),
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.accent],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: AppRadius.lgAll,
-      ),
+      backgroundColor: AppColors.primary,
+      borderRadius: AppRadius.lg,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

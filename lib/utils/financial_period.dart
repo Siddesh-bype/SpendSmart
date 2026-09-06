@@ -6,7 +6,7 @@
 /// current date happens to sit in. Before the starting day that names the wrong
 /// cycle — on August 4 with a starting day of 10, the live cycle is July 10 to
 /// August 9, but a calendar-month filter asks for the one beginning August 10
-/// and finds nothing. Totals, budgets, projections and AI inputs then disagree
+/// and finds nothing. Totals, budgets and projections then disagree
 /// with each other.
 ///
 /// So the period is resolved once, here, and every screen shares the answer.

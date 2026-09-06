@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../providers/service_provider.dart';
 import 'main_scaffold.dart';
 import 'onboarding_screen.dart';
@@ -45,8 +46,7 @@ class _SplashScreenState extends State<SplashScreen>
     final container = ProviderScope.containerOf(context);
     final settings = container.read(appSettingsProvider);
 
-    // No lock screen: the app opens straight to the data. Signing in is only
-    // for AI features and lives in Settings.
+    // No lock screen: the app opens straight to the data.
     await container.read(storageServiceProvider).init();
 
     if (!mounted) return;
@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                 Text(
                   'SpendSmart',
                   style: const TextStyle(
-                    fontSize: 36,
+                    fontSize: AppType.display,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
                 Text(
                   'Your personal expense tracker',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: AppType.headline,
                     color: AppColors.mutedDark,
                   ),
                 ),

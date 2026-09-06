@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:flutter/material.dart';
+import '../utils/constants.dart';
 
 part 'category.g.dart';
 
@@ -37,13 +38,13 @@ extension CategoryExtension on Category {
 
   Color get color {
     switch (this) {
-      case Category.food: return const Color(0xFFFF6B6B);
-      case Category.transport: return const Color(0xFF4ECDC4);
-      case Category.shopping: return const Color(0xFF45B7D1);
-      case Category.health: return const Color(0xFF96CEB4);
-      case Category.entertainment: return const Color(0xFFFFB347);
-      case Category.bills: return const Color(0xFFDA70D6);
-      case Category.other: return const Color(0xFFB0BEC5);
+      case Category.food: return AppColors.food;
+      case Category.transport: return AppColors.transport;
+      case Category.shopping: return AppColors.shopping;
+      case Category.health: return AppColors.health;
+      case Category.entertainment: return AppColors.entertainment;
+      case Category.bills: return AppColors.bills;
+      case Category.other: return AppColors.other;
     }
   }
 

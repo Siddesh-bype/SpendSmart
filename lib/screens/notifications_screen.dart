@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../models/app_notification.dart';
 import '../providers/notification_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -47,10 +48,10 @@ class NotificationsScreen extends ConsumerWidget {
             Icon(Icons.notifications_none_rounded, size: 72, color: Colors.grey.shade300),
             const SizedBox(height: 16),
             const Text('No notifications yet',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.w600)),
             const SizedBox(height: 6),
             const Text('Budget alerts and spending tips will appear here.',
-                style: TextStyle(color: Colors.grey, fontSize: 13),
+                style: TextStyle(color: Colors.grey, fontSize: AppType.label),
                 textAlign: TextAlign.center),
           ],
         ),
@@ -65,7 +66,7 @@ class NotificationsScreen extends ConsumerWidget {
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
             onPressed: () {
               ref.read(notificationProvider.notifier).clearAll();
               Navigator.pop(context);
@@ -127,7 +128,7 @@ class _NotifCard extends ConsumerWidget {
                           child: Text(notification.title,
                               style: TextStyle(
                                 fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: AppType.label,
                               )),
                         ),
                         if (!notification.isRead)
@@ -139,13 +140,13 @@ class _NotifCard extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(notification.body,
-                        style: const TextStyle(color: Colors.grey, fontSize: 12),
+                        style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 6),
                     Text(
                       DateFormat('MMM d, h:mm a').format(notification.time),
-                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                      style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
                     ),
                   ],
                 ),
@@ -158,9 +159,9 @@ class _NotifCard extends ConsumerWidget {
   }
 
   (IconData, Color) _iconAndColor(NotifType type) => switch (type) {
-        NotifType.budgetExceeded => (Icons.warning_rounded, Colors.red),
-        NotifType.budgetWarning => (Icons.trending_up_rounded, Colors.orange),
-        NotifType.spendingMilestone => (Icons.emoji_events_rounded, Colors.amber),
+        NotifType.budgetExceeded => (Icons.warning_rounded, AppColors.error),
+        NotifType.budgetWarning => (Icons.trending_up_rounded, AppColors.warning),
+        NotifType.spendingMilestone => (Icons.emoji_events_rounded, AppColors.entertainment),
         NotifType.tip => (Icons.lightbulb_outline_rounded, AppColors.primary),
       };
 }

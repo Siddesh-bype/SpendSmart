@@ -1,6 +1,5 @@
-import 'dart:io' show SocketException;
-
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
@@ -8,24 +7,22 @@ import '../providers/budget_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
-import '../services/ai_failure.dart';
-import '../services/ai_spending_analysis_service.dart';
+import '../models/app_settings.dart';
 import '../services/merchant_anomaly_service.dart';
+import '../services/ai_financial_advisor_service.dart';
+import '../services/financial_calculation_engine.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
-import 'ai_sign_in_screen.dart';
+import '../widgets/glass_container.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Kept as the raw provider instance so `_MerchantAlertsSection` can memoize
-    // its scan with `identical()`; the filtered copy below is a new list on
-    // every build and would defeat that.
     final allExpenses = ref.watch(expenseProvider);
     final expenses = allExpenses.where((e) => !e.isUncategorized).toList();
     final budgets = ref.watch(budgetProvider);
@@ -36,15 +33,19 @@ class InsightsScreen extends ConsumerWidget {
     final thisMonth = expenses.where((e) => period.contains(e.date)).toList();
 
     final previous = period.previous;
-    final lastMonth = expenses
-        .where((e) => previous.contains(e.date))
-        .toList();
+    final lastMonth = expenses.where((e) => previous.contains(e.date)).toList();
 
     final thisTotal = thisMonth.fold(0.0, (a, b) => a + b.amount);
     final lastTotal = lastMonth.fold(0.0, (a, b) => a + b.amount);
-    final change = lastTotal > 0
-        ? ((thisTotal - lastTotal) / lastTotal * 100)
-        : 0.0;
+    final change = lastTotal > 0 ? ((thisTotal - lastTotal) / lastTotal * 100) : 0.0;
+
+    // AI Financial Review & Health Scoring
+    final aiReview = AiFinancialAdvisorService.generateReview(
+      allExpenses: allExpenses,
+      budgets: budgets,
+      settings: settings,
+      referenceDate: now,
+    );
 
     // Category breakdown this month
     final catSums = <Category, double>{};
@@ -58,20 +59,24 @@ class InsightsScreen extends ConsumerWidget {
     // Recurring expenses
     final recurring = _detectRecurring(expenses);
 
-    // Insights list
-    final insights = _generateInsights(
-      thisTotal,
-      lastTotal,
-      change,
-      catSums,
-      budgets,
-      settings,
-      topCat,
-      recurring,
-    );
-
     return Scaffold(
-      appBar: AppBar(title: const Text('Spending Insights')),
+      appBar: AppBar(
+        title: const Text('Spending Insights & AI'),
+        actions: [
+          IconButton(
+            tooltip: 'Ask AI Advisor',
+            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.secondary),
+            onPressed: () => _showAiChatModal(context, expenses, settings),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => _showAiChatModal(context, expenses, settings),
+        backgroundColor: AppColors.secondary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.auto_awesome, size: 18),
+        label: const Text('Ask AI Advisor'),
+      ),
       body: expenses.isEmpty
           ? Center(
               child: Text(
@@ -80,9 +85,18 @@ class InsightsScreen extends ConsumerWidget {
               ),
             )
           : ListView(
-              padding: const EdgeInsets.all(AppSpacing.lg),
+              padding: const EdgeInsets.fromLTRB(
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.lg,
+                AppSpacing.xxl * 2, // Space for FAB
+              ),
               children: [
-                // Month comparison card
+                // 1. AI Health Score & Pacing Header Card
+                _aiHealthScoreCard(context, aiReview, settings.currency),
+                const SizedBox(height: AppSpacing.lg),
+
+                // 2. Month comparison card
                 _comparisonCard(
                   thisTotal,
                   lastTotal,
@@ -91,18 +105,7 @@ class InsightsScreen extends ConsumerWidget {
                 ),
                 const SizedBox(height: AppSpacing.lg),
 
-                _AiReviewCard(
-                  expenses: expenses,
-                  currency: settings.currency,
-                  monthlyBudget: settings.monthlyBudget,
-                  startingDayOfMonth: settings.startingDayOfMonth,
-                  workerUrl: '${AppConfig.workerBaseUrl}/analyze-spending',
-                  proxyToken: settings.aiSessionToken,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-
-                // On-device merchant spikes. Renders nothing when there are no
-                // anomalies, which is the common case.
+                // 3. On-device merchant spikes
                 _MerchantAlertsSection(
                   expenses: allExpenses,
                   currency: settings.currency,
@@ -110,8 +113,8 @@ class InsightsScreen extends ConsumerWidget {
                   startingDayOfMonth: settings.startingDayOfMonth,
                 ),
 
-                // Top spending category
-                if (topCat != null)
+                // 4. Top spending category
+                if (topCat != null) ...[
                   _infoCard(
                     context,
                     icon: topCat.key.icon,
@@ -121,9 +124,10 @@ class InsightsScreen extends ConsumerWidget {
                         '${settings.currency}${NumberFormat('#,##0').format(topCat.value)} this month'
                         ' (${thisTotal > 0 ? (topCat.value / thisTotal * 100).toStringAsFixed(0) : 0}% of spending)',
                   ),
-                const SizedBox(height: AppSpacing.md),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
 
-                // Recurring subscriptions
+                // 5. Recurring subscriptions
                 if (recurring.isNotEmpty) ...[
                   const SectionHeader(title: 'Recurring Expenses Detected'),
                   ...recurring.map(
@@ -132,11 +136,213 @@ class InsightsScreen extends ConsumerWidget {
                   const SizedBox(height: AppSpacing.lg),
                 ],
 
-                // Smart Tips
-                const SectionHeader(title: 'Smart Tips'),
-                ...insights.map((i) => _tipCard(context, i)),
+                // 6. AI Smart Recommendations
+                const SectionHeader(title: 'AI Smart Recommendations'),
+                ...aiReview.recommendations.map((r) => _aiRecommendationCard(context, r, settings.currency)),
               ],
             ),
+    );
+  }
+
+  Widget _aiHealthScoreCard(BuildContext context, AiFinancialReview review, String currency) {
+    final report = review.healthReport;
+    final pacing = review.pacing;
+    final money = NumberFormat('#,##0');
+
+    Color tierColor;
+    switch (report.tier) {
+      case HealthScoreTier.excellent:
+        tierColor = AppColors.success;
+        break;
+      case HealthScoreTier.good:
+        tierColor = AppColors.secondary;
+        break;
+      case HealthScoreTier.fair:
+        tierColor = AppColors.warning;
+        break;
+      case HealthScoreTier.needsAttention:
+        tierColor = AppColors.error;
+        break;
+    }
+
+    return GlassContainer(
+      borderRadius: AppRadius.lg,
+      backgroundColor: const Color(0xFF0F172A),
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: tierColor.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.auto_awesome, color: tierColor, size: 18),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  const Text(
+                    'Financial Health & Pacing',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: AppType.title,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: tierColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: tierColor.withValues(alpha: 0.4)),
+                ),
+                child: Text(
+                  '${report.score} / 100',
+                  style: TextStyle(
+                    color: tierColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: AppType.label,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            report.summary,
+            style: const TextStyle(color: Colors.white70, fontSize: AppType.body),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(color: Colors.white24, height: 1),
+          const SizedBox(height: AppSpacing.md),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Daily Safe Spend', style: TextStyle(color: Colors.white60, fontSize: AppType.caption)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$currency${money.format(pacing.dailySafeToSpend)} / day',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: AppType.body,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Projected Month-End', style: TextStyle(color: Colors.white60, fontSize: AppType.caption)),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$currency${money.format(pacing.projectedMonthEnd)}',
+                      style: TextStyle(
+                        color: pacing.isOverBudget ? AppColors.error : AppColors.success,
+                        fontWeight: FontWeight.bold,
+                        fontSize: AppType.body,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _aiRecommendationCard(BuildContext context, AiRecommendation rec, String currency) {
+    final theme = Theme.of(context);
+    IconData icon;
+    Color color;
+
+    switch (rec.type) {
+      case AiInsightType.criticalWarning:
+        icon = Icons.warning_amber_rounded;
+        color = AppColors.error;
+        break;
+      case AiInsightType.budgetPacing:
+        icon = Icons.speed_rounded;
+        color = AppColors.warning;
+        break;
+      case AiInsightType.smartSavings:
+        icon = Icons.lightbulb_outline_rounded;
+        color = AppColors.secondary;
+        break;
+      case AiInsightType.trendAlert:
+        icon = Icons.trending_up_rounded;
+        color = rec.relatedCategory?.color ?? AppColors.warning;
+        break;
+      case AiInsightType.positiveMilestone:
+        icon = Icons.verified_outlined;
+        color = AppColors.success;
+        break;
+    }
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.md),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    rec.title,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  Text(rec.message, style: theme.textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showAiChatModal(BuildContext context, List<Expense> expenses, AppSettings settings) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => _AiAssistantSheet(expenses: expenses, settings: settings),
     );
   }
 
@@ -147,16 +353,10 @@ class InsightsScreen extends ConsumerWidget {
     String currency,
   ) {
     final isUp = change > 0;
-    return Container(
+    return GlassContainer(
+      borderRadius: AppRadius.lg,
+      backgroundColor: isUp ? AppColors.error : AppColors.secondary,
       padding: const EdgeInsets.all(AppSpacing.xl),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isUp
-              ? [const Color(0xFFDC2626), const Color(0xFFEF4444)]
-              : [const Color(0xFF059669), const Color(0xFF10B981)],
-        ),
-        borderRadius: AppRadius.lgAll,
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -305,50 +505,6 @@ class InsightsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _tipCard(BuildContext context, Map<String, dynamic> tip) {
-    final theme = Theme.of(context);
-    return Card(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.md),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: (tip['color'] as Color).withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                tip['icon'] as IconData,
-                color: tip['color'] as Color,
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    tip['title'],
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.xs),
-                  Text(tip['body'], style: theme.textTheme.bodySmall),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   List<Map<String, dynamic>> _detectRecurring(List expenses) {
     final titleCount = <String, int>{};
     final titleAmount = <String, double>{};
@@ -378,123 +534,193 @@ class InsightsScreen extends ConsumerWidget {
     return recurring.take(5).toList();
   }
 
-  List<Map<String, dynamic>> _generateInsights(
-    double thisTotal,
-    double lastTotal,
-    double change,
-    Map<Category, double> catSums,
-    List budgets,
-    dynamic settings,
-    MapEntry<Category, double>? topCat,
-    List recurring,
-  ) {
-    final tips = <Map<String, dynamic>>[];
-
-    if (change > 20) {
-      tips.add({
-        'icon': Icons.warning_amber_rounded,
-        'color': Colors.orange,
-        'title': 'Spending Increased Significantly',
-        'body':
-            'Your spending is up ${change.toStringAsFixed(0)}% compared to last month. Consider reviewing your discretionary expenses.',
-      });
-    } else if (change < -10) {
-      tips.add({
-        'icon': Icons.celebration,
-        'color': Colors.green,
-        'title': 'Great Job Saving!',
-        'body':
-            'You spent ${(-change).toStringAsFixed(0)}% less than last month. Keep it up!',
-      });
-    }
-
-    // Budget warnings
-    for (final entry in catSums.entries) {
-      final matchingBudgets = budgets.where((b) => b.category == entry.key);
-      if (matchingBudgets.isEmpty) continue;
-      final budget = matchingBudgets.first;
-      if (budget.monthlyLimit > 0) {
-        final pct = entry.value / budget.monthlyLimit;
-        if (pct > 0.9) {
-          tips.add({
-            'icon': Icons.account_balance_wallet,
-            'color': Colors.red,
-            'title': '${entry.key.displayName} Budget Almost Exhausted',
-            'body':
-                'You\'ve used ${(pct * 100).toStringAsFixed(0)}% of your ${entry.key.displayName} budget. Only ${settings.currency}${(budget.monthlyLimit - entry.value).toStringAsFixed(0)} remaining.',
-          });
-        }
-      }
-    }
-
-    if (topCat != null && thisTotal > 0 && (topCat.value / thisTotal) > 0.4) {
-      tips.add({
-        'icon': topCat.key.icon,
-        'color': topCat.key.color,
-        'title': '${topCat.key.displayName} Dominates Your Spending',
-        'body':
-            '${(topCat.value / thisTotal * 100).toStringAsFixed(0)}% of your budget goes to ${topCat.key.displayName}. Consider setting a specific budget cap.',
-      });
-    }
-
-    if (settings.monthlyBudget > 0) {
-      final savingsRate =
-          (settings.monthlyBudget - thisTotal) / settings.monthlyBudget;
-      if (savingsRate > 0.3) {
-        tips.add({
-          'icon': Icons.savings,
-          'color': Colors.green,
-          'title': 'Strong Budget Management',
-          'body':
-              'You have ${(savingsRate * 100).toStringAsFixed(0)}% of your budget left this month. Awesome job!',
-        });
-      } else if (savingsRate < 0.1 && savingsRate > 0) {
-        tips.add({
-          'icon': Icons.savings,
-          'color': Colors.orange,
-          'title': 'Approaching Budget Limit',
-          'body':
-              'You have less than 10% of your total budget remaining. Consider reducing spending on non-essentials.',
-        });
-      }
-    }
-
-    if (recurring.isNotEmpty) {
-      final recTotal = recurring.fold(
-        0.0,
-        (a, b) => a + (b['amount'] as double),
-      );
-      tips.add({
-        'icon': Icons.autorenew,
-        'color': Colors.purple,
-        'title': 'Recurring Charges',
-        'body':
-            'You have ${recurring.length} recurring expenses totalling approx. ${settings.currency}${NumberFormat('#,##0').format(recTotal)}/month. Review if all subscriptions are still being used.',
-      });
-    }
-
-    if (tips.isEmpty) {
-      tips.add({
-        'icon': Icons.thumb_up,
-        'color': Colors.blue,
-        'title': 'Looking Good!',
-        'body':
-            'Your spending looks healthy this month. Keep tracking to get more personalized insights.',
-      });
-    }
-
-    return tips;
-  }
-
   String _capitalize(String s) =>
       s.isEmpty ? s : s[0].toUpperCase() + s.substring(1);
 }
 
-/// Merchant-level spikes detected on device — no network call.
-///
-/// Stateful purely to memoize [MerchantAnomalyService.detect], which is a
-/// multi-pass scan over every expense. This screen rebuilds often and already
-/// recomputes too much in `build()`.
+class _AiAssistantSheet extends StatefulWidget {
+  final List<Expense> expenses;
+  final AppSettings settings;
+
+  const _AiAssistantSheet({
+    required this.expenses,
+    required this.settings,
+  });
+
+  @override
+  State<_AiAssistantSheet> createState() => _AiAssistantSheetState();
+}
+
+class _AiAssistantSheetState extends State<_AiAssistantSheet> {
+  final _controller = TextEditingController();
+  String? _answer;
+  bool _isProcessing = false;
+
+  void _ask(String prompt) {
+    setState(() {
+      _isProcessing = true;
+      _controller.text = prompt;
+    });
+    HapticFeedback.selectionClick();
+
+    Future.delayed(const Duration(milliseconds: 250), () {
+      if (!mounted) return;
+      final reply = AiFinancialAdvisorService.answerSpendingQuery(
+        query: prompt,
+        expenses: widget.expenses,
+        settings: widget.settings,
+      );
+      setState(() {
+        _answer = reply;
+        _isProcessing = false;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final quickPrompts = [
+      'What was my highest expense?',
+      'How much did I spend on food?',
+      'Total spending?',
+      'Shopping expenses?',
+      'Bills breakdown',
+    ];
+
+    return Padding(
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).viewInsets.bottom,
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'AI Financial Advisor',
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  Text(
+                    '100% Offline • Instant Heuristic Insights',
+                    style: theme.textTheme.labelSmall?.copyWith(color: AppColors.secondary),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: quickPrompts
+                  .map(
+                    (p) => Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ActionChip(
+                        avatar: const Icon(Icons.bolt, size: 14, color: AppColors.secondary),
+                        label: Text(p, style: const TextStyle(fontSize: AppType.caption)),
+                        onPressed: () => _ask(p),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_answer != null) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(AppSpacing.md),
+              decoration: BoxDecoration(
+                color: AppColors.secondary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.secondary.withValues(alpha: 0.25)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.secondary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Advisor Answer',
+                        style: TextStyle(
+                          fontSize: AppType.caption,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _answer!,
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  decoration: InputDecoration(
+                    hintText: 'Ask about your spending...',
+                    isDense: true,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onSubmitted: (val) {
+                    if (val.trim().isNotEmpty) _ask(val.trim());
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton.filled(
+                onPressed: _isProcessing
+                    ? null
+                    : () {
+                        if (_controller.text.trim().isNotEmpty) {
+                          _ask(_controller.text.trim());
+                        }
+                      },
+                icon: const Icon(Icons.arrow_upward, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.lg),
+        ],
+      ),
+    );
+  }
+}
+
 class _MerchantAlertsSection extends StatefulWidget {
   const _MerchantAlertsSection({
     required this.expenses,
@@ -503,8 +729,6 @@ class _MerchantAlertsSection extends StatefulWidget {
     required this.startingDayOfMonth,
   });
 
-  /// Raw `expenseProvider` list. Must be the provider's own instance: the memo
-  /// below compares it with `identical()`.
   final List<Expense> expenses;
   final String currency;
   final double monthlyBudget;
@@ -520,9 +744,6 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
   int? _startingDay;
   List<MerchantAnomaly> _anomalies = const [];
 
-  /// Rescans only when the expense list itself changes, or when a setting the
-  /// math depends on does. Same guard as `_syncMerchantIndex` in
-  /// `add_expense_screen.dart`.
   void _syncAnomalies() {
     if (identical(_source, widget.expenses) &&
         _budget == widget.monthlyBudget &&
@@ -542,7 +763,6 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
   @override
   Widget build(BuildContext context) {
     _syncAnomalies();
-    // No header, no empty-state card: most months have nothing to say here.
     if (_anomalies.isEmpty) return const SizedBox.shrink();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -582,7 +802,6 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Statement titles can be long, e.g. 'UPI/SWIGGY/9876543210'.
                 Text(
                   anomaly.displayName,
                   maxLines: 1,
@@ -598,320 +817,6 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
                   style: Theme.of(context).textTheme.labelMedium,
                 ),
               ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AiReviewCard extends StatefulWidget {
-  const _AiReviewCard({
-    required this.expenses,
-    required this.currency,
-    required this.monthlyBudget,
-    required this.startingDayOfMonth,
-    required this.workerUrl,
-    required this.proxyToken,
-  });
-
-  final List<Expense> expenses;
-  final String currency;
-  final double monthlyBudget;
-  final int startingDayOfMonth;
-  final String workerUrl;
-  final String proxyToken;
-
-  @override
-  State<_AiReviewCard> createState() => _AiReviewCardState();
-}
-
-class _AiReviewCardState extends State<_AiReviewCard> {
-  AiSpendingAnalysis? _analysis;
-  bool _loading = false;
-  bool _offline = false;
-
-  /// Non-null when the last attempt failed for a reason the user can act on.
-  AiFailureException? _failure;
-
-  bool _hasSufficientHistory = false;
-
-  Future<void> _analyze() async {
-    final endpoint = Uri.tryParse(widget.workerUrl);
-    if (endpoint == null) {
-      setState(
-        () => _failure = const AiFailureException(
-          AiFailure.unknown,
-          'AI is unavailable right now. Try again.',
-        ),
-      );
-      return;
-    }
-    final request = AiSpendingAnalysisService.buildRequest(
-      expenses: widget.expenses,
-      currency: widget.currency,
-      monthlyBudget: widget.monthlyBudget,
-      startingDayOfMonth: widget.startingDayOfMonth,
-    );
-    final history = request['history']! as List<dynamic>;
-    final hasSufficientHistory = history.every(
-      (month) => ((month as Map<String, dynamic>)['total'] as num) > 0,
-    );
-    setState(() {
-      _loading = true;
-      _failure = null;
-      _offline = false;
-    });
-    try {
-      final analysis = await AiSpendingAnalysisService.analyze(
-        endpoint: endpoint,
-        proxyToken: widget.proxyToken,
-        request: request,
-      );
-      if (mounted) {
-        setState(() {
-          _analysis = analysis;
-          _hasSufficientHistory = hasSufficientHistory;
-        });
-      }
-    } on SocketException {
-      // No route to the Worker. Not a misconfiguration -- don't send the user
-      // to Settings to "fix" credentials that are fine.
-      if (mounted) setState(() => _offline = true);
-    } on AiFailureException catch (e) {
-      if (mounted) setState(() => _failure = e);
-    } catch (_) {
-      if (mounted) {
-        setState(
-          () => _failure = const AiFailureException(
-            AiFailure.unknown,
-            'AI is unavailable right now. Try again.',
-          ),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final configured =
-        widget.workerUrl.isNotEmpty && widget.proxyToken.isNotEmpty;
-    final colors = Theme.of(context).colorScheme;
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.lg),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(Icons.auto_awesome_outlined, color: colors.secondary),
-                const SizedBox(width: AppSpacing.sm),
-                Expanded(
-                  child: Text(
-                    'AI spending review',
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              configured
-                  ? 'Sends category totals and your budget only. Nothing is saved automatically.'
-                  : 'Sign in from Settings to enable AI analysis.',
-              style: Theme.of(context).textTheme.labelMedium,
-            ),
-            if (configured) ...[
-              const SizedBox(height: AppSpacing.md),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: ElevatedButton.icon(
-                  onPressed: _loading ? null : _analyze,
-                  icon: _loading
-                      ? const SizedBox(
-                          height: 16,
-                          width: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.auto_awesome),
-                  label: Text(
-                    _analysis == null ? 'Analyze spending' : 'Refresh analysis',
-                  ),
-                ),
-              ),
-            ],
-            if (_offline) ...[
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                "You're offline. Everything else on this screen is calculated "
-                'on your device and stays up to date — only this AI summary '
-                'needs a connection.',
-                style: Theme.of(context).textTheme.labelMedium,
-              ),
-            ],
-            if (_failure != null) ...[
-              const SizedBox(height: AppSpacing.md),
-              Text(
-                _failure!.message,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelMedium?.copyWith(color: AppColors.error),
-              ),
-              if (_failure!.failure == AiFailure.signedOut) ...[
-                const SizedBox(height: AppSpacing.xs),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: TextButton(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const AiSignInScreen(),
-                      ),
-                    ),
-                    child: const Text('Sign in'),
-                  ),
-                ),
-              ],
-            ],
-            if (_analysis != null) ...[
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                _analysis!.summary,
-                style: Theme.of(context).textTheme.bodyMedium,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _forecast(_analysis!.forecast),
-              const SizedBox(height: AppSpacing.lg),
-              Text(
-                'Category comparison',
-                style: Theme.of(context).textTheme.titleSmall,
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              if (!_hasSufficientHistory)
-                Text(
-                  'Track spending for three completed months to compare category patterns.',
-                  style: Theme.of(context).textTheme.labelMedium,
-                )
-              else if (_analysis!.anomalies.isEmpty)
-                Text(
-                  'No categories are unusually high at this point in the month.',
-                  style: Theme.of(context).textTheme.labelMedium,
-                )
-              else
-                ..._analysis!.anomalies.map(_anomaly),
-              const SizedBox(height: AppSpacing.sm),
-              ..._analysis!.insights.map(_insight),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _insight(AiSpendingInsight insight) {
-    final color = switch (insight.tone) {
-      'positive' => AppColors.success,
-      'warning' => AppColors.warning,
-      _ => AppColors.accent,
-    };
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.circle, size: 10, color: color),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text.rich(
-              TextSpan(
-                children: [
-                  TextSpan(
-                    text: '${insight.title}: ',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  TextSpan(text: insight.detail),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _forecast(AiSpendingForecast forecast) {
-    final color = switch (forecast.status) {
-      'withinBudget' => AppColors.success,
-      'atRisk' => AppColors.warning,
-      'overBudget' => AppColors.error,
-      _ => AppColors.mutedLight,
-    };
-    final label = switch (forecast.status) {
-      'withinBudget' => 'Projected within budget',
-      'atRisk' => 'Projected close to budget',
-      'overBudget' => 'Projected over budget',
-      _ =>
-        forecast.projectedSpend == null
-            ? 'Forecast needs more current-month activity'
-            : 'Projected spend (no budget set)',
-    };
-    final amount = forecast.projectedSpend == null
-        ? null
-        : '${widget.currency}${NumberFormat('#,##0').format(forecast.projectedSpend)}';
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: AppRadius.smAll,
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.trending_up_rounded, color: color),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-                if (amount != null)
-                  Text(amount, style: TextStyle(color: color)),
-                Text(
-                  forecast.confidence == 'unavailable'
-                      ? 'Add expenses on at least three days for a forecast.'
-                      : '${forecast.confidence[0].toUpperCase()}${forecast.confidence.substring(1)} confidence',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _anomaly(AiSpendingAnomaly anomaly) {
-    final color = anomaly.severity == 'critical'
-        ? AppColors.error
-        : AppColors.warning;
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.sm),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.warning_amber_rounded, size: 18, color: color),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Text(
-              '${anomaly.category}: ${widget.currency}${NumberFormat('#,##0').format(anomaly.currentAmount)} so far, compared with ${widget.currency}${NumberFormat('#,##0').format(anomaly.baselineAmount)} expected at this point.',
-              style: Theme.of(context).textTheme.labelMedium,
             ),
           ),
         ],

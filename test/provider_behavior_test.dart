@@ -155,39 +155,6 @@ void main() {
       expect(container.read(notificationProvider), hasLength(2));
     },
   );
-
-  test('an expired AI session is not treated as access', () async {
-    SharedPreferences.setMockInitialValues({
-      'aiAccountEmail': 'user@example.com',
-      'aiSessionExpiresAt': DateTime.now()
-          .subtract(const Duration(days: 1))
-          .millisecondsSinceEpoch,
-    });
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        initialSessionTokenProvider.overrideWithValue('stale-token'),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    expect(container.read(appSettingsProvider).hasAiAccess, isFalse);
-  });
-
-  test('a session with no expiry is trusted until the server says otherwise', () async {
-    SharedPreferences.setMockInitialValues({'aiSessionExpiresAt': 0});
-    final prefs = await SharedPreferences.getInstance();
-    final container = ProviderContainer(
-      overrides: [
-        sharedPreferencesProvider.overrideWithValue(prefs),
-        initialSessionTokenProvider.overrideWithValue('live-token'),
-      ],
-    );
-    addTearDown(container.dispose);
-
-    expect(container.read(appSettingsProvider).hasAiAccess, isTrue);
-  });
 }
 
 class _FakeStorage extends StorageService {

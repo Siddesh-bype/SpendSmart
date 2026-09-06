@@ -5,17 +5,9 @@ import 'package:uuid/uuid.dart';
 import '../models/split_group.dart';
 import '../providers/group_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 
-const groupAvatarColors = [
-  Color(0xFFE07B6A),
-  Color(0xFF29B6F6),
-  Color(0xFF26C6DA),
-  Color(0xFF4CAF7D),
-  Color(0xFFF4A639),
-  Color(0xFFAB7FE8),
-  Color(0xFF90A4AE),
-  Color(0xFFFF7043),
-];
+const groupAvatarColors = AppColors.categoryColors;
 
 class AddGroupSheet extends ConsumerStatefulWidget {
   final SplitGroup? existingGroup;
@@ -232,7 +224,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 13,
+                            fontSize: AppType.label,
                           ),
                         ),
                       ),
@@ -285,7 +277,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 child: Text(
                   isEditing ? 'Save Changes' : 'Create Group',
                   style: const TextStyle(
-                    fontSize: 16,
+                    fontSize: AppType.headline,
                     fontWeight: FontWeight.bold,
                   ),
                 ),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/service_provider.dart';
 import 'main_scaffold.dart';
@@ -121,7 +122,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: AppType.title,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                           letterSpacing: 0,
@@ -133,7 +134,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                         onPressed: _finish,
                         child: const Text(
                           'Skip',
-                          style: TextStyle(color: Colors.grey, fontSize: 14),
+                          style: TextStyle(color: Colors.grey, fontSize: AppType.body),
                         ),
                       ),
                   ],
@@ -146,7 +147,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Your personal expense tracker',
-                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                    style: TextStyle(color: Colors.grey, fontSize: AppType.label),
                   ),
                 ),
               ),
@@ -216,7 +217,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   child: Text(
                     isLast ? 'Get Started' : 'Next',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: AppType.headline,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -256,7 +257,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               page.title,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 24,
+                fontSize: AppType.title,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,
               ),
@@ -266,7 +267,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               page.desc,
               textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 15,
+                fontSize: AppType.body,
                 color: Colors.grey,
                 height: 1.6,
               ),

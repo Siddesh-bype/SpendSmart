@@ -1,0 +1,250 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 520" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="bgGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#090d16" />
+      <stop offset="50%" stop-color="#0d1527" />
+      <stop offset="100%" stop-color="#060911" />
+    </linearGradient>
+
+    <linearGradient id="cyanEmerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+
+    <linearGradient id="emeraldBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+
+    <linearGradient id="purplePink" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#ec4899" />
+    </linearGradient>
+
+    <!-- Grid Pattern -->
+    <pattern id="archGrid" width="25" height="25" patternUnits="userSpaceOnUse">
+      <path d="M 25 0 L 0 0 0 25" fill="none" stroke="#1e293b" stroke-width="0.7" stroke-opacity="0.35" />
+    </pattern>
+
+    <filter id="nodeGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <style>
+      @keyframes dashAnim {
+        to {
+          stroke-dashoffset: -40;
+        }
+      }
+      @keyframes pulseNode {
+        0%, 100% { opacity: 0.9; }
+        50% { opacity: 1; filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.4)); }
+      }
+      .connector-pulse {
+        stroke-dasharray: 8, 8;
+        animation: dashAnim 1.8s linear infinite;
+      }
+      .connector-purple {
+        stroke-dasharray: 8, 8;
+        animation: dashAnim 1.8s linear infinite;
+      }
+      .node-card {
+        transition: all 0.3s ease;
+      }
+      .node-title {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 700;
+        font-size: 13px;
+        letter-spacing: 0.5px;
+      }
+      .node-body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 11.5px;
+        fill: #94a3b8;
+      }
+      .header-title {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: -0.2px;
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1000" height="520" rx="14" fill="url(#bgGrad2)" />
+  <rect width="1000" height="520" rx="14" fill="url(#archGrid)" />
+  <rect width="998" height="518" x="1" y="1" rx="13" fill="none" stroke="#334155" stroke-opacity="0.5" stroke-width="1.5" />
+
+  <!-- Architecture Header -->
+  <g transform="translate(40, 38)">
+    <circle cx="10" cy="10" r="5" fill="#10b981" />
+    <text x="24" y="15" class="header-title" fill="#f8fafc">
+      SPENDSMART ZERO-CLOUD DATA PIPELINE &amp; RUNTIME ARCHITECTURE
+    </text>
+    <text x="24" y="34" font-family="ui-monospace, monospace" font-size="11" fill="#64748b">
+      Strict Sandbox Isolation • Non-Blocking Local State • Pure In-Memory + Hive Storage
+    </text>
+  </g>
+
+  <!-- CONNECTIONS (Drawn Behind Nodes) -->
+  <!-- Layer 1 to Layer 2 -->
+  <path id="path1" d="M 235 155 L 340 155" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.6" class="connector-pulse" />
+  <path id="path2" d="M 235 270 L 340 270" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.6" class="connector-pulse" />
+  <path id="path3" d="M 235 385 L 340 330" stroke="#06b6d4" stroke-width="2" fill="none" opacity="0.6" class="connector-pulse" />
+
+  <!-- Layer 2 to Layer 3 (Hive) -->
+  <path id="path4" d="M 590 220 L 685 220" stroke="#10b981" stroke-width="2.5" fill="none" opacity="0.8" class="connector-pulse" />
+  <path id="path5" d="M 590 320 L 685 320" stroke="#10b981" stroke-width="2.5" fill="none" opacity="0.8" class="connector-pulse" />
+
+  <!-- Layer 2 to Layer 4 (Output/UI) -->
+  <path id="path6" d="M 590 170 L 760 120" stroke="#8b5cf6" stroke-width="2" fill="none" opacity="0.7" class="connector-purple" />
+  <path id="path7" d="M 590 390 L 760 410" stroke="#8b5cf6" stroke-width="2" fill="none" opacity="0.7" class="connector-purple" />
+
+  <!-- DATA PACKETS ANIMATING ALONG PATHS -->
+  <circle r="3.5" fill="#38bdf8">
+    <animateMotion dur="2.2s" repeatCount="indefinite" path="M 235 155 L 340 155" />
+  </circle>
+  <circle r="3.5" fill="#38bdf8">
+    <animateMotion dur="2.8s" repeatCount="indefinite" path="M 235 270 L 340 270" />
+  </circle>
+  <circle r="3.5" fill="#34d399">
+    <animateMotion dur="2.0s" repeatCount="indefinite" path="M 590 220 L 685 220" />
+  </circle>
+  <circle r="3.5" fill="#a78bfa">
+    <animateMotion dur="2.4s" repeatCount="indefinite" path="M 590 170 L 760 120" />
+  </circle>
+
+  <!-- ==================== COLUMN 1: INGESTION ==================== -->
+  <g transform="translate(40, 95)">
+    <text x="0" y="16" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#38bdf8" letter-spacing="1">
+      01 / INGESTION INTERFACES
+    </text>
+
+    <!-- Node 1.1: UI Entry -->
+    <g transform="translate(0, 30)">
+      <rect width="195" height="75" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+      <rect width="4" height="75" rx="2" fill="#06b6d4" />
+      <text x="16" y="24" class="node-title" fill="#f1f5f9">Manual &amp; Group Entry</text>
+      <text x="16" y="44" class="node-body">• Zero-latency bottom sheets</text>
+      <text x="16" y="60" class="node-body">• Splits, lending, recurring</text>
+    </g>
+
+    <!-- Node 1.2: CSV Engine -->
+    <g transform="translate(0, 145)">
+      <rect width="195" height="85" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+      <rect width="4" height="85" rx="2" fill="#06b6d4" />
+      <text x="16" y="24" class="node-title" fill="#f1f5f9">CSV Parser &amp; Normalizer</text>
+      <text x="16" y="44" class="node-body">• Header alias resolution</text>
+      <text x="16" y="60" class="node-body">• Sanitizes corrupt records</text>
+      <text x="16" y="76" class="node-body">• Staged pre-commit review</text>
+    </g>
+
+    <!-- Node 1.3: PDF Stream Analyzer -->
+    <g transform="translate(0, 260)">
+      <rect width="195" height="75" rx="8" fill="#0f172a" stroke="#1e293b" stroke-width="1.2" />
+      <rect width="4" height="75" rx="2" fill="#06b6d4" />
+      <text x="16" y="24" class="node-title" fill="#f1f5f9">Bank PDF Statement Parser</text>
+      <text x="16" y="44" class="node-body">• Text-stream debit extraction</text>
+      <text x="16" y="60" class="node-body">• Regex date/amount anchor</text>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 2: PROCESSING & STATE ==================== -->
+  <g transform="translate(340, 95)">
+    <text x="0" y="16" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#34d399" letter-spacing="1">
+      02 / STATE &amp; VALIDATION ENGINE
+    </text>
+
+    <!-- Core Engine Big Box -->
+    <g transform="translate(0, 30)">
+      <rect width="250" height="305" rx="10" fill="#0b1329" stroke="#10b981" stroke-width="1.4" opacity="0.95" />
+      <rect width="250" height="30" rx="10" fill="#064e3b" opacity="0.4" />
+      
+      <text x="16" y="20" class="node-title" fill="#6ee7b7">App State &amp; Domain Logic</text>
+
+      <!-- Sub-module 1 -->
+      <g transform="translate(14, 42)">
+        <rect width="222" height="52" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
+        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Deduplication Gate</text>
+        <text x="12" y="38" class="node-body">Collides external IDs &amp; hashes</text>
+      </g>
+
+      <!-- Sub-module 2 -->
+      <g transform="translate(14, 104)">
+        <rect width="222" height="52" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
+        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Financial Period Resolver</text>
+        <text x="12" y="38" class="node-body">Custom start-day rolling windows</text>
+      </g>
+
+      <!-- Sub-module 3 -->
+      <g transform="translate(14, 166)">
+        <rect width="222" height="52" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
+        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Merchant Anomaly Engine</text>
+        <text x="12" y="38" class="node-body">Deterministic local statistics</text>
+      </g>
+
+      <!-- Sub-module 4 -->
+      <g transform="translate(14, 228)">
+        <rect width="222" height="60" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
+        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Reactive ChangeNotifier</text>
+        <text x="12" y="36" class="node-body">Immediate dispatch to widgets</text>
+        <text x="12" y="50" class="node-body">Guaranteed transactional write</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== COLUMN 3: PERSISTENCE (HIVE) ==================== -->
+  <g transform="translate(685, 175)">
+    <text x="0" y="16" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#10b981" letter-spacing="1">
+      03 / HIVE EMBEDDED
+    </text>
+
+    <!-- Hive Box Card -->
+    <g transform="translate(0, 30)">
+      <rect width="275" height="155" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="1.5" />
+      <rect width="275" height="30" rx="10" fill="#10b981" opacity="0.15" />
+      
+      <circle cx="18" cy="15" r="4" fill="#10b981" />
+      <text x="30" y="20" class="node-title" fill="#a7f3d0">Android Sandbox Storage</text>
+
+      <g transform="translate(16, 42)">
+        <text x="0" y="16" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Expense&gt;('expenses')</text>
+        <text x="0" y="34" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Category&gt;('categories')</text>
+        <text x="0" y="52" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Budget&gt;('budgets')</text>
+        
+        <line x1="0" y1="64" x2="240" y2="64" stroke="#334155" stroke-width="1" />
+        
+        <text x="0" y="80" class="node-body">• Path: /data/user/0/.../app_flutter</text>
+        <text x="0" y="96" class="node-body">• Zero network calls • Direct binary I/O</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== OUTPUTS: TOP & BOTTOM RIGHT ==================== -->
+  <!-- Real-Time UI Visuals -->
+  <g transform="translate(760, 65)">
+    <rect width="200" height="70" rx="8" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1.2" />
+    <text x="14" y="22" class="node-title" fill="#c4b5fd">Live UI &amp; Spending Pulse</text>
+    <text x="14" y="42" class="node-body">• Zero-jank 60fps glass UI</text>
+    <text x="14" y="58" class="node-body">• Dynamic month forecast</text>
+  </g>
+
+  <!-- Share & Export -->
+  <g transform="translate(760, 395)">
+    <rect width="200" height="75" rx="8" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1.2" />
+    <text x="14" y="22" class="node-title" fill="#c4b5fd">Export &amp; Share Sheet</text>
+    <text x="14" y="42" class="node-body">• Direct PDF statement gen</text>
+    <text x="14" y="58" class="node-body">• Sanitized CSV export</text>
+  </g>
+
+  <!-- Security Boundary Banner Bottom -->
+  <g transform="translate(40, 485)">
+    <rect width="920" height="24" rx="6" fill="#1e293b" fill-opacity="0.7" />
+    <text x="14" y="16" font-family="ui-monospace, monospace" font-size="10.5" fill="#94a3b8">
+      🔒 AIR-GAPPED PRIVACY: No remote sync servers, no telemetry SDKs, no external database ports exposed.
+    </text>
+  </g>
+</svg>

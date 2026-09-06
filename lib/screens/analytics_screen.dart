@@ -749,8 +749,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     // read against a dark brand fill, so they stay light rather than
     // AppColors.error/success which are tuned for surface backgrounds.
     final momColor = momUp
-        ? const Color(0xFFFCA5A5)
-        : const Color(0xFF4ADE80);
+        ? AppColors.negativeCoral
+        : AppColors.positiveGreen;
     return GlassContainer(
       borderRadius: AppRadius.lg,
       backgroundColor: AppColors.primary,

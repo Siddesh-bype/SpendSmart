@@ -31,10 +31,9 @@ class MerchantAnomaly {
 
 /// Merchant-level anomaly detection, on device.
 ///
-/// Same math as the Worker's `calculateAnomalies` (see
-/// `cloudflare/ai-analysis-worker/src/index.ts`) one level finer: merchants
-/// instead of categories, so it needs no network call. Pure Dart: no Hive, no
-/// Riverpod, no widgets.
+/// Flags merchants whose recent spend exceeds their own 3-month baseline,
+/// one level finer than category-level spikes, so it needs no network call.
+/// Pure Dart: no Hive, no Riverpod, no widgets.
 class MerchantAnomalyService {
   static const _historyMonths = 3;
   static const _spikeRatio = 1.5;
@@ -42,8 +41,8 @@ class MerchantAnomalyService {
   static const _budgetImpactShare = 0.05;
   static const _maxResults = 5;
 
-  /// Impact floor when no budget is set. The Worker's `max(1, ...)` would flag
-  /// rupee-level noise here, because a merchant baseline is far smaller than a
+  /// Impact floor when no budget is set. Without a floor, rupee-level noise
+  /// would flag here, because a merchant baseline is far smaller than a
   /// category one.
   static const _noBudgetMinimumImpact = 500.0;
 
@@ -105,8 +104,7 @@ class MerchantAnomalyService {
     return anomalies.take(_maxResults).toList(growable: false);
   }
 
-  /// Merchant totals for one period, excluding uncategorized expenses the
-  /// way `AiSpendingAnalysisService._monthSummary` does.
+  /// Merchant totals for one period, excluding uncategorized expenses.
   static _MonthTotals _monthTotals(
     Iterable<Expense> expenses,
     FinancialPeriod period,

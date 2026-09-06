@@ -6,7 +6,10 @@ import 'package:uuid/uuid.dart';
 import '../models/income.dart';
 import '../providers/income_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
+import '../widgets/glass_container.dart';
 
 class IncomeScreen extends ConsumerWidget {
   const IncomeScreen({super.key});
@@ -14,20 +17,23 @@ class IncomeScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final incomes = ref.watch(incomeProvider);
-    final currency = ref.watch(appSettingsProvider).currency;
-    final now = DateTime.now();
+    final settings = ref.watch(appSettingsProvider);
+    final currency = settings.currency;
 
-    // Monthly totals
-    final thisMonthTotal = incomes
-        .where((i) => i.date.month == now.month && i.date.year == now.year)
-        .fold(0.0, (s, i) => s + i.amount);
-
-    // Group by "MMMM yyyy"
+    // Group by month
     final Map<String, List<Income>> grouped = {};
-    for (final i in incomes) {
-      final key = DateFormat('MMMM yyyy').format(i.date);
-      grouped.putIfAbsent(key, () => []).add(i);
+    for (final inc in incomes) {
+      final key = DateFormat('MMMM yyyy').format(inc.date);
+      grouped.putIfAbsent(key, () => []).add(inc);
     }
+
+    // Current month total
+    final now = DateTime.now();
+    final thisMonthKey = DateFormat('MMMM yyyy').format(now);
+    final thisMonthTotal = (grouped[thisMonthKey] ?? []).fold(
+      0.0,
+      (s, i) => s + i.amount,
+    );
 
     return Scaffold(
       appBar: AppBar(
@@ -39,28 +45,13 @@ class IncomeScreen extends ConsumerWidget {
       body: Column(
         children: [
           // Summary banner
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [
-                  Color(0xFF2E7D32),
-                  Color(0xFF43A047),
-                  Color(0xFF66BB6A),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF2E7D32).withValues(alpha: 0.35),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
+          GlassContainer(
+            borderRadius: AppRadius.lg,
+            backgroundColor: AppColors.secondary,
+            margin: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xl,
+              vertical: AppSpacing.lg,
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,14 +61,14 @@ class IncomeScreen extends ConsumerWidget {
                   children: [
                     const Text(
                       'This Month',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                      style: TextStyle(color: Colors.white70, fontSize: AppType.caption),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '$currency${NumberFormat('#,##0').format(thisMonthTotal)}',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 26,
+                        fontSize: AppType.title,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -107,7 +98,7 @@ class IncomeScreen extends ConsumerWidget {
                     const Text(
                       'No income recorded',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppType.headline,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -117,7 +108,7 @@ class IncomeScreen extends ConsumerWidget {
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.grey.shade500,
-                        fontSize: 13,
+                        fontSize: AppType.label,
                       ),
                     ),
                   ],
@@ -146,16 +137,16 @@ class IncomeScreen extends ConsumerWidget {
                               entry.key,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: AppType.label,
                                 color: Colors.grey.shade500,
                               ),
                             ),
                             Text(
                               '$currency${NumberFormat('#,##0').format(monthTotal)}',
-                              style: TextStyle(
+                              style: const TextStyle(
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                                color: Colors.green.shade700,
+                                fontSize: AppType.label,
+                                color: AppColors.success,
                               ),
                             ),
                           ],
@@ -186,7 +177,7 @@ class IncomeScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showAddSheet(context, ref),
-        backgroundColor: Colors.green.shade700,
+        backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'Add Income',
@@ -220,20 +211,20 @@ class _IncomeTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: Colors.green.withValues(alpha: 0.15),
+        backgroundColor: AppColors.success.withValues(alpha: 0.15),
         child: const Icon(
           Icons.arrow_downward_rounded,
-          color: Colors.green,
+          color: AppColors.success,
           size: 20,
         ),
       ),
       title: Text(
         income.source,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppType.body),
       ),
       subtitle: Text(
         '${DateFormat('d MMM y').format(income.date)}${income.note.isNotEmpty ? ' · ${income.note}' : ''}',
-        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+        style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade500),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
@@ -241,9 +232,9 @@ class _IncomeTile extends ConsumerWidget {
           Text(
             '$currency${NumberFormat('#,##0').format(income.amount)}',
             style: const TextStyle(
-              color: Colors.green,
+              color: AppColors.success,
               fontWeight: FontWeight.bold,
-              fontSize: 15,
+              fontSize: AppType.body,
             ),
           ),
           const SizedBox(width: 4),
@@ -378,7 +369,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 return ChoiceChip(
                   label: Text(src),
                   selected: selected,
-                  selectedColor: Colors.green.shade700,
+                  selectedColor: AppColors.success,
                   labelStyle: TextStyle(
                     color: selected ? Colors.white : null,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
@@ -423,7 +414,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green.shade700,
+                  backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -431,7 +422,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 ),
                 child: const Text(
                   'Save',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

@@ -11,9 +11,7 @@ import 'money_text.dart';
 /// Compact insight card for the home screen.
 ///
 /// Every signal here is computed on-device, so it costs nothing, works in
-/// airplane mode, and needs no consent prompt. The network-backed LLM summary
-/// stays on the Insights screen behind a deliberate button press -- firing a
-/// paid call on app open would be the wrong default.
+/// airplane mode, and needs no consent prompt.
 ///
 /// Renders nothing when there is nothing worth saying.
 class SpendingPulseCard extends StatelessWidget {
@@ -130,6 +128,13 @@ class SpendingPulseCard extends StatelessWidget {
                     : 'by month end at this pace',
                 style: theme.textTheme.labelMedium,
               ),
+              if (monthlyBudget > 0 && !overBudget) ...[
+                const SizedBox(height: 2),
+                Text(
+                  'Recommended daily ceiling: $currency${((monthlyBudget - (projection.amount * (DateTime.now().day / 30))) / (30 - DateTime.now().day)).clamp(0, monthlyBudget).toStringAsFixed(0)}/day',
+                  style: theme.textTheme.labelSmall?.copyWith(color: AppColors.success),
+                ),
+              ],
             ],
           ),
         ),
@@ -195,25 +200,44 @@ class SpendingPulseCard extends StatelessWidget {
     );
   }
 
-  /// Pro-rates spend so far across the whole period, mirroring the arithmetic
-  /// the Worker applies in `calculateForecast`. Needs 3 days of data before it
-  /// says anything -- one big Monday would otherwise project an alarming month.
+  /// Rule-based projection of month-end spend.
   ///
-  /// Both the elapsed and total day counts come from the period, so a custom
-  /// cycle projects against its own length. Using calendar-month days here
-  /// pro-rated a 31-day cycle over the wrong denominator.
-  _Projection? _projectMonthEnd() {
+  /// Pro-rates spend so far across the whole period: `spent / elapsedDays *
+  /// totalDays`. Needs 3 days of data before it says anything -- one big
+  /// Monday would otherwise project an alarming month.
+  ///
+  /// Future-dated expenses are excluded: a planned entry is not yet spent, and
+  /// counting it against a small elapsed day count would over-inflate the
+  /// projection. Both the elapsed and total day counts come from the period,
+  /// so a custom cycle projects against its own length rather than a
+  /// calendar-month denominator.
+  @visibleForTesting
+  static double? projectMonthEnd({
+    required List<Expense> monthlyExpenses,
+    required int startingDayOfMonth,
+    DateTime? now,
+  }) {
     if (monthlyExpenses.isEmpty) return null;
-    final period = FinancialPeriod.containing(
-      DateTime.now(),
-      startingDayOfMonth,
-    );
-    final elapsed = period.daysElapsed(DateTime.now());
+    final date = now ?? DateTime.now();
+    final period = FinancialPeriod.containing(date, startingDayOfMonth);
+    final elapsed = period.daysElapsed(date);
     if (elapsed < 3) return null;
 
-    final spent = monthlyExpenses.fold(0.0, (sum, e) => sum + e.amount);
+    var spent = 0.0;
+    for (final e in monthlyExpenses) {
+      if (e.date.isAfter(date)) continue;
+      spent += e.amount;
+    }
     if (spent <= 0) return null;
-    return _Projection(spent / elapsed * period.totalDays);
+    return spent / elapsed * period.totalDays;
+  }
+
+  _Projection? _projectMonthEnd() {
+    final amount = projectMonthEnd(
+      monthlyExpenses: monthlyExpenses,
+      startingDayOfMonth: startingDayOfMonth,
+    );
+    return amount == null ? null : _Projection(amount);
   }
 }
 

@@ -14,7 +14,8 @@ class AppSpacing {
 class AppRadius {
   static const double sm = 8; // chips, progress bars
   static const double md = 14; // cards, tiles, inputs, buttons
-  static const double lg = 24; // hero, sheets, nav
+  static const double lg = 24; // hero, sheets
+  static const double glass = 28; // glass cards, nav pill
 
   static BorderRadius get smAll => BorderRadius.circular(sm);
   static BorderRadius get mdAll => BorderRadius.circular(md);
@@ -28,6 +29,8 @@ class AppDuration {
 }
 
 class AppElevation {
+  static const double glassBlur = 20.0;
+
   static List<BoxShadow> low(bool isDark) => [
     BoxShadow(
       color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.05),

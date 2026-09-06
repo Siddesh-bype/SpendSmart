@@ -9,7 +9,9 @@ import '../providers/lending_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../services/lending_pdf_service.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
+import '../widgets/glass_container.dart';
 
 class LendingScreen extends ConsumerStatefulWidget {
   const LendingScreen({super.key});
@@ -36,23 +38,30 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
         lendings,
         currency: currency,
       );
+      setState(() => _exporting = false);
       if (!mounted) return;
       ScaffoldMessenger.of(context).clearSnackBars();
-      await OpenFilex.open(path);
-    } catch (_) {
-      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('PDF export failed. Try again.'),
-          backgroundColor: AppColors.error,
+          content: const Text('PDF exported successfully'),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+          action: SnackBarAction(
+            label: 'OPEN',
+            textColor: AppColors.accent,
+            onPressed: () => OpenFilex.open(path),
           ),
         ),
       );
-    } finally {
-      if (mounted) setState(() => _exporting = false);
+    } catch (_) {
+      setState(() => _exporting = false);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to generate PDF'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
     }
   }
 
@@ -61,15 +70,14 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
     final lendings = ref.watch(lendingProvider);
     final settings = ref.watch(appSettingsProvider);
     final currency = settings.currency;
-    final active = lendings.where((l) => !l.isSettled).toList();
 
     // Group by friend
     final Map<String, List<Lending>> byFriend = {};
-    for (final l in active) {
+    for (final l in lendings) {
       byFriend.putIfAbsent(l.friendName, () => []).add(l);
     }
 
-    // Net per friend: positive = they owe me, negative = I owe them
+    // Net balance per friend: positive = they owe me, negative = I owe them
     final Map<String, double> netBalance = {};
     for (final entry in byFriend.entries) {
       double net = 0;
@@ -82,13 +90,13 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Friends & Lending',
+          'Lend & Borrow',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           _exporting
               ? const Padding(
-                  padding: EdgeInsets.all(12),
+                  padding: EdgeInsets.all(14),
                   child: SizedBox(
                     width: 20,
                     height: 20,
@@ -96,7 +104,6 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                   ),
                 )
               : IconButton(
-                  tooltip: 'Export PDF',
                   icon: const Icon(Icons.picture_as_pdf_rounded),
                   onPressed: lendings.isEmpty
                       ? null
@@ -107,25 +114,11 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       body: Column(
         children: [
           // Summary banner
-          Container(
-            width: double.infinity,
-            margin: const EdgeInsets.all(16),
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [AppColors.primary, AppColors.secondary],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.35),
-                  blurRadius: 14,
-                  offset: const Offset(0, 5),
-                ),
-              ],
-            ),
+          GlassContainer(
+            borderRadius: AppRadius.lg,
+            backgroundColor: AppColors.primary,
+            margin: const EdgeInsets.all(AppSpacing.lg),
+            padding: const EdgeInsets.all(AppSpacing.lg),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -135,7 +128,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     netBalance.values
                         .where((v) => v > 0)
                         .fold(0.0, (a, b) => a + b),
-                    Colors.green.shade200,
+                    AppColors.positiveGreen,
                     currency,
                   ),
                 ),
@@ -146,7 +139,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     netBalance.values
                         .where((v) => v < 0)
                         .fold(0.0, (a, b) => a + b.abs()),
-                    Colors.red.shade200,
+                    AppColors.negativeCoral,
                     currency,
                   ),
                 ),
@@ -169,7 +162,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     const Text(
                       'No active lendings',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: AppType.headline,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
@@ -178,7 +171,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                       'Tap + to record money you gave or owe.',
                       style: TextStyle(
                         color: Colors.grey.shade500,
-                        fontSize: 13,
+                        fontSize: AppType.label,
                       ),
                     ),
                   ],
@@ -204,13 +197,13 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                       ),
                       leading: CircleAvatar(
                         backgroundColor: iOweThemMore
-                            ? Colors.red.withValues(alpha: 0.15)
-                            : Colors.green.withValues(alpha: 0.15),
+                            ? AppColors.error.withValues(alpha: 0.15)
+                            : AppColors.success.withValues(alpha: 0.15),
                         child: Text(
                           name[0].toUpperCase(),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: iOweThemMore ? Colors.red : Colors.green,
+                            color: iOweThemMore ? AppColors.error : AppColors.success,
                           ),
                         ),
                       ),
@@ -223,9 +216,9 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                             ? 'You owe $currency${NumberFormat('#,##0').format(net.abs())}'
                             : 'Owed to you $currency${NumberFormat('#,##0').format(net)}',
                         style: TextStyle(
-                          color: iOweThemMore ? Colors.red : Colors.green,
+                          color: iOweThemMore ? AppColors.error : AppColors.success,
                           fontWeight: FontWeight.w600,
-                          fontSize: 13,
+                          fontSize: AppType.label,
                         ),
                       ),
                       children: byFriend[name]!
@@ -261,14 +254,14 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: 11),
+          style: const TextStyle(color: Colors.white70, fontSize: AppType.caption),
         ),
         const SizedBox(height: 4),
         Text(
           '$currency${NumberFormat('#,##0').format(amount)}',
           style: TextStyle(
             color: valueColor,
-            fontSize: 20,
+            fontSize: AppType.title,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -281,7 +274,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       dense: true,
       leading: Icon(
         l.isIGave ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-        color: l.isIGave ? Colors.green : Colors.red,
+        color: l.isIGave ? AppColors.success : AppColors.error,
         size: 20,
       ),
       title: Text(
@@ -290,13 +283,13 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
             : 'You owe $currency${NumberFormat('#,##0').format(l.amount)}',
         style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: l.isIGave ? Colors.green : Colors.red,
-          fontSize: 13,
+          color: l.isIGave ? AppColors.success : AppColors.error,
+          fontSize: AppType.label,
         ),
       ),
       subtitle: Text(
         '${DateFormat('d MMM y').format(l.date)}${l.note.isNotEmpty ? ' · ${l.note}' : ''}',
-        style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+        style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade500),
       ),
       trailing: TextButton(
         onPressed: () {
@@ -312,7 +305,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
             ),
           );
         },
-        child: const Text('Settle', style: TextStyle(fontSize: 12)),
+        child: const Text('Settle', style: TextStyle(fontSize: AppType.caption)),
       ),
     );
   }
@@ -538,7 +531,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                 ),
                 child: const Text(
                   'Save',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

@@ -17,7 +17,6 @@ import 'package:spendsmart/models/split_group.dart';
 import 'package:spendsmart/providers/app_settings_provider.dart';
 import 'package:spendsmart/providers/service_provider.dart';
 import 'package:spendsmart/screens/add_expense_screen.dart';
-import 'package:spendsmart/screens/ai_sign_in_screen.dart';
 import 'package:spendsmart/screens/analytics_screen.dart';
 import 'package:spendsmart/screens/budget_screen.dart';
 import 'package:spendsmart/screens/groups_screen.dart';
@@ -98,7 +97,6 @@ void main() {
       'pending': const PendingScreen(),
       'notifications': const NotificationsScreen(),
       'onboarding': const OnboardingScreen(),
-      'AI sign-in': const AiSignInScreen(),
     };
 
     for (final mode in [ThemeMode.light, ThemeMode.dark]) {

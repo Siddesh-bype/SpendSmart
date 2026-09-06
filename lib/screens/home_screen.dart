@@ -14,6 +14,7 @@ import '../models/budget.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/day_detail_sheet.dart';
 import '../widgets/edit_expense_sheet.dart';
+import '../widgets/glass_container.dart';
 import '../widgets/money_text.dart';
 import '../widgets/spending_calendar.dart';
 import '../widgets/spending_pulse_card.dart';
@@ -189,18 +190,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+                       children: [
                         Text(
                           DateFormat('MMMM yyyy').format(now),
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: AppType.label,
                             color: Theme.of(context).textTheme.bodySmall?.color,
                           ),
                         ),
                         const Text(
                           'SpendSmart',
                           style: TextStyle(
-                            fontSize: 22,
+                            fontSize: AppType.title,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -239,7 +240,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   Text(
                                     '${uncategorized.length} pending',
                                     style: const TextStyle(
-                                      fontSize: 12,
+                                      fontSize: AppType.caption,
                                       color: Colors.orange,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -274,7 +275,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                       unreadCount > 9 ? '9+' : '$unreadCount',
                                       style: const TextStyle(
                                         color: Colors.white,
-                                        fontSize: 9,
+                                        fontSize: AppType.micro,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -293,22 +294,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             SliverToBoxAdapter(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, AppColors.accent],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    borderRadius: AppRadius.lgAll,
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppColors.primary.withValues(alpha: 0.32),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
+                child: GlassContainer(
+                  borderRadius: AppRadius.lg,
+                  backgroundColor: AppColors.primary,
                   padding: const EdgeInsets.all(AppSpacing.xl),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -324,7 +312,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   'Total Spent',
                                   style: TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 14,
+                                    fontSize: AppType.body,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -351,7 +339,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   netLabel,
                                   style: const TextStyle(
                                     color: Colors.white70,
-                                    fontSize: 13,
+                                    fontSize: AppType.label,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
@@ -362,19 +350,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                   decoration: BoxDecoration(
                                     color: netBalance >= 0
-                                        ? const Color(
-                                            0xFF4ADE80,
-                                          ).withValues(alpha: 0.2)
-                                        : Colors.red.shade400.withValues(
+                                        ? AppColors.positiveGreen.withValues(
+                                            alpha: 0.2,
+                                          )
+                                        : AppColors.error.withValues(
                                             alpha: 0.2,
                                           ),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
                                       color: netBalance >= 0
-                                          ? const Color(
-                                              0xFF4ADE80,
-                                            ).withValues(alpha: 0.5)
-                                          : Colors.red.shade400.withValues(
+                                          ? AppColors.positiveGreen.withValues(
+                                              alpha: 0.5,
+                                            )
+                                          : AppColors.error.withValues(
                                               alpha: 0.5,
                                             ),
                                     ),
@@ -383,9 +371,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     '${netBalance < 0 ? '-' : ''}${settings.currency}${NumberFormat('#,##0').format(netBalance.abs())}',
                                     style: TextStyle(
                                       color: netBalance >= 0
-                                          ? const Color(0xFF4ADE80)
-                                          : Colors.red.shade300,
-                                      fontSize: 16,
+                                          ? AppColors.positiveGreen
+                                          : AppColors.negativeCoral,
+                                      fontSize: AppType.headline,
                                       fontWeight: FontWeight.bold,
                                     ),
                                   ),
@@ -416,7 +404,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     alpha: 0.1,
                                   ),
                                   color: val > 0.85
-                                      ? Colors.red.shade400
+                                      ? AppColors.error
                                       : AppColors.accent,
                                   minHeight: 8,
                                 ),
@@ -601,7 +589,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.success,
-                                  fontSize: 13,
+                                  fontSize: AppType.label,
                                 ),
                               ),
                               Text(
@@ -609,7 +597,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     ? '${settings.currency}${NumberFormat('#,##0').format(monthlyIncome)} logged this month'
                                     : 'Tap to log your income',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppType.caption,
                                   color: isDark
                                       ? AppColors.mutedDark
                                       : AppColors.mutedLight,
@@ -635,13 +623,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Category Spending',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 17,
+                          fontSize: AppType.headline,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -722,13 +710,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.accent,
-                                  fontSize: 13,
+                                  fontSize: AppType.label,
                                 ),
                               ),
                               Text(
                                 'Subscriptions & bills',
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: AppType.caption,
                                   color: isDark
                                       ? AppColors.mutedDark
                                       : AppColors.mutedLight,
@@ -762,7 +750,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: AppType.headline,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -781,10 +769,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             builder: (_) => const TransactionsScreen(),
                           ),
                         ),
-                        child: const Text(
-                          'See All',
-                          style: TextStyle(color: AppColors.primary),
-                        ),
+                        child: const Text('See All'),
                       ),
                   ],
                 ),
@@ -827,14 +812,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 11),
+          style: const TextStyle(color: Colors.white70, fontSize: AppType.caption),
         ),
         const SizedBox(height: 2),
         Text(
           value,
           style: const TextStyle(
             color: Colors.white,
-            fontSize: 15,
+            fontSize: AppType.body,
             fontWeight: FontWeight.w600,
           ),
         ),
@@ -917,7 +902,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       Text(
                         '$currency${NumberFormat('#,##0').format(spent)} / $currency${NumberFormat('#,##0').format(limit)}',
                         style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: AppType.label,
                           color: Colors.grey,
                         ),
                       ),
@@ -947,7 +932,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: Text(
                       '${(pct * 100).toStringAsFixed(0)}%',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: AppType.caption,
                         fontWeight: FontWeight.bold,
                         color: pct > 0.85 ? Colors.red.shade400 : Colors.grey,
                       ),
@@ -1013,13 +998,13 @@ class _SpendingAlertBanner extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     color: color,
-                    fontSize: 13,
+                    fontSize: AppType.label,
                   ),
                 ),
                 Text(
                   message,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: AppType.caption,
                     color: color.withValues(alpha: 0.85),
                   ),
                 ),

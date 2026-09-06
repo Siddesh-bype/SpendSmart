@@ -10,6 +10,7 @@ import '../providers/service_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 
 class PdfImportScreen extends ConsumerStatefulWidget {
   const PdfImportScreen({super.key});
@@ -35,12 +36,14 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
       _parsed = [];
       _selected = {};
     });
+
     try {
       final result = await FilePicker.platform.pickFiles(
         type: FileType.custom,
         allowedExtensions: ['pdf'],
         allowMultiple: false,
       );
+
       if (result == null || result.files.isEmpty) {
         setState(() => _loading = false);
         return;
@@ -193,7 +196,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                   child: Text(
                     'Import ${_selected.length} Transaction${_selected.length != 1 ? 's' : ''}',
                     style: const TextStyle(
-                      fontSize: 16,
+                      fontSize: AppType.headline,
                       fontWeight: FontWeight.bold,
                       color: Colors.white,
                     ),
@@ -212,23 +215,10 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.picture_as_pdf,
-                size: 52,
-                color: AppColors.primary,
-              ),
-            ),
             const SizedBox(height: 24),
             const Text(
               'Import Bank Statement',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: AppType.title, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 12),
             const Text(
@@ -247,16 +237,12 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.warning_amber,
-                      color: Colors.red,
-                      size: 18,
-                    ),
+                    const Icon(Icons.warning_amber, color: Colors.red, size: 18),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         _error!,
-                        style: const TextStyle(color: Colors.red, fontSize: 13),
+                        style: const TextStyle(color: Colors.red, fontSize: AppType.label),
                       ),
                     ),
                   ],
@@ -267,19 +253,14 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
             ElevatedButton.icon(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 32,
-                  vertical: 14,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               icon: const Icon(Icons.upload_file, color: Colors.white),
               label: const Text(
                 'Select PDF File',
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: AppType.headline,
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
                 ),
@@ -289,7 +270,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
             const SizedBox(height: 16),
             const Text(
               'PDF must be text-based (not scanned image)',
-              style: TextStyle(color: Colors.grey, fontSize: 12),
+              style: TextStyle(color: Colors.grey, fontSize: AppType.caption),
             ),
           ],
         ),
@@ -330,7 +311,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                     ),
                     Text(
                       'Found ${_parsed.length} debit transactions - ${_selected.length} selected',
-                      style: const TextStyle(color: Colors.grey, fontSize: 12),
+                      style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
                     ),
                   ],
                 ),
@@ -360,7 +341,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             color: Colors.grey,
-                            fontSize: 13,
+                            fontSize: AppType.label,
                           ),
                         ),
                         Text(
@@ -407,7 +388,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                               e.title,
                               style: const TextStyle(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 14,
+                                fontSize: AppType.body,
                               ),
                             ),
                           ),
@@ -420,7 +401,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                             Text(
                               DateFormat('dd MMM yyyy').format(e.date),
                               style: const TextStyle(
-                                fontSize: 12,
+                                fontSize: AppType.caption,
                                 color: Colors.grey,
                               ),
                             ),
@@ -437,7 +418,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                               child: Text(
                                 e.category.displayName,
                                 style: TextStyle(
-                                  fontSize: 10,
+                                  fontSize: AppType.micro,
                                   color: e.category.color,
                                 ),
                               ),
@@ -449,7 +430,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                         '$currency${NumberFormat('#,##0.##').format(e.amount)}',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: Colors.red,
+                          color: AppColors.error,
                         ),
                       ),
                     ),

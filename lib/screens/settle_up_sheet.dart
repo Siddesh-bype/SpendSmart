@@ -6,6 +6,7 @@ import '../models/split_group.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 
 class SettleUpSheet extends ConsumerWidget {
   final GroupExpense expense;
@@ -63,14 +64,14 @@ class SettleUpSheet extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   expense.description,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 15),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: AppType.body),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '$currency${expense.totalAmount.toStringAsFixed(2)}',
                   style: const TextStyle(
-                    fontSize: 28,
+                    fontSize: AppType.display,
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
                   ),
@@ -78,7 +79,7 @@ class SettleUpSheet extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   'Paid by $paidByName',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.label),
                 ),
               ],
             ),
@@ -107,7 +108,7 @@ class SettleUpSheet extends ConsumerWidget {
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
-              child: const Text('Mark as Settled', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              child: const Text('Mark as Settled', style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(height: 10),

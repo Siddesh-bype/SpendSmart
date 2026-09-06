@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/merchant_memory_provider.dart';
+import '../providers/service_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
-import '../services/ai_categorization_service.dart';
-import '../services/ai_failure.dart';
+import '../services/category_classifier.dart';
+import '../services/ai_financial_advisor_service.dart';
 import '../utils/constants.dart';
-
-const _aiFailureMessage = 'AI is unavailable right now. Try again.';
-
-String _plural(int count, String word) => '$count $word${count == 1 ? '' : 's'}';
+import '../utils/design.dart';
 
 class PendingScreen extends ConsumerStatefulWidget {
   const PendingScreen({super.key});
@@ -22,145 +21,10 @@ class PendingScreen extends ConsumerStatefulWidget {
 }
 
 class _PendingScreenState extends ConsumerState<PendingScreen> {
-  bool _loading = false;
-
-  /// Opt-in bulk categorization. Asks once, then remembers the answer until the
-  /// connection is disconnected or consent is revoked in Settings.
-  Future<void> _categorizeWithAi(List<Expense> pending) async {
-    // Everything provider-shaped is read before the first await.
-    final settings = ref.read(appSettingsProvider);
-    final expenses = ref.read(expenseProvider.notifier);
-    final merchants = ref.read(merchantNotifierProvider.notifier);
-    final appSettings = ref.read(appSettingsProvider.notifier);
-    final messenger = ScaffoldMessenger.of(context);
-
-    final workerUrl = Uri.tryParse(
-      '${AppConfig.workerBaseUrl}/analyze-spending',
-    );
-    final batches = AiCategorizationService.buildBatches(
-      pending.map((e) => e.title),
-    );
-    if (workerUrl == null || batches.isEmpty) {
-      messenger.showSnackBar(const SnackBar(content: Text(_aiFailureMessage)));
-      return;
-    }
-    final sentCount = batches.fold(0, (sum, batch) => sum + batch.length);
-
-    if (!settings.aiCategorizeConsent) {
-      var remember = false;
-      final confirmed = await showDialog<bool>(
-        context: context,
-        builder: (dialogContext) => StatefulBuilder(
-          builder: (context, setDialogState) => AlertDialog(
-            title: const Text('Categorize with AI?'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${_plural(sentCount, 'merchant name')} from your '
-                  '${_plural(pending.length, 'pending transaction')} will be '
-                  'sent to your own Cloudflare Worker, and on to OpenRouter, '
-                  'to suggest categories.\n\n'
-                  'No amounts, dates, or notes are sent.\n\n'
-                  'Only high-confidence suggestions are applied. Anything '
-                  'else stays here for you to categorize yourself.',
-                ),
-                CheckboxListTile(
-                  value: remember,
-                  onChanged: (v) =>
-                      setDialogState(() => remember = v ?? false),
-                  contentPadding: EdgeInsets.zero,
-                  controlAffinity: ListTileControlAffinity.leading,
-                  title: const Text("Don't ask again"),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Cancel'),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Send'),
-              ),
-            ],
-          ),
-        ),
-      );
-      if (confirmed != true || !mounted) return;
-      if (remember) await appSettings.setAiCategorizeConsent(true);
-      if (!mounted) return;
-    }
-
-    setState(() => _loading = true);
-
-    // Keyed by lowercased merchant so one suggestion fans out to every pending
-    // expense sharing that merchant -- buildBatches deduped them on the way out.
-    final learned = <String, Category>{};
-    AiFailureException? failure;
-    try {
-      final endpoint = AiCategorizationService.categorizeEndpoint(workerUrl);
-      for (final batch in batches) {
-        final suggestions = await AiCategorizationService.categorize(
-          endpoint: endpoint,
-          proxyToken: settings.aiSessionToken,
-          merchants: batch,
-        );
-        for (final suggestion in suggestions) {
-          if (suggestion.isHighConfidence) {
-            learned[suggestion.merchant.toLowerCase()] = suggestion.category;
-          }
-        }
-      }
-    } on AiFailureException catch (e) {
-      // Batches already collected still get applied below.
-      failure = e;
-    } catch (_) {
-      failure = const AiFailureException(
-        AiFailure.unknown,
-        'AI is unavailable right now. Try again.',
-      );
-    }
-
-    var applied = 0;
-    try {
-      for (final expense in pending) {
-        final category = learned[expense.title.trim().toLowerCase()];
-        if (category == null) continue;
-        // Same pair as the per-tile chip: clear the flag, teach the store.
-        await expenses.categorizeExpense(expense.id, category);
-        await merchants.correctMerchant(expense.title, category);
-        applied++;
-      }
-    } catch (_) {
-      failure ??= const AiFailureException(
-        AiFailure.unknown,
-        'Some categories could not be saved.',
-      );
-    }
-
-    if (!mounted) return;
-    setState(() => _loading = false);
-    final remaining = pending.length - applied;
-    messenger.showSnackBar(
-      SnackBar(
-        content: Text(
-          failure != null && applied == 0
-              ? failure.message
-              : 'Categorized $applied of ${pending.length}'
-                    '${remaining == 0 ? '.' : ' — $remaining still need review.'}'
-                    '${failure != null ? ' ${failure.message}' : ''}',
-        ),
-      ),
-    );
-  }
+  bool _isAnalyzing = false;
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(appSettingsProvider);
-    final aiConfigured = settings.hasAiAccess;
     final pending = ref
         .watch(expenseProvider)
         .where((e) => e.isUncategorized)
@@ -172,6 +36,30 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
           'Pending Categorization',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          if (pending.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: TextButton.icon(
+                onPressed: _isAnalyzing ? null : () => _runAiAutoCategorize(context, pending),
+                icon: _isAnalyzing
+                    ? const SizedBox(
+                        width: 14,
+                        height: 14,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.auto_awesome, size: 16, color: AppColors.secondary),
+                label: const Text(
+                  'Auto-Categorize',
+                  style: TextStyle(
+                    color: AppColors.secondary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: AppType.label,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: pending.isEmpty
           ? const Center(
@@ -181,12 +69,12 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                   Icon(
                     Icons.check_circle_outline,
                     size: 64,
-                    color: Colors.green,
+                    color: AppColors.success,
                   ),
                   SizedBox(height: 16),
                   Text(
                     'All caught up!',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: AppType.title, fontWeight: FontWeight.bold),
                   ),
                   SizedBox(height: 8),
                   Text(
@@ -206,51 +94,29 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.12),
+                          color: AppColors.warning.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.orange.shade300),
+                          border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
                         ),
                         child: Row(
                           children: [
                             const Icon(
                               Icons.info_outline,
-                              color: Colors.orange,
+                              color: AppColors.warning,
                             ),
                             const SizedBox(width: 12),
                             Expanded(
                               child: Text(
-                                '${pending.length} transaction${pending.length > 1 ? 's' : ''} need${pending.length == 1 ? 's' : ''} categorization. Swipe or tap to assign.',
+                                '${pending.length} transaction${pending.length > 1 ? 's' : ''} need${pending.length == 1 ? 's' : ''} categorization. Tap "Auto-Categorize" or select manually.',
                                 style: const TextStyle(
-                                  color: Colors.orange,
-                                  fontSize: 13,
+                                  color: AppColors.warning,
+                                  fontSize: AppType.label,
                                 ),
                               ),
                             ),
                           ],
                         ),
                       ),
-                      // Hidden until the user has configured their own Worker.
-                      if (aiConfigured) ...[
-                        const SizedBox(height: 12),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton.icon(
-                            onPressed: _loading
-                                ? null
-                                : () => _categorizeWithAi(pending),
-                            icon: _loading
-                                ? const SizedBox(
-                                    height: 16,
-                                    width: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : const Icon(Icons.auto_awesome),
-                            label: const Text('Categorize with AI'),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -267,6 +133,183 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
             ),
     );
   }
+
+  Future<void> _runAiAutoCategorize(BuildContext context, List<Expense> pending) async {
+    setState(() => _isAnalyzing = true);
+    HapticFeedback.mediumImpact();
+
+    try {
+      final storage = ref.read(storageServiceProvider);
+      final suggestions = AiFinancialAdvisorService.categorizePendingExpenses(
+        expenses: pending,
+        storageService: storage,
+      );
+
+      final confidentSuggestions = suggestions.where(
+        (s) => (s.confidence == AiConfidence.high || s.confidence == AiConfidence.medium) && s.category != Category.other,
+      ).toList();
+
+      if (!mounted) return;
+      setState(() => _isAnalyzing = false);
+
+      if (confidentSuggestions.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No confident category matches found for remaining merchants. Please assign manually.'),
+          ),
+        );
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (sheetContext) => _AiBatchCategorizeSheet(
+          suggestions: confidentSuggestions,
+          onApplyAll: () async {
+            Navigator.pop(sheetContext);
+            final messenger = ScaffoldMessenger.of(context);
+            final expensesNotifier = ref.read(expenseProvider.notifier);
+            final merchantsNotifier = ref.read(merchantNotifierProvider.notifier);
+
+            int applied = 0;
+            for (final s in confidentSuggestions) {
+              try {
+                await expensesNotifier.categorizeExpense(s.expenseId, s.category);
+                await merchantsNotifier.correctMerchant(s.merchant, s.category);
+                applied++;
+              } catch (_) {}
+            }
+
+            messenger.showSnackBar(
+              SnackBar(
+                content: Text('Successfully auto-categorized $applied transaction${applied == 1 ? '' : 's'}! ✨'),
+                backgroundColor: AppColors.success,
+              ),
+            );
+          },
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAnalyzing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Auto-categorization failed: $e')),
+        );
+      }
+    }
+  }
+}
+
+class _AiBatchCategorizeSheet extends StatelessWidget {
+  final List<AiCategorySuggestion> suggestions;
+  final VoidCallback onApplyAll;
+
+  const _AiBatchCategorizeSheet({
+    required this.suggestions,
+    required this.onApplyAll,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final highConfidenceCount = suggestions.where((s) => s.confidence == AiConfidence.high).length;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      constraints: BoxConstraints(
+        maxHeight: MediaQuery.of(context).size.height * 0.75,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('AI Categorization Results', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    Text(
+                      '$highConfidenceCount high confidence, ${suggestions.length - highConfidenceCount} moderate match',
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          const Divider(),
+          Expanded(
+            child: ListView.separated(
+              itemCount: suggestions.length,
+              separatorBuilder: (_, index) => const Divider(height: 1),
+              itemBuilder: (ctx, idx) {
+                final s = suggestions[idx];
+                final isHigh = s.confidence == AiConfidence.high;
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: s.category.color.withValues(alpha: 0.15),
+                    child: Icon(s.category.icon, color: s.category.color, size: 18),
+                  ),
+                  title: Text(s.merchant, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(s.rationale, style: theme.textTheme.labelSmall),
+                  trailing: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isHigh ? AppColors.success.withValues(alpha: 0.12) : AppColors.warning.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: isHigh ? AppColors.success.withValues(alpha: 0.3) : AppColors.warning.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Text(
+                      s.category.displayName,
+                      style: TextStyle(
+                        fontSize: AppType.caption,
+                        fontWeight: FontWeight.bold,
+                        color: isHigh ? AppColors.success : AppColors.warning,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: onApplyAll,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              icon: const Icon(Icons.check_circle_outline, size: 18),
+              label: Text('Apply All (${suggestions.length} Transactions)'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _PendingTile extends ConsumerWidget {
@@ -276,6 +319,13 @@ class _PendingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cur = ref.watch(appSettingsProvider).currency;
+
+    // Run instant heuristic check to see if AI has a high/medium suggestion for this item
+    final storage = ref.watch(storageServiceProvider);
+    final memoryCategory = storage.lookupMerchantCategory(expense.title);
+    final quickClassify = CategoryClassifier.classify(expense.title);
+    final suggestedCategory = memoryCategory ?? (quickClassify.category != Category.other ? quickClassify.category : null);
+
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -292,7 +342,7 @@ class _PendingTile extends ConsumerWidget {
                     expense.title,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 15,
+                      fontSize: AppType.body,
                     ),
                   ),
                 ),
@@ -301,7 +351,7 @@ class _PendingTile extends ConsumerWidget {
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     color: AppColors.primary,
-                    fontSize: 16,
+                    fontSize: AppType.headline,
                   ),
                 ),
               ],
@@ -309,12 +359,47 @@ class _PendingTile extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               DateFormat('MMM dd, yyyy  hh:mm a').format(expense.date),
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
+              style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
             ),
+            if (suggestedCategory != null) ...[
+              const SizedBox(height: 10),
+              InkWell(
+                onTap: () => _categorize(context, ref, suggestedCategory),
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.secondary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.auto_awesome, size: 13, color: AppColors.secondary),
+                      const SizedBox(width: 6),
+                      Text(
+                        'AI Suggestion: ${suggestedCategory.displayName}',
+                        style: const TextStyle(
+                          fontSize: AppType.caption,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.secondary,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Text(
+                        '• Tap to apply',
+                        style: TextStyle(fontSize: AppType.caption, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             const Text(
               'Select Category:',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+              style: TextStyle(fontWeight: FontWeight.w600, fontSize: AppType.label),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -345,7 +430,7 @@ class _PendingTile extends ConsumerWidget {
                               cat.displayName,
                               style: TextStyle(
                                 color: cat.color,
-                                fontSize: 12,
+                                fontSize: AppType.caption,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -362,11 +447,6 @@ class _PendingTile extends ConsumerWidget {
     );
   }
 
-  /// Confirms only after both writes land.
-  ///
-  /// The tile used to fire both and show the snackbar immediately, so a failed
-  /// Hive write still read as success and the expense stayed in the pending
-  /// list with no explanation.
   Future<void> _categorize(
     BuildContext context,
     WidgetRef ref,
@@ -376,7 +456,6 @@ class _PendingTile extends ConsumerWidget {
     final expenses = ref.read(expenseProvider.notifier);
     final merchants = ref.read(merchantNotifierProvider.notifier);
     try {
-      // categorizeExpense also clears isUncategorized.
       await expenses.categorizeExpense(expense.id, cat);
       await merchants.correctMerchant(expense.title, cat);
     } catch (_) {

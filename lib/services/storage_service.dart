@@ -37,8 +37,7 @@ class StorageService {
   /// Opens every box.
   ///
   /// Data is stored unencrypted: the app has no password, so there is no
-  /// secret to derive a key from. Signing in is only for AI features and
-  /// guards a server session, not local storage.
+  /// secret to derive a key from.
   Future<void> init() async {
     await Hive.initFlutter();
     _registerAdapters();

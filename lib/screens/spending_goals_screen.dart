@@ -7,8 +7,10 @@ import '../providers/spending_goal_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/financial_period.dart';
 import '../utils/validation.dart';
+import '../widgets/glass_container.dart';
 
 class SpendingGoalsScreen extends ConsumerStatefulWidget {
   const SpendingGoalsScreen({super.key});
@@ -99,7 +101,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             if (catSums.isNotEmpty) ...[
               const Text(
                 'Spending by Category',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 12),
               ...catSums.entries.map(
@@ -115,13 +117,13 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             if (goal.enabled) ...[
               const SizedBox(height: 24),
               OutlinedButton.icon(
-                icon: Icon(Icons.cancel_outlined, color: Colors.red),
+                icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
                 label: const Text(
                   'Disable Goal',
-                  style: TextStyle(color: Colors.red),
+                  style: TextStyle(color: AppColors.error),
                 ),
                 style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
+                  side: const BorderSide(color: AppColors.error),
                   minimumSize: const Size.fromHeight(44),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -140,15 +142,10 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
   }
 
   Widget _buildSetGoalCard(BuildContext context, String currency) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.secondary],
-        ),
-        borderRadius: BorderRadius.circular(20),
-      ),
+    return GlassContainer(
+      borderRadius: AppRadius.lg,
+      backgroundColor: AppColors.primary,
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         children: [
           const Icon(
@@ -161,14 +158,14 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             'Set a Monthly Goal',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 20,
+              fontSize: AppType.title,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 6),
           const Text(
             'Track your overall spending against a budget goal',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: Colors.white70, fontSize: AppType.label),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 20),
@@ -200,25 +197,10 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     bool isOver,
     String currency,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: isOver
-              ? [Colors.red.shade600, Colors.red.shade400]
-              : [AppColors.primary, AppColors.secondary],
-        ),
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: (isOver ? Colors.red : AppColors.primary).withValues(
-              alpha: 0.3,
-            ),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
+    return GlassContainer(
+      borderRadius: AppRadius.lg,
+      backgroundColor: isOver ? AppColors.error : AppColors.primary,
+      padding: const EdgeInsets.all(AppSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -227,7 +209,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             children: [
               const Text(
                 'Monthly Goal',
-                style: TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(color: Colors.white70, fontSize: AppType.label),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -244,7 +226,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                       : '${(pct * 100).toStringAsFixed(0)}% used',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 11,
+                    fontSize: AppType.caption,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -259,7 +241,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 '$currency${NumberFormat('#,##0').format(spent)}',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 32,
+                  fontSize: AppType.display,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -267,7 +249,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 padding: const EdgeInsets.only(bottom: 4, left: 8),
                 child: Text(
                   'of $currency${NumberFormat('#,##0').format(limit)}',
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  style: const TextStyle(color: Colors.white70, fontSize: AppType.body),
                 ),
               ),
             ],
@@ -292,7 +274,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             isOver
                 ? '$currency${NumberFormat('#,##0').format(spent - limit)} over your goal'
                 : '$currency${NumberFormat('#,##0').format(remaining)} remaining',
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
+            style: const TextStyle(color: Colors.white70, fontSize: AppType.caption),
           ),
         ],
       ),
@@ -336,7 +318,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 ),
                 Text(
                   '$currency${NumberFormat('#,##0').format(dailyBudget)}/day for the next $daysLeft days',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                  style: const TextStyle(fontSize: AppType.caption, color: Colors.grey),
                 ),
               ],
             ),
@@ -378,13 +360,13 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                       cat.displayName,
                       style: const TextStyle(
                         fontWeight: FontWeight.w600,
-                        fontSize: 13,
+                        fontSize: AppType.label,
                       ),
                     ),
                     Text(
                       '$currency${NumberFormat('#,##0').format(spent)}',
                       style: const TextStyle(
-                        fontSize: 12,
+                        fontSize: AppType.caption,
                         fontWeight: FontWeight.w600,
                       ),
                     ),

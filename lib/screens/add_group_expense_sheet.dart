@@ -7,6 +7,7 @@ import '../models/group_expense.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
 
 class AddGroupExpenseSheet extends ConsumerStatefulWidget {
@@ -239,7 +240,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                             color: _equalSplit
                                 ? Colors.white
                                 : theme.colorScheme.onSurface,
-                            fontSize: 13,
+                            fontSize: AppType.label,
                           ),
                         ),
                       ),
@@ -268,7 +269,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                             color: !_equalSplit
                                 ? Colors.white
                                 : theme.colorScheme.onSurface,
-                            fontSize: 13,
+                            fontSize: AppType.label,
                           ),
                         ),
                       ),
@@ -292,7 +293,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 11,
+                          fontSize: AppType.caption,
                         ),
                       ),
                     ),
@@ -312,7 +313,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                         ),
                         readOnly: _equalSplit,
                         textAlign: TextAlign.right,
-                        style: const TextStyle(fontSize: 14),
+                        style: const TextStyle(fontSize: AppType.body),
                         decoration: InputDecoration(
                           isDense: true,
                           contentPadding: const EdgeInsets.symmetric(
@@ -335,15 +336,15 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 child: Text(
                   'Total: $currencySymbol${_totalShares.toStringAsFixed(2)} / $currencySymbol${double.tryParse(_amountCtrl.text.trim()) ?? 0}',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: AppType.caption,
                     color:
                         (_totalShares -
                                     (double.tryParse(_amountCtrl.text.trim()) ??
                                         0))
                                 .abs() <
                             0.02
-                        ? Colors.green
-                        : Colors.red,
+                        ? AppColors.success
+                        : AppColors.error,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -374,7 +375,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 ),
                 child: const Text(
                   'Add Expense',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
                 ),
               ),
             ),

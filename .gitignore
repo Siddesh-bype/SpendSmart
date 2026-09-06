@@ -48,8 +48,3 @@ app.*.map.json
 /android/app/*.jks
 /deps.txt
 /pub_cache.txt
-/cloudflare/ai-analysis-worker/.dev.vars*
-# Wrangler's local cache holds the Cloudflare account id and email
-**/.wrangler/
-# D1 exports hold password hashes and session token hashes
-/cloudflare/ai-analysis-worker/backups/

@@ -6,6 +6,7 @@ import '../models/category.dart';
 import '../providers/recurring_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
 import '../widgets/empty_state.dart';
 
@@ -28,7 +29,7 @@ class RecurringExpenseScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton.extended(
         heroTag: 'recurring_fab',
-        backgroundColor: Colors.purple.shade600,
+        backgroundColor: AppColors.bills,
         icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'Add',
@@ -46,7 +47,7 @@ class RecurringExpenseScreen extends ConsumerWidget {
               icon: Icons.repeat_rounded,
               title: 'No recurring expenses yet',
               subtitle: 'Add subscriptions, rent, EMIs & more',
-              iconColor: Colors.purple.shade200,
+              iconColor: AppColors.bills.withValues(alpha: 0.5),
             )
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
@@ -121,7 +122,7 @@ class _RecurringTile extends ConsumerWidget {
         subtitle: Text(
           '$freqLabel - Next: ${DateFormat('d MMM yyyy').format(item.nextDue)}',
           style: TextStyle(
-            fontSize: 12,
+            fontSize: AppType.caption,
             color: item.isActive ? Colors.grey : Colors.grey.shade400,
           ),
         ),
@@ -132,8 +133,8 @@ class _RecurringTile extends ConsumerWidget {
               '$currency${NumberFormat('#,##0').format(item.amount)}',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
-                color: item.isActive ? Colors.purple.shade600 : Colors.grey,
+                fontSize: AppType.body,
+                color: item.isActive ? AppColors.bills : Colors.grey,
               ),
             ),
             const SizedBox(width: 8),
@@ -167,9 +168,9 @@ class _RecurringTile extends ConsumerWidget {
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline, size: 18, color: Colors.red),
+                      Icon(Icons.delete_outline, size: 18, color: AppColors.error),
                       SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: Colors.red)),
+                      Text('Delete', style: TextStyle(color: AppColors.error)),
                     ],
                   ),
                 ),
@@ -199,7 +200,7 @@ class _RecurringTile extends ConsumerWidget {
               Navigator.pop(context);
               ref.read(recurringExpenseProvider.notifier).delete(item.id);
             },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
           ),
         ],
       ),
@@ -296,7 +297,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
             const SizedBox(height: 16),
             const Text(
               'New Recurring Expense',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(fontSize: AppType.title, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
 
@@ -332,7 +333,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
             // Category
             const Text(
               'Category',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: AppType.label, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -362,7 +363,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
             // Frequency
             const Text(
               'Frequency',
-              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              style: TextStyle(fontSize: AppType.label, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -373,7 +374,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                   label: Text(entry.value),
                   selected: selected,
                   onSelected: (_) => setState(() => _frequency = entry.key),
-                  selectedColor: Colors.purple.shade600,
+                  selectedColor: AppColors.bills,
                   labelStyle: TextStyle(
                     color: selected ? Colors.white : null,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
@@ -388,7 +389,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
               children: [
                 const Text(
                   'Starts',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: AppType.label, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(width: 12),
                 TextButton.icon(
@@ -413,7 +414,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.purple.shade600,
+                  backgroundColor: AppColors.bills,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
@@ -431,7 +432,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                     : const Text(
                         'Save',
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: AppType.headline,
                           fontWeight: FontWeight.bold,
                           color: Colors.white,
                         ),

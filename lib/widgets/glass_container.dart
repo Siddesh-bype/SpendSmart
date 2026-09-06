@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import '../utils/constants.dart';
+import '../utils/design.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -7,19 +9,17 @@ class GlassContainer extends StatelessWidget {
   final EdgeInsetsGeometry padding;
   final EdgeInsetsGeometry margin;
   final double blurRadius;
-  final Color backgroundColor;
+  final Color? backgroundColor;
   final BoxBorder? border;
 
   const GlassContainer({
     super.key,
     required this.child,
-    this.borderRadius = 24.0,
-    this.padding = const EdgeInsets.all(24),
+    this.borderRadius = AppRadius.glass,
+    this.padding = const EdgeInsets.all(AppSpacing.xl),
     this.margin = EdgeInsets.zero,
-    this.blurRadius = 12.0,
-    // Default transparent — callers pass explicit color when needed.
-    // Colors.white caused dark-mode cards to look blown out.
-    this.backgroundColor = Colors.transparent,
+    this.blurRadius = AppElevation.glassBlur,
+    this.backgroundColor,
     this.border,
   });
 
@@ -30,11 +30,17 @@ class GlassContainer extends StatelessWidget {
         border ??
         Border.all(
           color: (isDark ? Colors.white : Colors.black).withValues(
-            alpha: isDark ? 0.10 : 0.06,
+            alpha: isDark ? 0.10 : 0.08,
           ),
           width: 1,
         );
     final shadowAlpha = isDark ? 0.22 : 0.08;
+
+    final baseColor =
+        backgroundColor ??
+        (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+    final fillAlpha =
+        backgroundColor != null ? (isDark ? 0.72 : 0.82) : AppColors.glassAlpha;
 
     return RepaintBoundary(
       child: Container(
@@ -57,7 +63,7 @@ class GlassContainer extends StatelessWidget {
             child: Container(
               padding: padding,
               decoration: BoxDecoration(
-                color: backgroundColor.withValues(alpha: isDark ? 0.72 : 0.82),
+                color: baseColor.withValues(alpha: fillAlpha),
                 borderRadius: BorderRadius.circular(borderRadius),
                 border: effectiveBorder,
               ),
@@ -69,3 +75,4 @@ class GlassContainer extends StatelessWidget {
     );
   }
 }
+

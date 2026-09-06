@@ -12,6 +12,7 @@ import '../providers/merchant_memory_provider.dart';
 import '../services/category_classifier.dart';
 import '../widgets/category_grid.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../utils/validation.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
@@ -143,26 +144,26 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 decimal: true,
               ),
               style: TextStyle(
-                fontSize: 32,
+                fontSize: AppType.display,
                 fontWeight: FontWeight.bold,
                 color: theme.colorScheme.onSurface,
               ),
               decoration: InputDecoration(
                 prefixText: '${settings.currency} ',
                 prefixStyle: TextStyle(
-                  fontSize: 32,
+                  fontSize: AppType.display,
                   fontWeight: FontWeight.bold,
                   color: primaryColor,
                 ),
                 labelText: 'Amount',
-                labelStyle: TextStyle(color: labelColor, fontSize: 16),
+                labelStyle: TextStyle(color: labelColor, fontSize: AppType.headline),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: isDark ? Colors.white24 : const Color(0xFFBBCDE0),
+                    color: isDark ? Colors.white24 : AppColors.borderSubtleLight,
                     width: 1.5,
                   ),
                 ),
@@ -223,7 +224,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                           borderSide: BorderSide(
                             color: isDark
                                 ? Colors.white24
-                                : const Color(0xFFBBCDE0),
+                                : AppColors.borderSubtleLight,
                             width: 1.5,
                           ),
                         ),
@@ -263,7 +264,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             title: Text(
                               option,
                               style: TextStyle(
-                                fontSize: 14,
+                                fontSize: AppType.body,
                                 color: theme.colorScheme.onSurface,
                               ),
                             ),
@@ -271,7 +272,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                 ? Text(
                                     cat.displayName,
                                     style: TextStyle(
-                                      fontSize: 11,
+                                      fontSize: AppType.caption,
                                       color: cat.color,
                                     ),
                                   )
@@ -292,7 +293,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               'Category',
               style: TextStyle(
                 fontWeight: FontWeight.bold,
-                fontSize: 15,
+                fontSize: AppType.body,
                 color: theme.colorScheme.onSurface,
               ),
             ),
@@ -342,7 +343,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide(
-                    color: isDark ? Colors.white24 : const Color(0xFFBBCDE0),
+                    color: isDark ? Colors.white24 : AppColors.borderSubtleLight,
                     width: 1.5,
                   ),
                 ),
@@ -363,7 +364,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 side: BorderSide(
                   color: _splitWithFriend
                       ? primaryColor
-                      : (isDark ? Colors.white24 : const Color(0xFFBBCDE0)),
+                      : (isDark ? Colors.white24 : AppColors.borderSubtleLight),
                   width: _splitWithFriend ? 1.5 : 1,
                 ),
               ),
@@ -385,7 +386,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                     subtitle: Text(
                       'Record this as a lending slip',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppType.caption,
                         color: isDark ? Colors.white54 : Colors.black45,
                       ),
                     ),
@@ -441,7 +442,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                       borderSide: BorderSide(
                                         color: isDark
                                             ? Colors.white24
-                                            : const Color(0xFFBBCDE0),
+                                            : AppColors.borderSubtleLight,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
@@ -480,7 +481,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                       borderSide: BorderSide(
                                         color: isDark
                                             ? Colors.white24
-                                            : const Color(0xFFBBCDE0),
+                                            : AppColors.borderSubtleLight,
                                       ),
                                     ),
                                     focusedBorder: OutlineInputBorder(
@@ -507,7 +508,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                                       child: Text(
                                         'A lending record will be created: friend owes you this amount',
                                         style: TextStyle(
-                                          fontSize: 11,
+                                          fontSize: AppType.caption,
                                           color: isDark
                                               ? Colors.white38
                                               : Colors.black38,
@@ -662,10 +663,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       dimension: 22,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text(
+                  : Text(
                       'Save Expense',
-                      style: TextStyle(
-                        fontSize: 16,
+                      style: const TextStyle(
+                        fontSize: AppType.headline,
                         fontWeight: FontWeight.bold,
                       ),
                     ),

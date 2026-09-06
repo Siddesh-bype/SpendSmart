@@ -9,6 +9,7 @@ import 'add_expense_screen.dart';
 import 'groups_screen.dart';
 import '../models/category.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import '../widgets/glass_container.dart';
 import '../providers/recurring_expense_provider.dart';
 import '../providers/expense_provider.dart';
@@ -247,11 +248,6 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
               child: GlassContainer(
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                borderRadius: 28,
-                backgroundColor: isDark
-                    ? AppColors.surfaceDark.withValues(alpha: 0.6)
-                    : Colors.white.withValues(alpha: 0.6),
-                blurRadius: 20,
                 child: SizedBox(
                   height: 56,
                   child: Row(
@@ -336,45 +332,50 @@ class _MainScaffoldState extends ConsumerState<MainScaffold>
       button: true,
       selected: selected,
       label: label,
-      child: GestureDetector(
-        onTap: () => _onTabTap(index),
-        behavior: HitTestBehavior.opaque,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              curve: Curves.easeOutExpo,
-              padding: EdgeInsets.symmetric(
-                horizontal: 10,
-                vertical: selected ? 6 : 4,
+      child: Material(
+        color: Colors.transparent,
+        child: InkResponse(
+          onTap: () => _onTabTap(index),
+          radius: 28,
+          splashColor: AppColors.accent.withValues(alpha: 0.20),
+          highlightColor: AppColors.accent.withValues(alpha: 0.10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: AppDuration.base,
+                curve: Curves.easeOutExpo,
+                padding: EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: selected ? 6 : 4,
+                ),
+                decoration: BoxDecoration(
+                  color: selected
+                      ? AppColors.accent.withValues(alpha: 0.2)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  selected ? activeIcon : inactiveIcon,
+                  color: selected ? AppColors.accent : inactiveColor,
+                  size: selected ? 22 : 20,
+                ),
               ),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.accent.withValues(alpha: 0.2)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
+              const SizedBox(height: 2),
+              AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 200),
+                style: TextStyle(
+                  fontSize: AppType.micro,
+                  color: selected ? AppColors.accent : inactiveColor,
+                  fontWeight: selected ? FontWeight.bold : FontWeight.w500,
+                  letterSpacing: 0.2,
+                  height: 1.2,
+                ),
+                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
-              child: Icon(
-                selected ? activeIcon : inactiveIcon,
-                color: selected ? AppColors.accent : inactiveColor,
-                size: selected ? 22 : 20,
-              ),
-            ),
-            const SizedBox(height: 2),
-            AnimatedDefaultTextStyle(
-              duration: const Duration(milliseconds: 200),
-              style: TextStyle(
-                fontSize: 10,
-                color: selected ? AppColors.accent : inactiveColor,
-                fontWeight: selected ? FontWeight.bold : FontWeight.w500,
-                letterSpacing: 0.2,
-                height: 1.2,
-              ),
-              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

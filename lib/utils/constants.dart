@@ -1,16 +1,5 @@
 import 'package:flutter/material.dart';
 
-/// Deployment constants.
-class AppConfig {
-  const AppConfig._();
-
-  /// The AI proxy. Safe to ship in the APK: it is a public URL, and every
-  /// route behind it requires a per-account session token. The credential
-  /// itself is never hardcoded -- anyone can extract a string from an APK.
-  static const String workerBaseUrl =
-      'https://spendsmart-ai-analysis.siddeshshirote30052006.workers.dev';
-}
-
 class AppColors {
   static const Color primary = Color(0xFF123B5D);
   static const Color primaryDark = Color(0xFF16A6C7);
@@ -31,6 +20,21 @@ class AppColors {
   static const Color bills = Color(0xFFAB7FE8); // Soft purple (brighter)
   static const Color other = Color(0xFF90A4AE); // Light slate (brighter)
 
+  static const List<Color> categoryColors = [
+    food,
+    transport,
+    shopping,
+    health,
+    entertainment,
+    bills,
+    other,
+  ];
+
+  // Semantic Badges / Glass Highlights
+  static const Color positiveGreen = Color(0xFF4ADE80);
+  static const Color negativeCoral = Color(0xFFFCA5A5);
+  static const Color borderSubtleLight = Color(0xFFBBCDE0);
+
   // Text
   static const Color textLight = Color(0xFF17212B);
   static const Color textDark = Color(0xFFEEF4F6);
@@ -46,6 +50,9 @@ class AppColors {
   static const Color borderLight = Color(0xFFD8E1E7);
   static const Color borderDark = Color(0xFF30414B);
   static const Color cardLight = Color(0xFFFFFFFF);
+
+  // Glass tokens
+  static const double glassAlpha = 0.60;
 }
 
 class AppConstants {

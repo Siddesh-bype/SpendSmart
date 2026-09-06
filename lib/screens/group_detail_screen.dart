@@ -8,13 +8,14 @@ import '../providers/group_provider.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/design.dart';
 import 'add_group_sheet.dart';
 import 'add_group_expense_sheet.dart';
 import 'settle_up_sheet.dart';
+import '../services/financial_calculation_engine.dart';
 
 class GroupDetailScreen extends ConsumerWidget {
   final SplitGroup group;
-
   const GroupDetailScreen({super.key, required this.group});
 
   @override
@@ -22,7 +23,6 @@ class GroupDetailScreen extends ConsumerWidget {
     final allExpenses = ref.watch(groupExpenseProvider);
     final settings = ref.watch(appSettingsProvider);
     final currency = settings.currency;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final expenses = allExpenses.where((e) => e.groupId == group.id).toList();
     final unsettledExpenses = expenses.where((e) => !e.isSettled).toList();
@@ -48,43 +48,35 @@ class GroupDetailScreen extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.delete_outline, color: Colors.red),
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
             tooltip: 'Delete Group',
             onPressed: () => _confirmDelete(context, ref),
           ),
         ],
       ),
-      body: Column(children: [
-        // Per-person balance cards
-        Container(
-          height: 120,
-          padding: const EdgeInsets.symmetric(vertical: 12),
+      body: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        // Member balances carousel
+        SizedBox(
+          height: 100,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             itemCount: group.participants.length,
             itemBuilder: (context, i) {
               final p = group.participants[i];
               final net = balances[p.id] ?? 0;
               final color = Color(p.avatarColorValue);
-
               return Container(
-                width: 100,
-                margin: const EdgeInsets.only(right: 12),
-                padding: const EdgeInsets.all(12),
+                width: 90,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: isDark ? AppColors.surfaceDark : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                    color: net.abs() > 0.01 ? color.withValues(alpha: 0.5) : Colors.transparent,
+                    width: 1.5,
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -97,14 +89,14 @@ class GroupDetailScreen extends ConsumerWidget {
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                          fontSize: AppType.body,
                         ),
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
                       p.name,
-                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                      style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppType.caption),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -114,9 +106,9 @@ class GroupDetailScreen extends ConsumerWidget {
                           ? '+$currency${NumberFormat('#,##0.##').format(net)}'
                           : '-$currency${NumberFormat('#,##0.##').format(net.abs())}',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: AppType.caption,
                         fontWeight: FontWeight.bold,
-                        color: net >= 0 ? Colors.green : Colors.red,
+                        color: net >= 0 ? AppColors.success : AppColors.error,
                       ),
                     ),
                   ],
@@ -127,7 +119,7 @@ class GroupDetailScreen extends ConsumerWidget {
         ),
 
         // Settle up hint / who owes whom
-        if (balances.values.any((v) => v != 0))
+        if (balances.values.any((v) => v.abs() > 0.01))
           Container(
             width: double.infinity,
             margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -137,9 +129,9 @@ class GroupDetailScreen extends ConsumerWidget {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              _getSettlementHint(balances),
+              _getSettlementHint(balances, currency),
               style: TextStyle(
-                fontSize: 13,
+                fontSize: AppType.label,
                 color: AppColors.primary,
                 fontWeight: FontWeight.w500,
               ),
@@ -157,7 +149,7 @@ class GroupDetailScreen extends ConsumerWidget {
             children: [
               Text(
                 'Expenses (${expenses.length})',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: AppType.headline),
               ),
               if (unsettledExpenses.isNotEmpty)
                 TextButton(
@@ -180,12 +172,12 @@ class GroupDetailScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   const Text(
                     'No expenses yet',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                    style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Add an expense to start tracking',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+                    style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.label),
                   ),
                 ],
               ),
@@ -406,27 +398,18 @@ class GroupDetailScreen extends ConsumerWidget {
     };
   }
 
-  String _getSettlementHint(Map<String, double> balances) {
-    final positive = <String>[];
-    final negative = <String>[];
-
+  String _getSettlementHint(Map<String, double> balances, String currency) {
+    final namedBalances = <String, double>{};
     for (final p in group.participants) {
-      final net = balances[p.id] ?? 0;
-      if (net > 0.01) positive.add(p.name);
-      if (net < -0.01) negative.add(p.name);
+      namedBalances[p.name] = balances[p.id] ?? 0.0;
     }
 
-    if (positive.isEmpty && negative.isEmpty) return 'All settled up!';
-    if (positive.length == 1 && negative.length == 1) {
-      return '${positive.first} is owed by ${negative.first}';
-    }
-    if (positive.isNotEmpty) {
-      return '${positive.join(", ")} ${positive.length == 1 ? "is" : "are"} owed money';
-    }
-    if (negative.isNotEmpty) {
-      return '${negative.join(", ")} ${negative.length == 1 ? "owes" : "owe"} money';
-    }
-    return '';
+    final transfers = FinancialCalculationEngine.optimizeGroupSettlements(namedBalances);
+    if (transfers.isEmpty) return 'All settled up! ✨';
+
+    final money = NumberFormat('#,##0.##');
+    final hints = transfers.map((t) => '${t.from} pays ${t.to} $currency${money.format(t.amount)}').toList();
+    return hints.join('  •  ');
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {
