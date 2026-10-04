@@ -169,7 +169,7 @@
       <g transform="translate(14, 42)">
         <rect width="222" height="52" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
         <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Deduplication Gate</text>
-        <text x="12" y="38" class="node-body">Collides external IDs &amp; hashes</text>
+        <text x="12" y="38" class="node-body">Content-key dedup + id regen</text>
       </g>
 
       <!-- Sub-module 2 -->
@@ -189,9 +189,9 @@
       <!-- Sub-module 4 -->
       <g transform="translate(14, 228)">
         <rect width="222" height="60" rx="6" fill="#1e293b" fill-opacity="0.6" stroke="#334155" stroke-width="1" />
-        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Reactive ChangeNotifier</text>
-        <text x="12" y="36" class="node-body">Immediate dispatch to widgets</text>
-        <text x="12" y="50" class="node-body">Guaranteed transactional write</text>
+        <text x="12" y="20" font-family="ui-monospace, monospace" font-size="11" font-weight="700" fill="#f8fafc">Riverpod Notifier (v3)</text>
+        <text x="12" y="36" class="node-body">Write-verify: await box, reload</text>
+        <text x="12" y="50" class="node-body">State reassigned from disk</text>
       </g>
     </g>
   </g>
@@ -204,21 +204,22 @@
 
     <!-- Hive Box Card -->
     <g transform="translate(0, 30)">
-      <rect width="275" height="155" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="1.5" />
+      <rect width="275" height="170" rx="10" fill="#0f172a" stroke="#10b981" stroke-width="1.5" />
       <rect width="275" height="30" rx="10" fill="#10b981" opacity="0.15" />
       
       <circle cx="18" cy="15" r="4" fill="#10b981" />
       <text x="30" y="20" class="node-title" fill="#a7f3d0">Android Sandbox Storage</text>
 
-      <g transform="translate(16, 42)">
-        <text x="0" y="16" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Expense&gt;('expenses')</text>
-        <text x="0" y="34" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Category&gt;('categories')</text>
-        <text x="0" y="52" font-family="ui-monospace, monospace" font-size="11" fill="#38bdf8">Hive.box&lt;Budget&gt;('budgets')</text>
+      <g transform="translate(16, 42)" font-family="ui-monospace, monospace" font-size="10" fill="#38bdf8">
+        <text x="0" y="14">expenses · budgets</text>
+        <text x="0" y="30">incomes · lendings</text>
+        <text x="0" y="46">merchants · recurring</text>
+        <text x="0" y="62">split_groups · group_exp</text>
         
-        <line x1="0" y1="64" x2="240" y2="64" stroke="#334155" stroke-width="1" />
+        <line x1="0" y1="74" x2="240" y2="74" stroke="#334155" stroke-width="1" />
         
-        <text x="0" y="80" class="node-body">• Path: /data/user/0/.../app_flutter</text>
-        <text x="0" y="96" class="node-body">• Zero network calls • Direct binary I/O</text>
+        <text x="0" y="90" class="node-body">• 8 typed boxes · typeId 0–8</text>
+        <text x="0" y="106" class="node-body">• app_flutter sandbox · no network</text>
       </g>
     </g>
   </g>
@@ -228,8 +229,8 @@
   <g transform="translate(760, 65)">
     <rect width="200" height="70" rx="8" fill="#1e1b4b" stroke="#8b5cf6" stroke-width="1.2" />
     <text x="14" y="22" class="node-title" fill="#c4b5fd">Live UI &amp; Spending Pulse</text>
-    <text x="14" y="42" class="node-body">• Zero-jank 60fps glass UI</text>
-    <text x="14" y="58" class="node-body">• Dynamic month forecast</text>
+    <text x="14" y="42" class="node-body">• Solid-surface navy UI (1 glass hero)</text>
+    <text x="14" y="58" class="node-body">• Fixed-vs-variable forecast</text>
   </g>
 
   <!-- Share & Export -->

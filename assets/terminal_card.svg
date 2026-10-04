@@ -109,7 +109,7 @@
     <g class="t-line-6" transform="translate(0, 202)">
       <rect width="744" height="36" rx="6" fill="#238636" fill-opacity="0.15" stroke="#238636" stroke-width="1" />
       <text x="16" y="23">
-        <tspan fill="#3fb950" font-weight="700">✓ 00:09 +98: All 98 tests passed!</tspan>
+        <tspan fill="#3fb950" font-weight="700">✓ 00:09 +122: All 122 tests passed!</tspan>
         <tspan fill="#8b949e"> (100% deterministic local suite)</tspan>
       </text>
     </g>
