@@ -109,19 +109,6 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
     }
   }
 
-  /// Add a spending milestone tip notification.
-  void addTip(String title, String body) {
-    _add(
-      AppNotification(
-        id: const Uuid().v4(),
-        title: title,
-        body: body,
-        time: DateTime.now(),
-        type: NotifType.tip,
-      ),
-    );
-  }
-
   void _add(AppNotification notif) {
     state = [notif, ...state];
     _persist();
@@ -137,13 +124,21 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
   }
 
   // ── Serialization ───────────────────────────────────────────────────────────
+  //
+  // `type` is a STABLE id, not the enum index: id 2 belonged to the removed
+  // `spendingMilestone` variant and must stay vacant so old payloads still
+  // decode (they map to [NotifType.tip]). Never reuse 2 or reorder these.
 
   static Map<String, dynamic> _notifToJson(AppNotification n) => {
     'id': n.id,
     'title': n.title,
     'body': n.body,
     'time': n.time.toIso8601String(),
-    'type': n.type.index,
+    'type': switch (n.type) {
+      NotifType.budgetWarning => 0,
+      NotifType.budgetExceeded => 1,
+      NotifType.tip => 3,
+    },
     'isRead': n.isRead,
   };
 
@@ -153,7 +148,13 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
         title: m['title'] as String,
         body: m['body'] as String,
         time: DateTime.parse(m['time'] as String),
-        type: NotifType.values[m['type'] as int],
+        type: switch (m['type'] as int) {
+          0 => NotifType.budgetWarning,
+          1 => NotifType.budgetExceeded,
+          // 2 = legacy `spendingMilestone`: fall back to a sane default.
+          2 || 3 => NotifType.tip,
+          _ => NotifType.tip,
+        },
         isRead: (m['isRead'] as bool?) ?? false,
       );
 }

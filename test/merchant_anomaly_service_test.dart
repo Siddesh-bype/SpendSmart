@@ -252,14 +252,68 @@ void main() {
       expect(result, isEmpty);
     });
 
-    test('one silent month in the history blocks detection', () {
+    test('one silent month no longer blocks detection', () {
+      // Relaxed guard: 2 of 3 history months carry data, and the baseline
+      // divides by those 2 months: (0 + 3000 + 3000) / 2 = 3000, which the
+      // 9000 current still triples.
       final result = _detect([
         _expense('Swiggy', 3000, DateTime(2026, 5, 15)),
         _expense('Swiggy', 3000, DateTime(2026, 6, 15)),
         _expense('Swiggy', 9000, DateTime(2026, 7, 20)),
       ]);
 
+      expect(result, hasLength(1));
+      expect(result.single.merchantKey, 'swiggy');
+      expect(result.single.baselineAmount, 3000);
+      expect(result.single.severity, 'critical');
+    });
+
+    test('two-month history baseline divides by months with data', () {
+      // Pins the divisor: (0 + 6000 + 6000) / 2 = 6000, not / 3 = 4000.
+      final result = _detect([
+        _expense('Swiggy', 6000, DateTime(2026, 5, 15)),
+        _expense('Swiggy', 6000, DateTime(2026, 6, 15)),
+        _expense('Swiggy', 12000, DateTime(2026, 7, 20)),
+      ]);
+
+      expect(result, hasLength(1));
+      expect(result.single.merchantKey, 'swiggy');
+      expect(result.single.baselineAmount, 6000);
+      expect(result.single.severity, 'critical');
+    });
+
+    test('two silent months still suppress everything', () {
+      final result = _detect([
+        _expense('Swiggy', 3000, DateTime(2026, 6, 15)),
+        _expense('Swiggy', 9000, DateTime(2026, 7, 20)),
+      ]);
+
       expect(result, isEmpty);
+    });
+  });
+
+  group('fixed obligations', () {
+    test('a steady subscription paid in full is not flagged mid-month', () {
+      // Without the fixed exclusion this would flag: expected-by-now is
+      // 2000 * 11 / 31 = ~710, current 2000 is 2.8x with excess ~1290 over
+      // the 1000 impact bar. The 2000 payment matches its 2000 commitment.
+      final result = _detect([
+        ..._history('Netflix', 2000),
+        _expense('Netflix', 2000, DateTime(2026, 7, 2)),
+      ], now: DateTime(2026, 7, 11));
+
+      expect(result, isEmpty);
+    });
+
+    test('a genuine overage on a fixed merchant still flags', () {
+      final result = _detect([
+        ..._history('Netflix', 2000),
+        _expense('Netflix', 6000, DateTime(2026, 7, 20)),
+      ]);
+
+      expect(result, hasLength(1));
+      expect(result.single.merchantKey, 'netflix');
+      expect(result.single.severity, 'critical');
     });
   });
 

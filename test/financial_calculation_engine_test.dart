@@ -3,6 +3,7 @@ import 'package:spendsmart/models/app_settings.dart';
 import 'package:spendsmart/models/category.dart';
 import 'package:spendsmart/models/expense.dart';
 import 'package:spendsmart/services/financial_calculation_engine.dart';
+import 'package:spendsmart/services/fixed_obligation_service.dart';
 import 'package:spendsmart/services/ai_financial_advisor_service.dart';
 
 void main() {
@@ -151,6 +152,99 @@ void main() {
       );
       expect(foodQuery.contains('Food'), true);
       expect(foodQuery.contains('800'), true);
+    });
+  });
+
+  group('FixedObligationService', () {
+    Expense fixedExpense(String title, double amount, DateTime date,
+            {bool isUncategorized = false}) =>
+        Expense(
+          id: '$title-$date-$amount',
+          title: title,
+          amount: amount,
+          category: Category.bills,
+          date: date,
+          isManual: true,
+          isUncategorized: isUncategorized,
+          source: 'test',
+        );
+
+    List<FixedObligation> detect(List<Expense> expenses) =>
+        FixedObligationService.detect(
+          expenses: expenses,
+          startingDayOfMonth: 1,
+          now: DateTime(2026, 7, 20),
+        );
+
+    test('a merchant stable across 3 months is fixed at its mean', () {
+      final result = detect([
+        for (final month in [4, 5, 6])
+          fixedExpense('Netflix', 2000, DateTime(2026, month, 15)),
+      ]);
+
+      expect(result, hasLength(1));
+      expect(result.single.merchantKey, 'netflix');
+      expect(result.single.expectedAmount, 2000);
+    });
+
+    test('variance at or above 15% is not fixed', () {
+      // (1200 - 1000) / 1100 = 18% across the trailing pair.
+      final result = detect([
+        fixedExpense('Rent', 1000, DateTime(2026, 4, 15)),
+        fixedExpense('Rent', 1000, DateTime(2026, 5, 15)),
+        fixedExpense('Rent', 1200, DateTime(2026, 6, 15)),
+      ]);
+
+      expect(result, isEmpty);
+    });
+
+    test('a gap month breaks consecutiveness', () {
+      final result = detect([
+        fixedExpense('Rent', 1000, DateTime(2026, 4, 15)),
+        fixedExpense('Rent', 1000, DateTime(2026, 6, 15)),
+      ]);
+
+      expect(result, isEmpty);
+    });
+
+    test('a single history month is not enough', () {
+      final result = detect([
+        fixedExpense('Rent', 1000, DateTime(2026, 6, 15)),
+      ]);
+
+      expect(result, isEmpty);
+    });
+
+    test('descriptor variants collapse into one merchant', () {
+      final result = detect([
+        fixedExpense('UPI-SWIGGY-123', 3000, DateTime(2026, 4, 15)),
+        fixedExpense('swiggy@ybl', 3000, DateTime(2026, 5, 15)),
+        fixedExpense('Swiggy', 3000, DateTime(2026, 6, 15)),
+      ]);
+
+      expect(result, hasLength(1));
+      expect(result.single.merchantKey, 'swiggy');
+    });
+
+    test('a changed bill re-stabilizes at the new level', () {
+      final result = detect([
+        fixedExpense('Rent', 50, DateTime(2026, 4, 15)),
+        fixedExpense('Rent', 100, DateTime(2026, 5, 15)),
+        fixedExpense('Rent', 100, DateTime(2026, 6, 15)),
+      ]);
+
+      expect(result, hasLength(1));
+      expect(result.single.expectedAmount, 100);
+    });
+
+    test('uncategorized history does not create obligations', () {
+      final result = detect([
+        for (final month in [4, 5, 6])
+          fixedExpense('Netflix', 2000, DateTime(2026, month, 15),
+              isUncategorized: true),
+      ]);
+
+      expect(result, isEmpty);
     });
   });
 }

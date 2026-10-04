@@ -7,10 +7,9 @@ import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
-import '../widgets/glass_container.dart';
+import '../utils/theme.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
 import '../widgets/spending_calendar.dart';
@@ -102,6 +101,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
         .where((e) => !e.isUncategorized)
         .toList();
     final settings = ref.watch(appSettingsProvider);
+    final scheme = SchemeTheme.of(context);
     final now = DateTime.now();
 
     // _selectedMonth names which period to show, so it resolves through
@@ -176,6 +176,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     final dailyAvg = daysElapsed > 0 ? totalSpent / daysElapsed : 0.0;
 
     return Scaffold(
+      backgroundColor: SchemeTheme.of(context).bg,
       appBar: AppBar(title: const Text('Analytics')),
       body: monthlyExpenses.isEmpty && sixMonths.every((m) => m.total == 0)
           ? _emptyState()
@@ -208,14 +209,16 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.15),
+                              color: SchemeTheme.of(
+                                context,
+                              ).primary.withValues(alpha: 0.15),
                               borderRadius: AppRadius.smAll,
                             ),
                             child: Text(
                               'Current',
                               style: Theme.of(context).textTheme.labelSmall
                                   ?.copyWith(
-                                    color: AppColors.primary,
+                                    color: SchemeTheme.of(context).primary,
                                     fontWeight: FontWeight.bold,
                                   ),
                             ),
@@ -286,7 +289,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                               label: 'Daily Avg',
                               amount: dailyAvg,
                               currency: settings.currency,
-                              color: AppColors.secondary,
+                              color: scheme.primary,
                             ),
                           ),
                           const SizedBox(width: AppSpacing.md),
@@ -298,7 +301,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                 amount: biggestExpense.amount,
                                 currency: settings.currency,
                                 sublabel: biggestExpense.title,
-                                color: AppColors.warning,
+                                color: scheme.warning,
                               ),
                             ),
                         ],
@@ -455,27 +458,31 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   ),
                   SliverToBoxAdapter(
                     child: SizedBox(
-                      height: 220,
+                      height: 140,
                       child: PieChart(
                         PieChartData(
                           sections: sortedCats
                               .map(
-                                (e) => PieChartSectionData(
-                                  value: e.value,
-                                  color: e.key.color,
-                                  title:
-                                      '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
-                                  titleStyle: const TextStyle(
-                                    fontSize: AppType.caption,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  radius: 80,
-                                ),
+                                (e) {
+                                  final slice =
+                                      scheme.categoryColors[e.key.index];
+                                  return PieChartSectionData(
+                                    value: e.value,
+                                    color: slice,
+                                    title:
+                                        '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
+                                    titleStyle: TextStyle(
+                                      fontSize: AppType.caption,
+                                      color: _pieLabelColor(slice, scheme),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    radius: 56,
+                                  );
+                                },
                               )
                               .toList(),
                           sectionsSpace: 3,
-                          centerSpaceRadius: 30,
+                          centerSpaceRadius: 20,
                         ),
                       ),
                     ),
@@ -500,6 +507,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                       final e = sortedCats[i];
                       final pct = totalSpent > 0 ? e.value / totalSpent : 0.0;
                       final theme = Theme.of(context);
+                      final catColor = scheme.categoryColors[e.key.index];
                       return Padding(
                         padding: const EdgeInsets.fromLTRB(
                           AppSpacing.lg,
@@ -518,11 +526,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                               ),
                             );
                           },
-                          child: GlassContainer(
-                            borderRadius: AppRadius.md,
-                            backgroundColor:
-                                theme.cardTheme.color ?? theme.colorScheme.surface,
+                          child: Container(
                             padding: const EdgeInsets.all(AppSpacing.lg),
+                            decoration: BoxDecoration(
+                              color: scheme.surface,
+                              borderRadius: AppRadius.mdAll,
+                              border: Border.all(color: scheme.border),
+                            ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
@@ -536,23 +546,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                           width: 38,
                                           height: 38,
                                           decoration: BoxDecoration(
-                                            color: e.key.color.withValues(
+                                            color: catColor.withValues(
                                               alpha: 0.15,
                                             ),
                                             shape: BoxShape.circle,
                                           ),
                                           child: Icon(
                                             e.key.icon,
-                                            color: e.key.color,
+                                            color: catColor,
                                             size: 20,
                                           ),
                                         ),
                                         const SizedBox(width: AppSpacing.md),
                                         Text(
-                                          e.key.name,
+                                          e.key.displayName,
                                           style: theme.textTheme.titleSmall
                                               ?.copyWith(
                                                 fontWeight: FontWeight.w700,
+                                                color: scheme.ink,
                                               ),
                                         ),
                                       ],
@@ -566,7 +577,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                           currency: settings.currency,
                                           size: AppType.headline,
                                           weight: FontWeight.w800,
-                                          color: theme.colorScheme.onSurface,
+                                          color: scheme.ink,
                                           textAlign: TextAlign.right,
                                         ),
                                         const SizedBox(height: 2),
@@ -574,7 +585,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                           '${(pct * 100).toStringAsFixed(1)}%',
                                           style: theme.textTheme.labelMedium
                                               ?.copyWith(
+                                                color: scheme.muted,
                                                 fontWeight: FontWeight.bold,
+                                                fontFeatures: AppType.tabular,
                                               ),
                                         ),
                                       ],
@@ -586,18 +599,18 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                   borderRadius: AppRadius.smAll,
                                   child: TweenAnimationBuilder<double>(
                                     tween: Tween<double>(begin: 0, end: pct),
-                                    duration: const Duration(
-                                      milliseconds: 1000,
-                                    ),
+                                    duration: MediaQuery.disableAnimationsOf(
+                                          context,
+                                        )
+                                        ? Duration.zero
+                                        : const Duration(milliseconds: 1000),
                                     curve: Curves.easeOutExpo,
                                     builder: (context, val, _) =>
                                         LinearProgressIndicator(
                                           value: val,
-                                          backgroundColor: theme
-                                              .colorScheme
-                                              .surfaceContainerHighest
-                                              .withValues(alpha: 0.4),
-                                          color: e.key.color,
+                                          backgroundColor: scheme.tint
+                                              .withValues(alpha: 0.5),
+                                          color: catColor,
                                           minHeight: 8,
                                         ),
                                   ),
@@ -634,11 +647,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                       AppSpacing.lg,
                       0,
                       AppSpacing.lg,
-                      160,
+                      AppSpacing.lg,
                     ),
                     child: SizedBox(
                       height: 200,
-                      child: BarChart(
+                      child: Stack(
+                        children: [
+                          BarChart(
                         BarChartData(
                           gridData: const FlGridData(show: false),
                           borderData: FlBorderData(show: false),
@@ -705,10 +720,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                 BarChartRodData(
                                   toY: data.total,
                                   color: isSelected
-                                      ? AppColors.primary
-                                      : AppColors.secondary.withValues(
-                                          alpha: 0.6,
-                                        ),
+                                      ? scheme.primary
+                                      : scheme.muted.withValues(alpha: 0.55),
                                   width: 28,
                                   borderRadius: const BorderRadius.vertical(
                                     top: Radius.circular(AppRadius.sm),
@@ -717,12 +730,97 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                               ],
                             );
                           }).toList(),
-                        ),
+                         ),
+                          ),
+                          // Full-column tap targets: each bar's hit area is
+                          // the whole vertical slice, not just the rod.
+                          Row(
+                            children: List.generate(
+                              sixMonths.length,
+                              (i) => Expanded(
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: () {
+                                    HapticFeedback.selectionClick();
+                                    _selectMonth(sixMonths[i].month);
+                                  },
+                                  child: const SizedBox.expand(),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                        ],
+                // MoM delta: "am I improving?" under the 6-month bars.
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      AppSpacing.lg,
+                      AppSpacing.md,
+                      AppSpacing.lg,
+                      AppSpacing.sm,
+                    ),
+                    child: prevTotal > 0
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AppSpacing.md,
+                              vertical: AppSpacing.sm,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  (momChange > 0 ? scheme.error : scheme.success)
+                                      .withValues(alpha: 0.12),
+                              borderRadius: AppRadius.mdAll,
+                              border: Border.all(
+                                color:
+                                    (momChange > 0
+                                            ? scheme.error
+                                            : scheme.success)
+                                        .withValues(alpha: 0.4),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  momChange > 0
+                                      ? Icons.trending_up_rounded
+                                      : Icons.trending_down_rounded,
+                                  color: momChange > 0
+                                      ? scheme.error
+                                      : scheme.success,
+                                  size: AppType.headline,
+                                ),
+                                const SizedBox(width: AppSpacing.sm),
+                                Expanded(
+                                  child: Text(
+                                    '${momChange > 0 ? '+' : ''}${momChange.toStringAsFixed(1)}% vs previous period — '
+                                    '${momChange > 0 ? 'spending up' : 'spending down'}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelMedium
+                                        ?.copyWith(
+                                          color: momChange > 0
+                                              ? scheme.error
+                                              : scheme.success,
+                                          fontWeight: FontWeight.bold,
+                                          fontFeatures: AppType.tabular,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Text(
+                            'No previous period to compare yet',
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(color: scheme.muted),
+                          ),
+                  ),
+                ),
+                ],
                       ),
                     ],
                   ),
@@ -730,6 +828,23 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
               ],
             ),
     );
+  }
+
+  /// Pie labels read on BOTH themes: pick the theme token (ink or bg) with
+  /// the stronger contrast against that slice, so light slices never carry
+  /// low-contrast light text.
+  Color _pieLabelColor(Color slice, SchemeTheme scheme) {
+    double contrast(Color a) {
+      final l1 = a.computeLuminance();
+      final l2 = slice.computeLuminance();
+      final hi = l1 > l2 ? l1 : l2;
+      final lo = l1 > l2 ? l2 : l1;
+      return (hi + 0.05) / (lo + 0.05);
+    }
+
+    return contrast(scheme.ink) >= contrast(scheme.bg)
+        ? scheme.ink
+        : scheme.bg;
   }
 
   /// Chart axis labels: theme-muted, tabular so tick values don't jitter.
@@ -745,16 +860,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     String currency,
   ) {
     final momUp = momChange > 0;
-    // On the navy card: warm for "up" (bad), mint for "down" (good). Both are
-    // read against a dark brand fill, so they stay light rather than
-    // AppColors.error/success which are tuned for surface backgrounds.
-    final momColor = momUp
-        ? AppColors.negativeCoral
-        : AppColors.positiveGreen;
-    return GlassContainer(
-      borderRadius: AppRadius.lg,
-      backgroundColor: AppColors.primary,
+    // Up = spent more (error tone), down = spent less (success tone). Both
+    // remapped to the per-theme semantic trio so they read on both themes.
+    final scheme = SchemeTheme.of(context);
+    final momColor = momUp ? scheme.error : scheme.success;
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadius.lgAll,
+        border: Border.all(color: scheme.border),
+      ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -762,10 +878,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Total Spent',
                   style: TextStyle(
-                    color: Colors.white70,
+                    color: scheme.muted,
                     fontSize: AppType.label,
                   ),
                 ),
@@ -776,12 +892,12 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   autoShrink: true,
                   size: AppType.display,
                   weight: FontWeight.bold,
-                  color: Colors.white,
+                  color: scheme.ink,
                 ),
-                const Text(
+                Text(
                   'This Month',
                   style: TextStyle(
-                    color: Colors.white60,
+                    color: scheme.muted,
                     fontSize: AppType.caption,
                   ),
                 ),
@@ -858,12 +974,17 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     }
 
     final maxY = dailySpending.reduce((a, b) => a > b ? a : b);
-    final scheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final scheme = SchemeTheme.of(context);
     final hairline = Theme.of(context).dividerTheme.thickness ?? 1;
 
-    return GlassContainer(
-      borderRadius: AppRadius.md,
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: scheme.border),
+      ),
       child: LineChart(
         LineChartData(
           gridData: FlGridData(
@@ -871,7 +992,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
             drawVerticalLine: false,
             horizontalInterval: maxY > 0 ? maxY / 4 : 1,
             getDrawingHorizontalLine: (value) =>
-                FlLine(color: scheme.outlineVariant, strokeWidth: hairline),
+                FlLine(color: colorScheme.outlineVariant, strokeWidth: hairline),
           ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
@@ -918,23 +1039,24 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
             LineChartBarData(
               spots: spots,
               isCurved: true,
-              color: AppColors.primary,
+              color: scheme.primary,
               barWidth: 2.5,
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: AppColors.primary.withValues(alpha: 0.1),
+                color: scheme.primary.withValues(alpha: 0.1),
               ),
             ),
           ],
           lineTouchData: LineTouchData(
             touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (touchedSpot) => scheme.elevated,
               getTooltipItems: (touchedSpots) {
                 return touchedSpots.map((spot) {
                   return LineTooltipItem(
                     '${spot.x.toInt() + 1}: $currency${NumberFormat('#,##0').format(spot.y)}',
-                    const TextStyle(
-                      color: Colors.white,
+                    TextStyle(
+                      color: scheme.ink,
                       fontSize: AppType.caption,
                       fontWeight: FontWeight.bold,
                       fontFeatures: AppType.tabular,
@@ -954,9 +1076,14 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     String currency,
   ) {
     if (categories.isEmpty) {
-      return GlassContainer(
-        borderRadius: AppRadius.md,
+      final scheme0 = SchemeTheme.of(context);
+      return Container(
         padding: const EdgeInsets.all(AppSpacing.xl),
+        decoration: BoxDecoration(
+          color: scheme0.surface,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: scheme0.border),
+        ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -976,15 +1103,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     final maxY = categories
         .map((entry) => entry.value)
         .reduce((a, b) => a > b ? a : b);
-    final scheme = Theme.of(context).colorScheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final scheme = SchemeTheme.of(context);
     final hairline = Theme.of(context).dividerTheme.thickness ?? 1;
-    return GlassContainer(
-      borderRadius: AppRadius.md,
+    return Container(
       padding: const EdgeInsets.fromLTRB(
         AppSpacing.md,
         AppSpacing.lg,
         AppSpacing.md,
         AppSpacing.md,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: AppRadius.mdAll,
+        border: Border.all(color: scheme.border),
       ),
       child: Column(
         children: [
@@ -998,7 +1130,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
                   getDrawingHorizontalLine: (_) =>
-                      FlLine(color: scheme.outlineVariant, strokeWidth: hairline),
+                      FlLine(color: colorScheme.outlineVariant, strokeWidth: hairline),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -1026,7 +1158,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                           padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Icon(
                             category.icon,
-                            color: category.color,
+                            color: scheme.categoryColors[category.index],
                             size: AppType.headline,
                           ),
                         );
@@ -1042,12 +1174,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                 ),
                 barTouchData: BarTouchData(
                   touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (group) => scheme.elevated,
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final entry = categories[group.x.toInt()];
                       return BarTooltipItem(
                         '${entry.key.displayName}\n$currency${NumberFormat('#,##0').format(entry.value)}',
-                        const TextStyle(
-                          color: Colors.white,
+                        TextStyle(
+                          color: scheme.ink,
                           fontWeight: FontWeight.bold,
                           fontFeatures: AppType.tabular,
                         ),
@@ -1062,7 +1195,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                     barRods: [
                       BarChartRodData(
                         toY: item.value.value,
-                        color: category.color,
+                        color: scheme.categoryColors[category.index],
                         width: 22,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(AppRadius.sm),
@@ -1086,13 +1219,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: entry.key.color.withValues(alpha: 0.12),
+                  color: scheme.categoryColors[entry.key.index].withValues(
+                    alpha: 0.12,
+                  ),
                   borderRadius: AppRadius.smAll,
                 ),
                 child: Text(
                   '${entry.key.displayName} $currency${NumberFormat.compact().format(entry.value)}',
                   style: TextStyle(
-                    color: entry.key.color,
+                    color: scheme.categoryColors[entry.key.index],
                     fontSize: AppType.caption,
                     fontWeight: FontWeight.w700,
                     fontFeatures: AppType.tabular,

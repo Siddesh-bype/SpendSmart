@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/budget.dart';
-import '../models/category.dart';
 import 'service_provider.dart';
 
 final budgetProvider = NotifierProvider<BudgetNotifier, List<Budget>>(BudgetNotifier.new);
@@ -17,11 +16,6 @@ class BudgetNotifier extends Notifier<List<Budget>> {
 
   Future<void> saveBudget(Budget budget) async {
     await ref.read(storageServiceProvider).saveBudget(budget);
-    _loadBudgets();
-  }
-
-  Future<void> deleteBudget(Category category) async {
-    await ref.read(storageServiceProvider).budgetBox.delete(category.index);
     _loadBudgets();
   }
 

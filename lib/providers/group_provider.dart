@@ -27,6 +27,20 @@ class SplitGroupNotifier extends Notifier<List<SplitGroup>> {
     _reload();
   }
 
+  /// Sets which participant counts as "me" for [groupId] balance purposes.
+  /// Unknown participant ids are ignored (state untouched).
+  Future<void> setMyParticipant(String groupId, String participantId) async {
+    SplitGroup? group;
+    for (final g in state) {
+      if (g.id == groupId) group = g;
+    }
+    if (group == null) return;
+    if (group.participants.every((p) => p.id != participantId)) return;
+    group.myParticipantId = participantId;
+    await ref.read(storageServiceProvider).saveSplitGroup(group);
+    _reload();
+  }
+
   Future<void> deleteGroup(String id) async {
     final storage = ref.read(storageServiceProvider);
     for (final expense in storage.getAllGroupExpenses().where(

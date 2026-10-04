@@ -11,12 +11,11 @@ import '../models/app_settings.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../services/ai_financial_advisor_service.dart';
 import '../services/financial_calculation_engine.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/financial_period.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
-import '../widgets/glass_container.dart';
 
 class InsightsScreen extends ConsumerWidget {
   const InsightsScreen({super.key});
@@ -65,17 +64,15 @@ class InsightsScreen extends ConsumerWidget {
         actions: [
           IconButton(
             tooltip: 'Ask AI Advisor',
-            icon: const Icon(Icons.chat_bubble_outline, color: AppColors.secondary),
+            constraints:
+                const BoxConstraints.tightFor(width: 44, height: 44),
+            icon: Icon(
+              Icons.chat_bubble_outline,
+              color: SchemeTheme.of(context).primary,
+            ),
             onPressed: () => _showAiChatModal(context, expenses, settings),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAiChatModal(context, expenses, settings),
-        backgroundColor: AppColors.secondary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.auto_awesome, size: 18),
-        label: const Text('Ask AI Advisor'),
       ),
       body: expenses.isEmpty
           ? Center(
@@ -85,11 +82,11 @@ class InsightsScreen extends ConsumerWidget {
               ),
             )
           : ListView(
-              padding: const EdgeInsets.fromLTRB(
+              padding: EdgeInsets.fromLTRB(
                 AppSpacing.lg,
                 AppSpacing.lg,
                 AppSpacing.lg,
-                AppSpacing.xxl * 2, // Space for FAB
+                AppSpacing.lg + MediaQuery.of(context).padding.bottom,
               ),
               children: [
                 // 1. AI Health Score & Pacing Header Card
@@ -118,7 +115,9 @@ class InsightsScreen extends ConsumerWidget {
                   _infoCard(
                     context,
                     icon: topCat.key.icon,
-                    color: topCat.key.color,
+                    color: SchemeTheme.of(
+                      context,
+                    ).categoryColors[topCat.key.index],
                     title: 'Top Category: ${topCat.key.displayName}',
                     subtitle:
                         '${settings.currency}${NumberFormat('#,##0').format(topCat.value)} this month'
@@ -148,27 +147,31 @@ class InsightsScreen extends ConsumerWidget {
     final report = review.healthReport;
     final pacing = review.pacing;
     final money = NumberFormat('#,##0');
+    final scheme = SchemeTheme.of(context);
 
     Color tierColor;
     switch (report.tier) {
       case HealthScoreTier.excellent:
-        tierColor = AppColors.success;
+        tierColor = scheme.success;
         break;
       case HealthScoreTier.good:
-        tierColor = AppColors.secondary;
+        tierColor = scheme.primary;
         break;
       case HealthScoreTier.fair:
-        tierColor = AppColors.warning;
+        tierColor = scheme.warning;
         break;
       case HealthScoreTier.needsAttention:
-        tierColor = AppColors.error;
+        tierColor = scheme.error;
         break;
     }
 
-    return GlassContainer(
-      borderRadius: AppRadius.lg,
-      backgroundColor: const Color(0xFF0F172A),
+    return Container(
       padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -186,10 +189,10 @@ class InsightsScreen extends ConsumerWidget {
                     child: Icon(Icons.auto_awesome, color: tierColor, size: 18),
                   ),
                   const SizedBox(width: AppSpacing.sm),
-                  const Text(
+                  Text(
                     'Financial Health & Pacing',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: scheme.ink,
                       fontSize: AppType.title,
                       fontWeight: FontWeight.bold,
                     ),
@@ -199,7 +202,7 @@ class InsightsScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: tierColor.withValues(alpha: 0.2),
+                  color: tierColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: tierColor.withValues(alpha: 0.4)),
                 ),
@@ -217,10 +220,10 @@ class InsightsScreen extends ConsumerWidget {
           const SizedBox(height: AppSpacing.md),
           Text(
             report.summary,
-            style: const TextStyle(color: Colors.white70, fontSize: AppType.body),
+            style: TextStyle(color: scheme.muted, fontSize: AppType.body),
           ),
           const SizedBox(height: AppSpacing.md),
-          const Divider(color: Colors.white24, height: 1),
+          Divider(color: scheme.border, height: 1),
           const SizedBox(height: AppSpacing.md),
           Row(
             children: [
@@ -228,14 +231,15 @@ class InsightsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Daily Safe Spend', style: TextStyle(color: Colors.white60, fontSize: AppType.caption)),
+                    Text('Daily Safe Spend', style: TextStyle(color: scheme.muted, fontSize: AppType.caption)),
                     const SizedBox(height: 2),
                     Text(
                       '$currency${money.format(pacing.dailySafeToSpend)} / day',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.ink,
                         fontWeight: FontWeight.bold,
                         fontSize: AppType.body,
+                        fontFeatures: AppType.tabular,
                       ),
                     ),
                   ],
@@ -245,14 +249,15 @@ class InsightsScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Projected Month-End', style: TextStyle(color: Colors.white60, fontSize: AppType.caption)),
+                    Text('Projected Month-End', style: TextStyle(color: scheme.muted, fontSize: AppType.caption)),
                     const SizedBox(height: 2),
                     Text(
                       '$currency${money.format(pacing.projectedMonthEnd)}',
                       style: TextStyle(
-                        color: pacing.isOverBudget ? AppColors.error : AppColors.success,
+                        color: pacing.isOverBudget ? scheme.error : scheme.success,
                         fontWeight: FontWeight.bold,
                         fontSize: AppType.body,
+                        fontFeatures: AppType.tabular,
                       ),
                     ),
                   ],
@@ -267,29 +272,32 @@ class InsightsScreen extends ConsumerWidget {
 
   Widget _aiRecommendationCard(BuildContext context, AiRecommendation rec, String currency) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     IconData icon;
     Color color;
 
     switch (rec.type) {
       case AiInsightType.criticalWarning:
         icon = Icons.warning_amber_rounded;
-        color = AppColors.error;
+        color = scheme.error;
         break;
       case AiInsightType.budgetPacing:
         icon = Icons.speed_rounded;
-        color = AppColors.warning;
+        color = scheme.warning;
         break;
       case AiInsightType.smartSavings:
         icon = Icons.lightbulb_outline_rounded;
-        color = AppColors.secondary;
+        color = scheme.primary;
         break;
       case AiInsightType.trendAlert:
         icon = Icons.trending_up_rounded;
-        color = rec.relatedCategory?.color ?? AppColors.warning;
+        color = rec.relatedCategory != null
+            ? scheme.categoryColors[rec.relatedCategory!.index]
+            : scheme.warning;
         break;
       case AiInsightType.positiveMilestone:
         icon = Icons.verified_outlined;
-        color = AppColors.success;
+        color = scheme.success;
         break;
     }
 
@@ -353,74 +361,104 @@ class InsightsScreen extends ConsumerWidget {
     String currency,
   ) {
     final isUp = change > 0;
-    return GlassContainer(
-      borderRadius: AppRadius.lg,
-      backgroundColor: isUp ? AppColors.error : AppColors.secondary,
-      padding: const EdgeInsets.all(AppSpacing.xl),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'vs Last Month',
-            style: TextStyle(color: Colors.white70, fontSize: AppType.label),
+    return Builder(
+      builder: (context) {
+        final scheme = SchemeTheme.of(context);
+        final trendColor = isUp ? scheme.error : scheme.success;
+        return Container(
+          padding: const EdgeInsets.all(AppSpacing.xl),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: scheme.border),
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(
-                isUp ? Icons.trending_up : Icons.trending_down,
-                color: Colors.white,
-                size: AppType.title,
+              Text(
+                'vs Last Month',
+                style: TextStyle(color: scheme.muted, fontSize: AppType.label),
               ),
-              const SizedBox(width: AppSpacing.sm),
-              Expanded(
-                child: FittedBox(
-                  fit: BoxFit.scaleDown,
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    '${isUp ? '+' : ''}${change.toStringAsFixed(1)}%',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: AppType.display,
-                      fontWeight: FontWeight.bold,
-                      fontFeatures: AppType.tabular,
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Icon(
+                    isUp ? Icons.trending_up : Icons.trending_down,
+                    color: trendColor,
+                    size: AppType.title,
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        '${isUp ? '+' : ''}${change.toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          color: trendColor,
+                          fontSize: AppType.display,
+                          fontWeight: FontWeight.bold,
+                          fontFeatures: AppType.tabular,
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: trendColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: trendColor.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Text(
+                      isUp ? 'Spending up' : 'Spending down',
+                      style: TextStyle(
+                        color: trendColor,
+                        fontSize: AppType.caption,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Row(
+                children: [
+                  Text(
+                    'This month: ',
+                    style: TextStyle(color: scheme.muted),
+                  ),
+                  MoneyText(
+                    thisMonth,
+                    currency: currency,
+                    size: AppType.body,
+                    color: scheme.ink,
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Text(
+                    'Last month: ',
+                    style: TextStyle(color: scheme.muted),
+                  ),
+                  MoneyText(
+                    lastMonth,
+                    currency: currency,
+                    size: AppType.body,
+                    color: scheme.muted,
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
-          Row(
-            children: [
-              const Text(
-                'This month: ',
-                style: TextStyle(color: Colors.white70),
-              ),
-              MoneyText(
-                thisMonth,
-                currency: currency,
-                size: AppType.body,
-                color: Colors.white70,
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              const Text(
-                'Last month: ',
-                style: TextStyle(color: Colors.white70),
-              ),
-              MoneyText(
-                lastMonth,
-                currency: currency,
-                size: AppType.body,
-                color: Colors.white70,
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -476,19 +514,24 @@ class InsightsScreen extends ConsumerWidget {
     Map<String, dynamic> r,
     String currency,
   ) {
+    final scheme = SchemeTheme.of(context);
     return Card(
       margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: scheme.border),
+      ),
       child: ListTile(
         leading: Container(
           width: 40,
           height: 40,
           decoration: BoxDecoration(
-            color: AppColors.bills.withValues(alpha: 0.12),
+            color: scheme.primary.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
-          child: const Icon(
+          child: Icon(
             Icons.autorenew,
-            color: AppColors.bills,
+            color: scheme.primary,
             size: 20,
           ),
         ),
@@ -496,10 +539,10 @@ class InsightsScreen extends ConsumerWidget {
         subtitle: Text(
           '~${r['frequency']} - Monthly ~$currency${NumberFormat('#,##0').format(r['amount'])}',
         ),
-        trailing: const Icon(
+        trailing: Icon(
           Icons.repeat,
           size: AppType.headline,
-          color: AppColors.bills,
+          color: scheme.muted,
         ),
       ),
     );
@@ -586,6 +629,7 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final quickPrompts = [
       'What was my highest expense?',
       'How much did I spend on food?',
@@ -596,7 +640,9 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
 
     return Padding(
       padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            AppSpacing.lg,
         left: AppSpacing.lg,
         right: AppSpacing.lg,
         top: AppSpacing.lg,
@@ -610,10 +656,10 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  color: scheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
+                child: Icon(Icons.auto_awesome, color: scheme.primary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Column(
@@ -625,7 +671,7 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
                   ),
                   Text(
                     '100% Offline • Instant Heuristic Insights',
-                    style: theme.textTheme.labelSmall?.copyWith(color: AppColors.secondary),
+                    style: theme.textTheme.labelSmall?.copyWith(color: scheme.primary),
                   ),
                 ],
               ),
@@ -640,7 +686,7 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
                     (p) => Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ActionChip(
-                        avatar: const Icon(Icons.bolt, size: 14, color: AppColors.secondary),
+                        avatar: Icon(Icons.bolt, size: 14, color: scheme.primary),
                         label: Text(p, style: const TextStyle(fontSize: AppType.caption)),
                         onPressed: () => _ask(p),
                       ),
@@ -655,23 +701,23 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
               width: double.infinity,
               padding: const EdgeInsets.all(AppSpacing.md),
               decoration: BoxDecoration(
-                color: AppColors.secondary.withValues(alpha: 0.08),
+                color: scheme.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.secondary.withValues(alpha: 0.25)),
+                border: Border.all(color: scheme.border),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.chat_bubble_outline, size: 14, color: AppColors.secondary),
+                      Icon(Icons.chat_bubble_outline, size: 14, color: scheme.primary),
                       const SizedBox(width: 6),
                       Text(
                         'Advisor Answer',
                         style: TextStyle(
                           fontSize: AppType.caption,
                           fontWeight: FontWeight.bold,
-                          color: AppColors.secondary,
+                          color: scheme.primary,
                         ),
                       ),
                     ],
@@ -703,6 +749,15 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
               ),
               const SizedBox(width: 8),
               IconButton.filled(
+                constraints:
+                    const BoxConstraints.tightFor(width: 48, height: 48),
+                style: IconButton.styleFrom(
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
                 onPressed: _isProcessing
                     ? null
                     : () {
@@ -714,7 +769,6 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.lg),
         ],
       ),
     );
@@ -781,46 +835,91 @@ class _MerchantAlertsSectionState extends State<_MerchantAlertsSection> {
   }
 
   Widget _alertTile(MerchantAnomaly anomaly) {
-    final color = anomaly.severity == 'critical'
-        ? AppColors.error
-        : AppColors.warning;
+    final isCritical = anomaly.severity == 'critical';
     final money = NumberFormat('#,##0');
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
-      padding: const EdgeInsets.all(AppSpacing.md),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: AppRadius.mdAll,
-        border: Border.all(color: color.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.warning_amber_rounded, color: color, size: 20),
-          const SizedBox(width: AppSpacing.md),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  anomaly.displayName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                  style: Theme.of(context).textTheme.titleSmall,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${widget.currency}${money.format(anomaly.currentAmount)}'
-                  ' vs ${widget.currency}${money.format(anomaly.baselineAmount)}'
-                  ' expected by now',
-                  style: Theme.of(context).textTheme.labelMedium,
-                ),
-              ],
-            ),
+    return Builder(
+      builder: (context) {
+        final scheme = SchemeTheme.of(context);
+        final color = isCritical ? scheme.error : scheme.warning;
+        return Container(
+          margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+          padding: const EdgeInsets.all(AppSpacing.md),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: scheme.border),
           ),
-        ],
-      ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isCritical
+                      ? Icons.warning_amber_rounded
+                      : Icons.trending_up_rounded,
+                  color: color,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            anomaly.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: Theme.of(context).textTheme.titleSmall,
+                          ),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Text(
+                            isCritical ? 'Critical' : 'Elevated',
+                            style: TextStyle(
+                              fontSize: AppType.caption,
+                              fontWeight: FontWeight.bold,
+                              color: color,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${widget.currency}${money.format(anomaly.currentAmount)}'
+                      ' vs ${widget.currency}${money.format(anomaly.baselineAmount)}'
+                      ' expected by now',
+                      style: Theme.of(context).textTheme.labelMedium,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

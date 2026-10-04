@@ -10,8 +10,8 @@ import '../providers/app_settings_provider.dart';
 import '../services/lending_pdf_service.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/validation.dart';
-import '../widgets/glass_container.dart';
 
 class LendingScreen extends ConsumerStatefulWidget {
   const LendingScreen({super.key});
@@ -47,7 +47,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'OPEN',
-            textColor: AppColors.accent,
+            textColor: SchemeTheme.of(context).primary,
             onPressed: () => OpenFilex.open(path),
           ),
         ),
@@ -87,6 +87,8 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       netBalance[entry.key] = net;
     }
 
+    final scheme = SchemeTheme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -105,20 +107,58 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                 )
               : IconButton(
                   icon: const Icon(Icons.picture_as_pdf_rounded),
+                  tooltip: 'Export PDF',
                   onPressed: lendings.isEmpty
                       ? null
                       : () => _exportPDF(lendings, currency),
                 ),
+          Padding(
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
+            child: Center(
+              child: Material(
+                color: scheme.ctaFill,
+                borderRadius: AppRadius.mdAll,
+                child: InkWell(
+                  borderRadius: AppRadius.mdAll,
+                  onTap: () => _showAddSheet(context),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, size: 18, color: scheme.ctaText),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'Record',
+                          style: TextStyle(
+                            color: scheme.ctaText,
+                            fontSize: AppType.body,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
         ],
       ),
       body: Column(
         children: [
-          // Summary banner
-          GlassContainer(
-            borderRadius: AppRadius.lg,
-            backgroundColor: AppColors.primary,
+          // Summary card — solid surface + 1px border
+          Container(
             margin: const EdgeInsets.all(AppSpacing.lg),
             padding: const EdgeInsets.all(AppSpacing.lg),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.border),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -128,19 +168,21 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     netBalance.values
                         .where((v) => v > 0)
                         .fold(0.0, (a, b) => a + b),
-                    AppColors.positiveGreen,
+                    scheme.success,
                     currency,
+                    scheme,
                   ),
                 ),
-                Container(width: 1, height: 40, color: Colors.white24),
+                Container(width: 1, height: 40, color: scheme.border),
                 Expanded(
                   child: _summaryCol(
                     'You Owe Others',
                     netBalance.values
                         .where((v) => v < 0)
                         .fold(0.0, (a, b) => a + b.abs()),
-                    AppColors.negativeCoral,
+                    scheme.error,
                     currency,
+                    scheme,
                   ),
                 ),
               ],
@@ -156,7 +198,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     Icon(
                       Icons.people_alt_outlined,
                       size: 72,
-                      color: Colors.grey.shade300,
+                      color: scheme.muted.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -168,9 +210,9 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tap + to record money you gave or owe.',
+                      'Use Record to log money you gave or owe.',
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: scheme.muted,
                         fontSize: AppType.label,
                       ),
                     ),
@@ -190,6 +232,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                     margin: const EdgeInsets.only(bottom: 12),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
+                      side: BorderSide(color: scheme.border),
                     ),
                     child: ExpansionTile(
                       shape: RoundedRectangleBorder(
@@ -197,13 +240,13 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                       ),
                       leading: CircleAvatar(
                         backgroundColor: iOweThemMore
-                            ? AppColors.error.withValues(alpha: 0.15)
-                            : AppColors.success.withValues(alpha: 0.15),
+                            ? scheme.error.withValues(alpha: 0.15)
+                            : scheme.success.withValues(alpha: 0.15),
                         child: Text(
                           name[0].toUpperCase(),
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: iOweThemMore ? AppColors.error : AppColors.success,
+                            color: iOweThemMore ? scheme.error : scheme.success,
                           ),
                         ),
                       ),
@@ -216,7 +259,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
                             ? 'You owe $currency${NumberFormat('#,##0').format(net.abs())}'
                             : 'Owed to you $currency${NumberFormat('#,##0').format(net)}',
                         style: TextStyle(
-                          color: iOweThemMore ? AppColors.error : AppColors.success,
+                          color: iOweThemMore ? scheme.error : scheme.success,
                           fontWeight: FontWeight.w600,
                           fontSize: AppType.label,
                         ),
@@ -231,15 +274,6 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
             ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddSheet(context),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Record',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-      ),
     );
   }
 
@@ -248,13 +282,14 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
     double amount,
     Color valueColor,
     String currency,
+    SchemeTheme scheme,
   ) {
     return Column(
       children: [
         Text(
           label,
           textAlign: TextAlign.center,
-          style: const TextStyle(color: Colors.white70, fontSize: AppType.caption),
+          style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
         ),
         const SizedBox(height: 4),
         Text(
@@ -270,11 +305,12 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
   }
 
   Widget _lendingTile(BuildContext context, Lending l, String currency) {
+    final scheme = SchemeTheme.of(context);
     return ListTile(
       dense: true,
       leading: Icon(
         l.isIGave ? Icons.arrow_upward_rounded : Icons.arrow_downward_rounded,
-        color: l.isIGave ? AppColors.success : AppColors.error,
+        color: l.isIGave ? scheme.success : scheme.error,
         size: 20,
       ),
       title: Text(
@@ -283,13 +319,13 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
             : 'You owe $currency${NumberFormat('#,##0').format(l.amount)}',
         style: TextStyle(
           fontWeight: FontWeight.w600,
-          color: l.isIGave ? AppColors.success : AppColors.error,
+          color: l.isIGave ? scheme.success : scheme.error,
           fontSize: AppType.label,
         ),
       ),
       subtitle: Text(
         '${DateFormat('d MMM y').format(l.date)}${l.note.isNotEmpty ? ' · ${l.note}' : ''}',
-        style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade500),
+        style: TextStyle(fontSize: AppType.caption, color: scheme.muted),
       ),
       trailing: TextButton(
         onPressed: () {
@@ -297,7 +333,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
           ref.read(lendingProvider.notifier).settle(l.id);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Marked as settled ✓'),
+              content: const Text('Marked as settled'),
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -305,7 +341,10 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
             ),
           );
         },
-        child: const Text('Settle', style: TextStyle(fontSize: AppType.caption)),
+        child: Text(
+          'Settle',
+          style: TextStyle(fontSize: AppType.caption, color: scheme.primary),
+        ),
       ),
     );
   }
@@ -339,6 +378,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
   final _noteCtrl = TextEditingController();
   bool _iGave = true;
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -352,9 +392,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
     final name = _nameCtrl.text.trim();
     final amount = parsePositiveAmount(_amountCtrl.text);
     if (name.isEmpty || amount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter a valid name and amount')),
-      );
+      setState(() => _error = 'Please enter a valid name and amount');
       return;
     }
     final lending = Lending(
@@ -365,7 +403,10 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
       date: DateTime.now(),
       note: _noteCtrl.text.trim(),
     );
-    setState(() => _saving = true);
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
     try {
       await widget.ref.read(lendingProvider.notifier).addLending(lending);
       if (mounted) Navigator.pop(context);
@@ -385,6 +426,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final currency = widget.ref.read(appSettingsProvider).currency;
     return Padding(
       padding: EdgeInsets.only(
@@ -403,7 +445,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: scheme.muted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -427,9 +469,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: _iGave
-                            ? Colors.green
-                            : theme.colorScheme.surfaceContainerHighest,
+                        color: _iGave ? scheme.success : scheme.elevated,
                         borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(12),
                         ),
@@ -439,9 +479,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                           'I Gave',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: _iGave
-                                ? Colors.white
-                                : theme.colorScheme.onSurface,
+                            color: _iGave ? Scheme.onAvatar(scheme.success) : scheme.ink,
                           ),
                         ),
                       ),
@@ -455,9 +493,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       decoration: BoxDecoration(
-                        color: !_iGave
-                            ? Colors.red
-                            : theme.colorScheme.surfaceContainerHighest,
+                        color: !_iGave ? scheme.error : scheme.elevated,
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(12),
                         ),
@@ -467,9 +503,7 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                           'I Owe',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: !_iGave
-                                ? Colors.white
-                                : theme.colorScheme.onSurface,
+                            color: !_iGave ? Scheme.onAvatar(scheme.error) : scheme.ink,
                           ),
                         ),
                       ),
@@ -516,6 +550,13 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
                 ),
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(color: scheme.error, fontSize: AppType.label),
+              ),
+            ],
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -523,8 +564,8 @@ class _AddLendingSheetState extends State<_AddLendingSheet> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

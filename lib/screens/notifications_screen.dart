@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/app_notification.dart';
 import '../providers/notification_provider.dart';
-import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
+import '../widgets/empty_state.dart';
 
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
@@ -12,6 +13,7 @@ class NotificationsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final notifications = ref.watch(notificationProvider);
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -19,19 +21,24 @@ class NotificationsScreen extends ConsumerWidget {
         actions: [
           if (notifications.isNotEmpty)
             TextButton(
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.primary,
+                minimumSize: const Size(64, 44),
+              ),
               onPressed: () => ref.read(notificationProvider.notifier).markAllRead(),
-              child: const Text('Mark all read', style: TextStyle(color: AppColors.primary)),
+              child: const Text('Mark all read'),
             ),
           if (notifications.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.delete_sweep_outlined),
               tooltip: 'Clear all',
+              color: scheme.muted,
               onPressed: () => _confirmClear(context, ref),
             ),
         ],
       ),
       body: notifications.isEmpty
-          ? _buildEmpty()
+          ? _buildEmpty(scheme)
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: notifications.length,
@@ -41,32 +48,32 @@ class NotificationsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildEmpty() => Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.notifications_none_rounded, size: 72, color: Colors.grey.shade300),
-            const SizedBox(height: 16),
-            const Text('No notifications yet',
-                style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 6),
-            const Text('Budget alerts and spending tips will appear here.',
-                style: TextStyle(color: Colors.grey, fontSize: AppType.label),
-                textAlign: TextAlign.center),
-          ],
-        ),
+  Widget _buildEmpty(SchemeTheme scheme) => EmptyState(
+        icon: Icons.notifications_none_rounded,
+        iconColor: scheme.muted.withValues(alpha: 0.5),
+        title: 'No notifications yet',
+        subtitle: 'Budget alerts and spending tips will appear here.',
       );
 
   void _confirmClear(BuildContext context, WidgetRef ref) {
+    final scheme = SchemeTheme.of(context);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text('Clear All Notifications'),
         content: const Text('This will remove all notifications. Are you sure?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            style: TextButton.styleFrom(minimumSize: const Size(64, 44)),
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error, foregroundColor: Colors.white),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: scheme.error,
+              foregroundColor: scheme.bg,
+              minimumSize: const Size(64, 44),
+            ),
             onPressed: () {
               ref.read(notificationProvider.notifier).clearAll();
               Navigator.pop(context);
@@ -85,27 +92,19 @@ class _NotifCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (icon, color) = _iconAndColor(notification.type);
+    final scheme = SchemeTheme.of(context);
+    final (icon, color, label) = _indicator(scheme, notification.type);
 
     return GestureDetector(
       onTap: () => ref.read(notificationProvider.notifier).markRead(notification.id),
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         decoration: BoxDecoration(
-          color: notification.isRead
-              ? Theme.of(context).cardTheme.color ?? Colors.white
-              : color.withValues(alpha: 0.08),
+          color: scheme.surface,
           border: Border.all(
-            color: notification.isRead ? Colors.transparent : color.withValues(alpha: 0.3),
+            color: notification.isRead ? scheme.border : color,
           ),
-          borderRadius: BorderRadius.circular(14),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: AppRadius.mdAll,
         ),
         child: Padding(
           padding: const EdgeInsets.all(14),
@@ -129,6 +128,7 @@ class _NotifCard extends ConsumerWidget {
                               style: TextStyle(
                                 fontWeight: notification.isRead ? FontWeight.w500 : FontWeight.bold,
                                 fontSize: AppType.label,
+                                color: scheme.ink,
                               )),
                         ),
                         if (!notification.isRead)
@@ -139,14 +139,28 @@ class _NotifCard extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 4),
+                    // Severity is never color-only: text label + icon accompany the hue.
+                    Row(
+                      children: [
+                        Icon(icon, color: color, size: 12),
+                        const SizedBox(width: 4),
+                        Text(label,
+                            style: TextStyle(
+                              color: color,
+                              fontSize: AppType.micro,
+                              fontWeight: FontWeight.w600,
+                            )),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(notification.body,
-                        style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
+                        style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 6),
                     Text(
                       DateFormat('MMM d, h:mm a').format(notification.time),
-                      style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
+                      style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
                     ),
                   ],
                 ),
@@ -158,10 +172,9 @@ class _NotifCard extends ConsumerWidget {
     );
   }
 
-  (IconData, Color) _iconAndColor(NotifType type) => switch (type) {
-        NotifType.budgetExceeded => (Icons.warning_rounded, AppColors.error),
-        NotifType.budgetWarning => (Icons.trending_up_rounded, AppColors.warning),
-        NotifType.spendingMilestone => (Icons.emoji_events_rounded, AppColors.entertainment),
-        NotifType.tip => (Icons.lightbulb_outline_rounded, AppColors.primary),
+  (IconData, Color, String) _indicator(SchemeTheme scheme, NotifType type) => switch (type) {
+        NotifType.budgetExceeded => (Icons.warning_rounded, scheme.error, 'Budget exceeded'),
+        NotifType.budgetWarning => (Icons.trending_up_rounded, scheme.warning, 'Budget warning'),
+        NotifType.tip => (Icons.lightbulb_outline_rounded, scheme.primary, 'Tip'),
       };
 }

@@ -5,7 +5,7 @@ import '../models/group_expense.dart';
 import '../models/split_group.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
-import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
 
 class SettleUpSheet extends ConsumerWidget {
@@ -26,6 +26,7 @@ class SettleUpSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final currency = ref.watch(appSettingsProvider).currency;
     final paidByName = _participantName(expense.paidBy);
 
@@ -41,7 +42,7 @@ class SettleUpSheet extends ConsumerWidget {
             child: Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
-                color: Colors.grey.shade300,
+                color: scheme.muted.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -50,12 +51,13 @@ class SettleUpSheet extends ConsumerWidget {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
+              color: scheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.primary.withValues(alpha: 0.2)),
             ),
             child: Column(
               children: [
-                const Icon(Icons.check_circle_outline, color: AppColors.primary, size: 48),
+                Icon(Icons.check_circle_outline, color: scheme.primary, size: 48),
                 const SizedBox(height: 12),
                 Text(
                   'Settle Expense',
@@ -64,22 +66,22 @@ class SettleUpSheet extends ConsumerWidget {
                 const SizedBox(height: 8),
                 Text(
                   expense.description,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: AppType.body),
+                  style: TextStyle(color: scheme.muted, fontSize: AppType.body),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
                 Text(
                   '$currency${expense.totalAmount.toStringAsFixed(2)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: AppType.display,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: scheme.primary,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Paid by $paidByName',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.label),
+                  style: TextStyle(color: scheme.muted, fontSize: AppType.label),
                 ),
               ],
             ),
@@ -104,8 +106,8 @@ class SettleUpSheet extends ConsumerWidget {
                 );
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: scheme.ctaFill,
+                foregroundColor: scheme.ctaText,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               child: const Text('Mark as Settled', style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold)),

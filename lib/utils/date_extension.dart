@@ -1,26 +1,6 @@
 import 'package:intl/intl.dart';
 
 extension CustomDateExtension on DateTime {
-  DateTime customMonthStart(int startingDay) {
-    if (day >= startingDay) {
-      return DateTime(year, month, startingDay);
-    } else {
-      return DateTime(year, month - 1, startingDay);
-    }
-  }
-
-  DateTime customMonthEnd(int startingDay) {
-    if (day >= startingDay) {
-      return DateTime(year, month + 1, startingDay).subtract(const Duration(seconds: 1));
-    } else {
-      return DateTime(year, month, startingDay).subtract(const Duration(seconds: 1));
-    }
-  }
-
-  bool isDefaultMonth(int currentMonth, int currentYear) {
-    return month == currentMonth && year == currentYear;
-  }
-
   /// Whether this date falls in the custom month starting on [startingDay] of
   /// [targetMonth]/[targetYear].
   ///

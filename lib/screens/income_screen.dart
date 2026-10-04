@@ -6,10 +6,9 @@ import 'package:uuid/uuid.dart';
 import '../models/income.dart';
 import '../providers/income_provider.dart';
 import '../providers/app_settings_provider.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/validation.dart';
-import '../widgets/glass_container.dart';
 
 class IncomeScreen extends ConsumerWidget {
   const IncomeScreen({super.key});
@@ -34,6 +33,7 @@ class IncomeScreen extends ConsumerWidget {
       0.0,
       (s, i) => s + i.amount,
     );
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -41,17 +41,56 @@ class IncomeScreen extends ConsumerWidget {
           'Income',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.sm,
+            ),
+            child: Material(
+              color: scheme.ctaFill,
+              borderRadius: AppRadius.mdAll,
+              child: InkWell(
+                borderRadius: AppRadius.mdAll,
+                onTap: () => _showAddSheet(context, ref),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 18, color: scheme.ctaText),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'Add Income',
+                        style: TextStyle(
+                          color: scheme.ctaText,
+                          fontSize: AppType.body,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
-          // Summary banner
-          GlassContainer(
-            borderRadius: AppRadius.lg,
-            backgroundColor: AppColors.secondary,
+          // Summary card — solid surface + 1px border
+          Container(
             margin: const EdgeInsets.all(AppSpacing.lg),
             padding: const EdgeInsets.symmetric(
               horizontal: AppSpacing.xl,
               vertical: AppSpacing.lg,
+            ),
+            decoration: BoxDecoration(
+              color: scheme.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: scheme.border),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -59,24 +98,27 @@ class IncomeScreen extends ConsumerWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'This Month',
-                      style: TextStyle(color: Colors.white70, fontSize: AppType.caption),
+                      style: TextStyle(
+                        color: scheme.muted,
+                        fontSize: AppType.caption,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       '$currency${NumberFormat('#,##0').format(thisMonthTotal)}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: scheme.ink,
                         fontSize: AppType.title,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ],
                 ),
-                const Icon(
+                Icon(
                   Icons.trending_up_rounded,
-                  color: Colors.white54,
+                  color: scheme.success,
                   size: 40,
                 ),
               ],
@@ -92,7 +134,7 @@ class IncomeScreen extends ConsumerWidget {
                     Icon(
                       Icons.account_balance_wallet_outlined,
                       size: 72,
-                      color: Colors.grey.shade300,
+                      color: scheme.muted.withValues(alpha: 0.5),
                     ),
                     const SizedBox(height: 16),
                     const Text(
@@ -104,10 +146,10 @@ class IncomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Tap + to log your salary, freelance, or any income.',
+                      'Use Add Income to log your salary, freelance, or any income.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.grey.shade500,
+                        color: scheme.muted,
                         fontSize: AppType.label,
                       ),
                     ),
@@ -138,15 +180,15 @@ class IncomeScreen extends ConsumerWidget {
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: AppType.label,
-                                color: Colors.grey.shade500,
+                                color: scheme.muted,
                               ),
                             ),
                             Text(
                               '$currency${NumberFormat('#,##0').format(monthTotal)}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: AppType.label,
-                                color: AppColors.success,
+                                color: scheme.success,
                               ),
                             ),
                           ],
@@ -156,6 +198,7 @@ class IncomeScreen extends ConsumerWidget {
                         margin: const EdgeInsets.only(bottom: 12),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14),
+                          side: BorderSide(color: scheme.border),
                         ),
                         child: Column(
                           children: entry.value
@@ -174,15 +217,6 @@ class IncomeScreen extends ConsumerWidget {
               ),
             ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showAddSheet(context, ref),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Add Income',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
       ),
     );
   }
@@ -209,12 +243,13 @@ class _IncomeTile extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = SchemeTheme.of(context);
     return ListTile(
       leading: CircleAvatar(
-        backgroundColor: AppColors.success.withValues(alpha: 0.15),
-        child: const Icon(
+        backgroundColor: scheme.success.withValues(alpha: 0.15),
+        child: Icon(
           Icons.arrow_downward_rounded,
-          color: AppColors.success,
+          color: scheme.success,
           size: 20,
         ),
       ),
@@ -224,15 +259,15 @@ class _IncomeTile extends ConsumerWidget {
       ),
       subtitle: Text(
         '${DateFormat('d MMM y').format(income.date)}${income.note.isNotEmpty ? ' · ${income.note}' : ''}',
-        style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade500),
+        style: TextStyle(fontSize: AppType.caption, color: scheme.muted),
       ),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
             '$currency${NumberFormat('#,##0').format(income.amount)}',
-            style: const TextStyle(
-              color: AppColors.success,
+            style: TextStyle(
+              color: scheme.success,
               fontWeight: FontWeight.bold,
               fontSize: AppType.body,
             ),
@@ -252,7 +287,7 @@ class _IncomeTile extends ConsumerWidget {
                 ),
               );
             },
-            child: const Icon(Icons.close, size: 16, color: Colors.grey),
+            child: Icon(Icons.close, size: 16, color: scheme.muted),
           ),
         ],
       ),
@@ -275,6 +310,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
   final _noteCtrl = TextEditingController();
   String _selectedSource = 'Salary';
   bool _saving = false;
+  String? _error;
   static const _sources = [
     'Salary',
     'Freelance',
@@ -294,12 +330,13 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
   Future<void> _save() async {
     final amount = parsePositiveAmount(_amountCtrl.text);
     if (amount == null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Enter a valid amount')));
+      setState(() => _error = 'Enter a valid amount');
       return;
     }
-    setState(() => _saving = true);
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
     try {
       await widget.ref
           .read(incomeProvider.notifier)
@@ -327,6 +364,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final currency = widget.ref.read(appSettingsProvider).currency;
 
     return Padding(
@@ -346,7 +384,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: scheme.muted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -369,9 +407,9 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 return ChoiceChip(
                   label: Text(src),
                   selected: selected,
-                  selectedColor: AppColors.success,
+                  selectedColor: scheme.ctaFill,
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : null,
+                    color: selected ? scheme.ctaText : null,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                   onSelected: (_) => setState(() => _selectedSource = src),
@@ -406,6 +444,13 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 ),
               ),
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(color: scheme.error, fontSize: AppType.label),
+              ),
+            ],
             const SizedBox(height: 20),
 
             SizedBox(
@@ -414,8 +459,8 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
               child: ElevatedButton(
                 onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),

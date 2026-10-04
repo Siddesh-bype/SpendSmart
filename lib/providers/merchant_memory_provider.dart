@@ -15,23 +15,12 @@ class MerchantMemoryNotifier extends Notifier<List<MerchantMemory>> {
     state = ref.read(storageServiceProvider).merchantBox.values.toList();
   }
 
-  Future<void> saveMerchant(String name, Category category) async {
-    await ref.read(storageServiceProvider).saveMerchantMemory(name, category);
-    _loadMerchants();
-  }
-
   /// Re-teaches [name] after the user picks a different category.
-  Future<void> correctMerchant(String name, Category category) =>
-      saveMerchant(name, category);
-
-  Future<void> deleteMerchant(String name) async {
-    await ref.read(storageServiceProvider).deleteMerchantMemory(name);
+  Future<void> correctMerchant(String name, Category category) async {
+    await ref.read(storageServiceProvider).saveMerchantMemory(name, category);
     _loadMerchants();
   }
 
   Category? lookupCategory(String rawMerchant) =>
       ref.read(storageServiceProvider).lookupMerchantCategory(rawMerchant);
-
-  MerchantMemory? memoryFor(String rawMerchant) =>
-      ref.read(storageServiceProvider).getMerchantMemory(rawMerchant);
 }

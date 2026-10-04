@@ -3,6 +3,7 @@ import 'dart:math';
 import '../models/expense.dart';
 import '../utils/financial_period.dart';
 import 'category_classifier.dart';
+import 'fixed_obligation_service.dart';
 
 class MerchantAnomaly {
   const MerchantAnomaly({
@@ -65,20 +66,48 @@ class MerchantAnomalyService {
       _historyMonths,
       (index) => _monthTotals(expenses, period.shifted(-index - 1)),
     );
-    if (history.any((month) => month.total <= 0)) return const [];
+    // Relaxed guard: at least 2 of the 3 history months must carry data.
+    // One silent month (new user, missing import) no longer suppresses
+    // everything; two silent months still mean there is no baseline to judge.
+    // The baseline divides by the months that actually carry data, so one
+    // silent month does not drag the average down by a phantom zero.
+    final monthsWithData = history.where((month) => month.total > 0).length;
+    if (monthsWithData < 2) {
+      return const [];
+    }
 
     final minimumImpact = monthlyBudget > 0
         ? max(1.0, monthlyBudget * _budgetImpactShare)
         : _noBudgetMinimumImpact;
 
+    // Fixed commitments carry their full-month expectation, not the
+    // pro-rated pace: a bill paid in full on day 2 looks multi-x against its
+    // pace but is the expected payment, not an anomaly.
+    final fixedExpected = <String, double>{
+      for (final obligation in FixedObligationService.detect(
+        expenses: expenses,
+        startingDayOfMonth: startingDayOfMonth,
+        now: date,
+      ))
+        obligation.merchantKey: obligation.expectedAmount,
+    };
+
     final anomalies = <MerchantAnomaly>[];
     current.amounts.forEach((key, currentAmount) {
+      final committed = fixedExpected[key];
+      if (committed != null &&
+          FixedObligationService.isWithinCommitment(
+            currentAmount: currentAmount,
+            expectedAmount: committed,
+          )) {
+        return;
+      }
       final baseline =
           history.fold<double>(
             0,
             (total, month) => total + (month.amounts[key] ?? 0),
           ) /
-          _historyMonths;
+          monthsWithData;
       final expectedByNow = baseline * daysElapsed / totalDays;
       final excess = currentAmount - expectedByNow;
       if (expectedByNow <= 0 ||

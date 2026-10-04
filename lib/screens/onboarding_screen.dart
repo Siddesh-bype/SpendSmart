@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/service_provider.dart';
@@ -24,24 +24,23 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   late final Animation<Offset> _slideAnim;
 
   // Pages made static const — no rebuild overhead.
+  // Copy is frozen by screen_visibility_test ('Track Every Expense' must stay,
+  // no mention of SMS detection). Colors resolve per-theme at build time.
   static const _pages = [
     _OnboardPage(
       icon: Icons.add_card_outlined,
-      color: AppColors.primary,
       title: 'Track Every Expense',
       desc:
           'Add expenses manually or import compatible bank statements and CSV files when you are ready.',
     ),
     _OnboardPage(
       icon: Icons.pie_chart,
-      color: AppColors.secondary,
       title: 'Smart Spending Analytics',
       desc:
           'See exactly where your money goes with beautiful charts and category-wise breakdowns.',
     ),
     _OnboardPage(
       icon: Icons.account_balance_wallet,
-      color: AppColors.accent,
       title: 'Set Budgets & Goals',
       desc:
           'Set monthly budgets for each category and get alerts before you overspend.',
@@ -94,6 +93,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     final isLast = _page == _pages.length - 1;
+    final scheme = SchemeTheme.of(context);
 
     return PopScope(
       canPop: _page == 0,
@@ -106,7 +106,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
         }
       },
       child: Scaffold(
-        backgroundColor: AppColors.backgroundDark,
+        backgroundColor: scheme.bg,
         body: SafeArea(
           child: Column(
             children: [
@@ -116,7 +116,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'SpendSmart',
                         maxLines: 1,
@@ -124,30 +124,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                         style: TextStyle(
                           fontSize: AppType.title,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: scheme.ink,
                           letterSpacing: 0,
                         ),
                       ),
                     ),
                     if (!isLast)
                       TextButton(
+                        style: TextButton.styleFrom(
+                          foregroundColor: scheme.muted,
+                          minimumSize: const Size(64, 44),
+                        ),
                         onPressed: _finish,
                         child: const Text(
                           'Skip',
-                          style: TextStyle(color: Colors.grey, fontSize: AppType.body),
+                          style: TextStyle(fontSize: AppType.body),
                         ),
                       ),
                   ],
                 ),
               ),
               const SizedBox(height: 8),
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Align(
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Your personal expense tracker',
-                    style: TextStyle(color: Colors.grey, fontSize: AppType.label),
+                    style: TextStyle(color: scheme.muted, fontSize: AppType.label),
                   ),
                 ),
               ),
@@ -163,7 +167,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     position: _slideAnim,
                     child: FadeTransition(
                       opacity: _fadeAnim,
-                      child: _buildPage(_pages[i]),
+                      child: _buildPage(scheme, _pages[i]),
                     ),
                   ),
                 ),
@@ -182,8 +186,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(4),
                       color: _page == i
-                          ? AppColors.accent
-                          : Colors.grey.shade700,
+                          ? scheme.primary
+                          : scheme.muted.withValues(alpha: 0.35),
                     ),
                   ),
                 ),
@@ -196,11 +200,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
-                    backgroundColor: isLast
-                        ? AppColors.accent
-                        : AppColors.primary,
+                    backgroundColor: scheme.ctaFill,
+                    foregroundColor: scheme.ctaText,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: AppRadius.mdAll,
                     ),
                   ),
                   onPressed: () {
@@ -216,10 +219,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   },
                   child: Text(
                     isLast ? 'Get Started' : 'Next',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: AppType.headline,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: scheme.ctaText,
                     ),
                   ),
                 ),
@@ -232,7 +235,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
     );
   }
 
-  Widget _buildPage(_OnboardPage page) {
+  Widget _buildPage(SchemeTheme scheme, _OnboardPage page) {
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 8),
@@ -243,32 +246,32 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               width: 120,
               height: 120,
               decoration: BoxDecoration(
-                color: page.color.withValues(alpha: 0.15),
+                color: scheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: page.color.withValues(alpha: 0.3),
-                  width: 2,
+                  color: scheme.border,
+                  width: 1,
                 ),
               ),
-              child: Icon(page.icon, size: 56, color: page.color),
+              child: Icon(page.icon, size: 56, color: scheme.primary),
             ),
             const SizedBox(height: 40),
             Text(
               page.title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AppType.title,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: scheme.ink,
               ),
             ),
             const SizedBox(height: 16),
             Text(
               page.desc,
               textAlign: TextAlign.center,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: AppType.body,
-                color: Colors.grey,
+                color: scheme.muted,
                 height: 1.6,
               ),
             ),
@@ -281,12 +284,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
 
 class _OnboardPage {
   final IconData icon;
-  final Color color;
   final String title;
   final String desc;
   const _OnboardPage({
     required this.icon,
-    required this.color,
     required this.title,
     required this.desc,
   });

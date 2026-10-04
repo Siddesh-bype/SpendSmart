@@ -39,8 +39,6 @@ class DailyGoalNotifier extends Notifier<Map<String, double>> {
       '${day.month.toString().padLeft(2, '0')}-'
       '${day.day.toString().padLeft(2, '0')}';
 
-  double? goalFor(DateTime day) => state[keyFor(day)];
-
   Future<void> setGoal(DateTime day, double limit) async {
     final next = Map<String, double>.from(state);
     if (limit <= 0) {
@@ -50,8 +48,6 @@ class DailyGoalNotifier extends Notifier<Map<String, double>> {
     }
     await _persist(next);
   }
-
-  Future<void> clearGoal(DateTime day) => setGoal(day, 0);
 
   Future<void> _persist(Map<String, double> next) async {
     await ref

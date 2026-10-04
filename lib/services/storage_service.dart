@@ -155,11 +155,6 @@ class StorageService {
     return expenseBox.values.toList()..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  List<Expense> getPendingExpenses() {
-    return expenseBox.values.where((e) => e.isUncategorized).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
   // Merchant Memory
   Box<MerchantMemory> get merchantBox =>
       Hive.box<MerchantMemory>(merchantBoxName);
@@ -267,10 +262,6 @@ class StorageService {
   // Budgets
   Box<Budget> get budgetBox => Hive.box<Budget>(budgetBoxName);
 
-  Budget? getBudget(Category category) {
-    return budgetBox.get(category.index);
-  }
-
   Future<void> saveBudget(Budget budget) async {
     await budgetBox.put(budget.category.index, budget);
   }
@@ -334,20 +325,29 @@ class StorageService {
       ..sort((a, b) => b.date.compareTo(a.date));
   }
 
-  List<GroupExpense> getGroupExpenses(String groupId) {
-    return groupExpenseBox.values.where((e) => e.groupId == groupId).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-  }
-
-  // Clear all data (on logout)
-  Future<void> clearAll() async {
-    await expenseBox.clear();
-    await budgetBox.clear();
-    await merchantBox.clear();
-    await incomeBox.clear();
-    await recurringBox.clear();
-    await lendingBox.clear();
-    await splitGroupBox.clear();
-    await groupExpenseBox.clear();
+  /// Wipes every local box (expenses, budgets, merchants, income, recurring,
+  /// lendings, split groups, group expenses), one box at a time.
+  ///
+  /// Each box clear is reported individually: when a box fails, the throw
+  /// names that box so the caller can tell the user what was not erased
+  /// instead of leaving a half-wiped state unexplained.
+  Future<void> clearAllData() async {
+    final boxes = <String, Future<void> Function()>{
+      expenseBoxName: expenseBox.clear,
+      merchantBoxName: merchantBox.clear,
+      budgetBoxName: budgetBox.clear,
+      lendingBoxName: lendingBox.clear,
+      incomeBoxName: incomeBox.clear,
+      recurringBoxName: recurringBox.clear,
+      splitGroupBoxName: splitGroupBox.clear,
+      groupExpenseBoxName: groupExpenseBox.clear,
+    };
+    for (final entry in boxes.entries) {
+      try {
+        await entry.value();
+      } catch (error) {
+        throw StateError('Could not erase "${entry.key}": $error');
+      }
+    }
   }
 }

@@ -23,19 +23,6 @@ class ExpenseNotifier extends Notifier<List<Expense>> {
     _loadExpenses();
   }
 
-  Future<void> addExpenseFromSMS(
-    Expense expense, {
-    bool isImport = false,
-  }) async {
-    if (isImport) {
-      final key = _expenseKey(expense);
-      final exists = state.any((e) => _expenseKey(e) == key);
-      if (exists) return;
-    }
-    await ref.read(storageServiceProvider).saveExpense(expense);
-    _loadExpenses();
-  }
-
   Future<void> updateExpense(Expense expense) async {
     await ref.read(storageServiceProvider).saveExpense(expense);
     _loadExpenses();

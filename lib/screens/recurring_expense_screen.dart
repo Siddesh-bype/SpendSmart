@@ -7,6 +7,7 @@ import '../providers/recurring_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/validation.dart';
 import '../widgets/empty_state.dart';
 
@@ -16,6 +17,7 @@ class RecurringExpenseScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final items = ref.watch(recurringExpenseProvider);
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -26,31 +28,60 @@ class RecurringExpenseScreen extends ConsumerWidget {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: 'recurring_fab',
-        backgroundColor: AppColors.bills,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text(
-          'Add',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        onPressed: () => showModalBottomSheet(
-          context: context,
-          isScrollControlled: true,
-          backgroundColor: Colors.transparent,
-          builder: (_) => const _AddRecurringSheet(),
-        ),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.sm,
+              vertical: AppSpacing.sm,
+            ),
+            child: Center(
+              child: Material(
+                color: scheme.ctaFill,
+                borderRadius: AppRadius.mdAll,
+                child: InkWell(
+                  borderRadius: AppRadius.mdAll,
+                  onTap: () => showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (_) => const _AddRecurringSheet(),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: AppSpacing.sm,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_rounded, size: 18, color: scheme.ctaText),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'Add',
+                          style: TextStyle(
+                            color: scheme.ctaText,
+                            fontSize: AppType.body,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: items.isEmpty
           ? EmptyState(
               icon: Icons.repeat_rounded,
               title: 'No recurring expenses yet',
               subtitle: 'Add subscriptions, rent, EMIs & more',
-              iconColor: AppColors.bills.withValues(alpha: 0.5),
+              iconColor: scheme.primary.withValues(alpha: 0.5),
             )
           : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
               itemCount: items.length,
               separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) => _RecurringTile(item: items[i]),
@@ -66,9 +97,8 @@ class _RecurringTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currency = ref.watch(appSettingsProvider).currency;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? AppColors.surfaceDark : Colors.white;
-    final catColor = item.category.color;
+    final scheme = SchemeTheme.of(context);
+    final catColor = scheme.categoryColors[item.category.index];
     final freqLabel =
         {
           'daily': 'Daily',
@@ -80,20 +110,13 @@ class _RecurringTile extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
+        color: scheme.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: item.isActive
               ? catColor.withValues(alpha: 0.3)
-              : Colors.grey.withValues(alpha: 0.2),
+              : scheme.border,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -102,12 +125,12 @@ class _RecurringTile extends ConsumerWidget {
           decoration: BoxDecoration(
             color: item.isActive
                 ? catColor.withValues(alpha: 0.15)
-                : Colors.grey.withValues(alpha: 0.1),
+                : scheme.muted.withValues(alpha: 0.12),
             shape: BoxShape.circle,
           ),
           child: Icon(
             item.category.icon,
-            color: item.isActive ? catColor : Colors.grey,
+            color: item.isActive ? catColor : scheme.muted,
             size: 20,
           ),
         ),
@@ -115,15 +138,15 @@ class _RecurringTile extends ConsumerWidget {
           item.title,
           style: TextStyle(
             fontWeight: FontWeight.w700,
-            color: item.isActive ? null : Colors.grey,
+            color: item.isActive ? scheme.ink : scheme.muted,
             decoration: item.isActive ? null : TextDecoration.lineThrough,
           ),
         ),
         subtitle: Text(
-          '$freqLabel - Next: ${DateFormat('d MMM yyyy').format(item.nextDue)}',
+          '$freqLabel - Next: ${DateFormat('d MMM yyyy').format(item.nextDue)}${item.isActive ? '' : ' · Paused'}',
           style: TextStyle(
             fontSize: AppType.caption,
-            color: item.isActive ? Colors.grey : Colors.grey.shade400,
+            color: item.isActive ? scheme.muted : scheme.muted.withValues(alpha: 0.7),
           ),
         ),
         trailing: Row(
@@ -134,7 +157,7 @@ class _RecurringTile extends ConsumerWidget {
               style: TextStyle(
                 fontWeight: FontWeight.bold,
                 fontSize: AppType.body,
-                color: item.isActive ? AppColors.bills : Colors.grey,
+                color: item.isActive ? scheme.ink : scheme.muted,
               ),
             ),
             const SizedBox(width: 8),
@@ -164,13 +187,13 @@ class _RecurringTile extends ConsumerWidget {
                     ],
                   ),
                 ),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'delete',
                   child: Row(
                     children: [
-                      Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                      SizedBox(width: 8),
-                      Text('Delete', style: TextStyle(color: AppColors.error)),
+                      Icon(Icons.delete_outline, size: 18, color: scheme.error),
+                      const SizedBox(width: 8),
+                      Text('Delete', style: TextStyle(color: scheme.error)),
                     ],
                   ),
                 ),
@@ -183,6 +206,7 @@ class _RecurringTile extends ConsumerWidget {
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {
+    final scheme = SchemeTheme.of(context);
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -200,7 +224,7 @@ class _RecurringTile extends ConsumerWidget {
               Navigator.pop(context);
               ref.read(recurringExpenseProvider.notifier).delete(item.id);
             },
-            child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+            child: Text('Delete', style: TextStyle(color: scheme.error)),
           ),
         ],
       ),
@@ -230,6 +254,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
   String _frequency = 'monthly';
   DateTime _startDate = DateTime.now();
   bool _saving = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -242,12 +267,13 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
     final title = _titleCtrl.text.trim();
     final amount = parsePositiveAmount(_amountCtrl.text);
     if (title.isEmpty || amount == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter a valid title and amount')),
-      );
+      setState(() => _error = 'Enter a valid title and amount');
       return;
     }
-    setState(() => _saving = true);
+    setState(() {
+      _error = null;
+      _saving = true;
+    });
     final r = buildRecurring(
       title: title,
       amount: amount,
@@ -266,11 +292,11 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = SchemeTheme.of(context);
 
     return Container(
       decoration: BoxDecoration(
-        color: isDark ? AppColors.surfaceDark : Colors.white,
+        color: scheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(
@@ -289,7 +315,7 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: scheme.muted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -341,18 +367,19 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
               runSpacing: 8,
               children: Category.values.map((cat) {
                 final selected = cat == _category;
+                final catColor = scheme.categoryColors[cat.index];
                 return FilterChip(
                   label: Text(cat.displayName),
                   avatar: Icon(
                     cat.icon,
                     size: 16,
-                    color: selected ? Colors.white : cat.color,
+                    color: selected ? Scheme.onAvatar(catColor) : catColor,
                   ),
                   selected: selected,
                   onSelected: (_) => setState(() => _category = cat),
-                  selectedColor: cat.color,
+                  selectedColor: catColor,
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : null,
+                    color: selected ? Scheme.onAvatar(catColor) : null,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                 );
@@ -374,9 +401,9 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                   label: Text(entry.value),
                   selected: selected,
                   onSelected: (_) => setState(() => _frequency = entry.key),
-                  selectedColor: AppColors.bills,
+                  selectedColor: scheme.ctaFill,
                   labelStyle: TextStyle(
-                    color: selected ? Colors.white : null,
+                    color: selected ? scheme.ctaText : null,
                     fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                   ),
                 );
@@ -407,6 +434,13 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                 ),
               ],
             ),
+            if (_error != null) ...[
+              const SizedBox(height: 8),
+              Text(
+                _error!,
+                style: TextStyle(color: scheme.error, fontSize: AppType.label),
+              ),
+            ],
             const SizedBox(height: 20),
 
             SizedBox(
@@ -414,19 +448,20 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
               child: FilledButton(
                 onPressed: _saving ? null : _save,
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.bills,
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14),
                   ),
                 ),
                 child: _saving
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 20,
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Colors.white,
+                          color: scheme.ctaText,
                         ),
                       )
                     : const Text(
@@ -434,7 +469,6 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                         style: TextStyle(
                           fontSize: AppType.headline,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
                         ),
                       ),
               ),

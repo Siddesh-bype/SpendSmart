@@ -10,8 +10,8 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../services/category_classifier.dart';
 import '../services/ai_financial_advisor_service.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 
 class PendingScreen extends ConsumerStatefulWidget {
   const PendingScreen({super.key});
@@ -29,6 +29,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
         .watch(expenseProvider)
         .where((e) => e.isUncategorized)
         .toList();
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -48,11 +49,11 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
                         height: 14,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.auto_awesome, size: 16, color: AppColors.secondary),
-                label: const Text(
+                    : Icon(Icons.auto_awesome, size: 16, color: scheme.primary),
+                label: Text(
                   'Auto-Categorize',
                   style: TextStyle(
-                    color: AppColors.secondary,
+                    color: scheme.primary,
                     fontWeight: FontWeight.bold,
                     fontSize: AppType.label,
                   ),
@@ -62,24 +63,24 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
         ],
       ),
       body: pending.isEmpty
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     Icons.check_circle_outline,
                     size: 64,
-                    color: AppColors.success,
+                    color: scheme.success,
                   ),
-                  SizedBox(height: 16),
-                  Text(
+                  const SizedBox(height: 16),
+                  const Text(
                     'All caught up!',
                     style: TextStyle(fontSize: AppType.title, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 8),
+                  const SizedBox(height: 8),
                   Text(
                     'No pending transactions to categorize.',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: scheme.muted),
                   ),
                 ],
               ),
@@ -88,40 +89,62 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
+                  padding: const EdgeInsets.all(AppSpacing.lg),
+                  child: Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: scheme.surface,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: scheme.border),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: scheme.warning.withValues(alpha: 0.12),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.info_outline,
+                            color: scheme.warning,
+                            size: 20,
+                          ),
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(
-                              Icons.info_outline,
-                              color: AppColors.warning,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                '${pending.length} transaction${pending.length > 1 ? 's' : ''} need${pending.length == 1 ? 's' : ''} categorization. Tap "Auto-Categorize" or select manually.',
-                                style: const TextStyle(
-                                  color: AppColors.warning,
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${pending.length} transaction${pending.length > 1 ? 's' : ''} need${pending.length == 1 ? 's' : ''} review',
+                                style: TextStyle(
+                                  color: scheme.ink,
+                                  fontWeight: FontWeight.bold,
                                   fontSize: AppType.label,
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(height: 2),
+                              Text(
+                                'Tap "Auto-Categorize" or select a category manually.',
+                                style: TextStyle(
+                                  color: scheme.muted,
+                                  fontSize: AppType.caption,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
                 Expanded(
                   child: ListView.builder(
+                    padding: EdgeInsets.only(
+                      bottom: MediaQuery.of(context).padding.bottom +
+                          AppSpacing.lg,
+                    ),
                     itemCount: pending.length,
                     itemBuilder: (_, i) => _PendingTile(
                       key: ValueKey(pending[i].id),
@@ -186,8 +209,7 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
 
             messenger.showSnackBar(
               SnackBar(
-                content: Text('Successfully auto-categorized $applied transaction${applied == 1 ? '' : 's'}! ✨'),
-                backgroundColor: AppColors.success,
+                content: Text('Successfully auto-categorized $applied transaction${applied == 1 ? '' : 's'}!'),
               ),
             );
           },
@@ -216,10 +238,18 @@ class _AiBatchCategorizeSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final highConfidenceCount = suggestions.where((s) => s.confidence == AiConfidence.high).length;
 
     return Container(
-      padding: const EdgeInsets.all(AppSpacing.lg),
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom +
+            MediaQuery.of(context).padding.bottom +
+            AppSpacing.lg,
+      ),
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.75,
       ),
@@ -232,10 +262,10 @@ class _AiBatchCategorizeSheet extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.secondary.withValues(alpha: 0.15),
+                  color: scheme.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.auto_awesome, color: AppColors.secondary, size: 20),
+                child: Icon(Icons.auto_awesome, color: scheme.primary, size: 20),
               ),
               const SizedBox(width: AppSpacing.md),
               Expanded(
@@ -261,21 +291,27 @@ class _AiBatchCategorizeSheet extends StatelessWidget {
               itemBuilder: (ctx, idx) {
                 final s = suggestions[idx];
                 final isHigh = s.confidence == AiConfidence.high;
+                final confidenceColor =
+                    isHigh ? scheme.success : scheme.warning;
+                final catColor = scheme.categoryColors[s.category.index];
                 return ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: s.category.color.withValues(alpha: 0.15),
-                    child: Icon(s.category.icon, color: s.category.color, size: 18),
+                    backgroundColor: catColor.withValues(alpha: 0.15),
+                    child: Icon(s.category.icon, color: catColor, size: 18),
                   ),
                   title: Text(s.merchant, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(s.rationale, style: theme.textTheme.labelSmall),
+                  subtitle: Text(
+                    '${s.rationale} · ${isHigh ? 'High confidence' : 'Moderate match'}',
+                    style: theme.textTheme.labelSmall,
+                  ),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: isHigh ? AppColors.success.withValues(alpha: 0.12) : AppColors.warning.withValues(alpha: 0.12),
+                      color: confidenceColor.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
-                        color: isHigh ? AppColors.success.withValues(alpha: 0.3) : AppColors.warning.withValues(alpha: 0.3),
+                        color: confidenceColor.withValues(alpha: 0.4),
                       ),
                     ),
                     child: Text(
@@ -283,7 +319,7 @@ class _AiBatchCategorizeSheet extends StatelessWidget {
                       style: TextStyle(
                         fontSize: AppType.caption,
                         fontWeight: FontWeight.bold,
-                        color: isHigh ? AppColors.success : AppColors.warning,
+                        color: confidenceColor,
                       ),
                     ),
                   ),
@@ -298,8 +334,8 @@ class _AiBatchCategorizeSheet extends StatelessWidget {
             child: ElevatedButton.icon(
               onPressed: onApplyAll,
               style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+                backgroundColor: scheme.ctaFill,
+                foregroundColor: scheme.ctaText,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.check_circle_outline, size: 18),
@@ -319,6 +355,7 @@ class _PendingTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cur = ref.watch(appSettingsProvider).currency;
+    final scheme = SchemeTheme.of(context);
 
     // Run instant heuristic check to see if AI has a high/medium suggestion for this item
     final storage = ref.watch(storageServiceProvider);
@@ -328,9 +365,12 @@ class _PendingTile extends ConsumerWidget {
 
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: scheme.border),
+      ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(AppSpacing.md),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -340,18 +380,22 @@ class _PendingTile extends ConsumerWidget {
                 Expanded(
                   child: Text(
                     expense.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
                       fontSize: AppType.body,
                     ),
                   ),
                 ),
+                const SizedBox(width: AppSpacing.sm),
                 Text(
                   '$cur${NumberFormat('#,##0.##').format(expense.amount)}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: scheme.ink,
                     fontSize: AppType.headline,
+                    fontFeatures: AppType.tabular,
                   ),
                 ),
               ],
@@ -359,7 +403,7 @@ class _PendingTile extends ConsumerWidget {
             const SizedBox(height: 4),
             Text(
               DateFormat('MMM dd, yyyy  hh:mm a').format(expense.date),
-              style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
+              style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
             ),
             if (suggestedCategory != null) ...[
               const SizedBox(height: 10),
@@ -367,29 +411,31 @@ class _PendingTile extends ConsumerWidget {
                 onTap: () => _categorize(context, ref, suggestedCategory),
                 borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   decoration: BoxDecoration(
-                    color: AppColors.secondary.withValues(alpha: 0.08),
+                    color: scheme.primary.withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.secondary.withValues(alpha: 0.3)),
+                    border: Border.all(color: scheme.primary.withValues(alpha: 0.4)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.auto_awesome, size: 13, color: AppColors.secondary),
+                      Icon(Icons.auto_awesome, size: 13, color: scheme.primary),
                       const SizedBox(width: 6),
-                      Text(
-                        'AI Suggestion: ${suggestedCategory.displayName}',
-                        style: const TextStyle(
-                          fontSize: AppType.caption,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.secondary,
+                      Flexible(
+                        child: Text(
+                          'AI Suggestion: ${suggestedCategory.displayName}',
+                          style: TextStyle(
+                            fontSize: AppType.caption,
+                            fontWeight: FontWeight.bold,
+                            color: scheme.primary,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 6),
-                      const Text(
-                        '• Tap to apply',
-                        style: TextStyle(fontSize: AppType.caption, color: Colors.grey),
+                      Text(
+                        '· Tap to apply',
+                        style: TextStyle(fontSize: AppType.caption, color: scheme.muted),
                       ),
                     ],
                   ),
@@ -407,37 +453,40 @@ class _PendingTile extends ConsumerWidget {
               runSpacing: 8,
               children: Category.values
                   .map(
-                    (cat) => GestureDetector(
-                      onTap: () => _categorize(context, ref, cat),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 7,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cat.color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: cat.color.withValues(alpha: 0.4),
+                    (cat) {
+                      final catColor = scheme.categoryColors[cat.index];
+                      return GestureDetector(
+                        onTap: () => _categorize(context, ref, cat),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: catColor.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: catColor.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(cat.icon, size: 14, color: catColor),
+                              const SizedBox(width: 5),
+                              Text(
+                                cat.displayName,
+                                style: TextStyle(
+                                  color: catColor,
+                                  fontSize: AppType.caption,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(cat.icon, size: 14, color: cat.color),
-                            const SizedBox(width: 5),
-                            Text(
-                              cat.displayName,
-                              style: TextStyle(
-                                color: cat.color,
-                                fontSize: AppType.caption,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                      );
+                    },
                   )
                   .toList(),
             ),
@@ -460,7 +509,7 @@ class _PendingTile extends ConsumerWidget {
       await merchants.correctMerchant(expense.title, cat);
     } catch (_) {
       messenger.showSnackBar(
-        SnackBar(content: Text('Could not save ${expense.title}.')),
+        SnackBar(content: Text('Could not save ${expense.title}. Check your entries and try again.')),
       );
       return;
     }

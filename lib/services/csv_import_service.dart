@@ -301,7 +301,7 @@ class CsvImportService {
     required String title,
     required MerchantCategoryLookup? memoryLookup,
   }) {
-    final explicit = _namedCategory(rawCategory);
+    final explicit = CategoryClassifier.exactCategory(rawCategory);
     if (explicit != null) return (explicit, false);
 
     final remembered = memoryLookup?.call(title);
@@ -312,16 +312,6 @@ class CsvImportService {
       if (labelled.isConfident) return (labelled.category, false);
     }
 
-    return resolveImportedCategory(title, null);
-  }
-
-  /// Exact match against a [CategoryExtension.displayName], case-insensitive.
-  static Category? _namedCategory(String raw) {
-    final lower = raw.toLowerCase().trim();
-    if (lower.isEmpty) return null;
-    for (final cat in Category.values) {
-      if (cat.displayName.toLowerCase() == lower) return cat;
-    }
-    return null;
+    return resolveImportedCategory(title, memoryLookup);
   }
 }

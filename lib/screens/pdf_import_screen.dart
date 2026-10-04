@@ -9,8 +9,9 @@ import '../providers/app_settings_provider.dart';
 import '../providers/service_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
-import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
+import '../widgets/empty_state.dart';
 
 class PdfImportScreen extends ConsumerStatefulWidget {
   const PdfImportScreen({super.key});
@@ -122,7 +123,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
           'Imported $inserted transaction${inserted == 1 ? '' : 's'}. '
           '$duplicates duplicate${duplicates == 1 ? '' : 's'} skipped.',
         ),
-        backgroundColor: AppColors.success,
+        backgroundColor: SchemeTheme.of(context).success,
       ),
     );
     Navigator.pop(context);
@@ -130,6 +131,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = SchemeTheme.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text(
@@ -150,55 +152,60 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                 _selected.length == _parsed.length
                     ? 'Deselect All'
                     : 'Select All',
-                style: const TextStyle(color: AppColors.primary),
+                style: TextStyle(color: scheme.primary),
               ),
             ),
         ],
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
-                  SizedBox(height: 16),
-                  Text('Reading PDF...', style: TextStyle(color: Colors.grey)),
+                  CircularProgressIndicator(color: scheme.primary),
+                  const SizedBox(height: 16),
+                  Text('Reading PDF...', style: TextStyle(color: scheme.muted)),
                 ],
               ),
             )
           : _importing
-          ? const Center(
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
-                  SizedBox(height: 16),
+                  CircularProgressIndicator(color: scheme.primary),
+                  const SizedBox(height: 16),
                   Text(
                     'Importing transactions...',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(color: scheme.muted),
                   ),
                 ],
               ),
             )
           : _parsed.isEmpty
-          ? _buildEmptyState()
-          : _buildTransactionList(),
+          ? _buildEmptyState(scheme)
+          : _buildTransactionList(scheme),
       bottomNavigationBar: _parsed.isNotEmpty
           ? SafeArea(
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(52),
-                    backgroundColor: AppColors.primary,
+                    minimumSize: const Size.fromHeight(48),
+                    backgroundColor: scheme.ctaFill,
+                    foregroundColor: scheme.ctaText,
+                    disabledBackgroundColor: scheme.border,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: AppRadius.mdAll,
+                    ),
                   ),
                   onPressed: _selected.isEmpty ? null : _importSelected,
                   child: Text(
                     'Import ${_selected.length} Transaction${_selected.length != 1 ? 's' : ''}',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: AppType.headline,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: scheme.ctaText,
                     ),
                   ),
                 ),
@@ -208,77 +215,73 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
     );
   }
 
-  Widget _buildEmptyState() {
+  Widget _buildEmptyState(SchemeTheme scheme) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const SizedBox(height: 24),
-            const Text(
-              'Import Bank Statement',
-              style: TextStyle(fontSize: AppType.title, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            const Text(
+      child: SingleChildScrollView(
+        child: EmptyState(
+          icon: Icons.upload_file_rounded,
+          iconColor: scheme.primary.withValues(alpha: 0.5),
+          title: 'Import Bank Statement',
+          subtitle:
               'Pick your bank\'s PDF statement to auto-import debit transactions.\n\nSupported banks: HDFC, SBI, ICICI, Axis, Kotak, Yes Bank',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.grey, height: 1.6),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.red.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.red.shade300),
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.warning_amber, color: Colors.red, size: 18),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _error!,
-                        style: const TextStyle(color: Colors.red, fontSize: AppType.label),
+          action: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_error != null) ...[
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: scheme.surface,
+                    borderRadius: AppRadius.mdAll,
+                    border: Border.all(color: scheme.error),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.warning_amber_rounded, color: scheme.error, size: 18),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _error!,
+                          style: TextStyle(color: scheme.error, fontSize: AppType.label),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 20),
+              ],
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
+                  minimumSize: const Size(200, 48),
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                ),
+                icon: Icon(Icons.upload_file, color: scheme.ctaText),
+                label: Text(
+                  'Select PDF File',
+                  style: TextStyle(
+                    fontSize: AppType.headline,
+                    color: scheme.ctaText,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                onPressed: _pickAndParse,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'PDF must be text-based (not scanned image)',
+                style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
               ),
             ],
-            const SizedBox(height: 32),
-            ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              icon: const Icon(Icons.upload_file, color: Colors.white),
-              label: const Text(
-                'Select PDF File',
-                style: TextStyle(
-                  fontSize: AppType.headline,
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              onPressed: _pickAndParse,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'PDF must be text-based (not scanned image)',
-              style: TextStyle(color: Colors.grey, fontSize: AppType.caption),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTransactionList() {
+  Widget _buildTransactionList(SchemeTheme scheme) {
     final byMonth = <String, List<Expense>>{};
     final currency = ref.read(appSettingsProvider).currency;
     for (final e in _parsed) {
@@ -288,18 +291,18 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
 
     return Column(
       children: [
-        // Summary banner
+        // Summary banner (solid surface + 1px border)
         Container(
           margin: const EdgeInsets.all(16),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            color: scheme.surface,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: scheme.border),
           ),
           child: Row(
             children: [
-              const Icon(Icons.picture_as_pdf, color: AppColors.primary),
+              Icon(Icons.picture_as_pdf, color: scheme.primary),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -307,16 +310,23 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                   children: [
                     Text(
                       _fileName ?? 'Statement',
-                      style: const TextStyle(fontWeight: FontWeight.bold),
+                      style: TextStyle(fontWeight: FontWeight.bold, color: scheme.ink),
                     ),
                     Text(
                       'Found ${_parsed.length} debit transactions - ${_selected.length} selected',
-                      style: const TextStyle(color: Colors.grey, fontSize: AppType.caption),
+                      style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
                     ),
                   ],
                 ),
               ),
-              TextButton(onPressed: _pickAndParse, child: const Text('Change')),
+              TextButton(
+                onPressed: _pickAndParse,
+                style: TextButton.styleFrom(
+                  foregroundColor: scheme.primary,
+                  minimumSize: const Size(64, 44),
+                ),
+                child: const Text('Change'),
+              ),
             ],
           ),
         ),
@@ -338,16 +348,16 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                       children: [
                         Text(
                           month,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: Colors.grey,
+                            color: scheme.muted,
                             fontSize: AppType.label,
                           ),
                         ),
                         Text(
                           '$currency${NumberFormat('#,##0').format(monthTotal)}',
-                          style: const TextStyle(
-                            color: AppColors.primary,
+                          style: TextStyle(
+                            color: scheme.primary,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
@@ -364,7 +374,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                           _selected.remove(e.id);
                         }
                       }),
-                      activeColor: AppColors.primary,
+                      activeColor: scheme.primary,
                       controlAffinity: ListTileControlAffinity.leading,
                       contentPadding: const EdgeInsets.symmetric(horizontal: 8),
                       title: Row(
@@ -386,9 +396,10 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                           Expanded(
                             child: Text(
                               e.title,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontWeight: FontWeight.w600,
                                 fontSize: AppType.body,
+                                color: scheme.ink,
                               ),
                             ),
                           ),
@@ -400,9 +411,9 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                           children: [
                             Text(
                               DateFormat('dd MMM yyyy').format(e.date),
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: AppType.caption,
-                                color: Colors.grey,
+                                color: scheme.muted,
                               ),
                             ),
                             const SizedBox(width: 8),
@@ -428,9 +439,9 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                       ),
                       secondary: Text(
                         '$currency${NumberFormat('#,##0.##').format(e.amount)}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontWeight: FontWeight.bold,
-                          color: AppColors.error,
+                          color: scheme.error,
                         ),
                       ),
                     ),

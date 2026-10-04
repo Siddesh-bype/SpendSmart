@@ -2,13 +2,6 @@ import '../models/category.dart';
 
 /// Where a [ClassificationResult] came from.
 enum ClassificationSource {
-  /// Resolved from the learned merchant -> category store.
-  ///
-  /// [CategoryClassifier] never returns this value: it holds no state and
-  /// knows nothing about past corrections. Callers that consult the learned
-  /// store before falling back to [CategoryClassifier.classify] report it.
-  merchantMemory,
-
   /// Matched an exact category name or a keyword rule.
   keyword,
 
@@ -80,25 +73,6 @@ class CategoryClassifier {
     'plc',
   };
 
-  /// Education keywords carried over from `pdf_import_service`.
-  ///
-  /// [Category] has no education member, so that branch returned
-  /// [Category.other] — the same result as the fallthrough, i.e. it was dead
-  /// code. The keywords are kept here rather than duplicated as a rule that
-  /// cannot change an outcome: [classify] deliberately lets them fall through
-  /// to the unconfident [Category.other] result, exactly as before. Add a
-  /// `Category.education` and these become a real rule group.
-  static const educationKeywords = [
-    'school',
-    'college',
-    'course',
-    'udemy',
-    'books',
-    'education',
-    'fee',
-    'tuition',
-  ];
-
   static final _upiHandle = RegExp(r'@[a-z][a-z0-9._-]*');
   static final _separators = RegExp(r'[-/_*.\\|#]+');
   static final _longDigitRun = RegExp(r'\d{5,}');
@@ -153,7 +127,7 @@ class CategoryClassifier {
   static ClassificationResult classify(String rawText) {
     final normalized = normalizeMerchant(rawText);
 
-    final named = _exactCategory(rawText);
+    final named = exactCategory(rawText);
     if (named != null) {
       return ClassificationResult(
         category: named,
@@ -177,7 +151,7 @@ class CategoryClassifier {
       }
     }
 
-    // Also where [educationKeywords] land.
+    // Unknown descriptors land here as unconfident [Category.other].
     return ClassificationResult(
       category: Category.other,
       isConfident: false,
@@ -192,7 +166,11 @@ class CategoryClassifier {
     return letters != null && _referenceMarkers.contains(letters);
   }
 
-  static Category? _exactCategory(String raw) {
+  /// Exact match against a [CategoryExtension.displayName], case-insensitive.
+  ///
+  /// Public so importers (e.g. the CSV `category` column) share this instead
+  /// of duplicating the loop.
+  static Category? exactCategory(String raw) {
     final lower = raw.toLowerCase().trim();
     if (lower.isEmpty) return null;
     for (final category in Category.values) {

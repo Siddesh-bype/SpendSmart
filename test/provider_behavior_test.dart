@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spendsmart/models/app_notification.dart';
 import 'package:spendsmart/models/budget.dart';
@@ -155,6 +156,164 @@ void main() {
       expect(container.read(notificationProvider), hasLength(2));
     },
   );
+
+  test(
+    'a legacy spendingMilestone payload decodes to tip instead of throwing',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'app_notifications_v1': jsonEncode([
+          {
+            'id': 'legacy',
+            'title': 'Milestone reached',
+            'body': 'Old milestone body',
+            'time': DateTime(2026, 7, 10).toIso8601String(),
+            // Stable id 2 belonged to the removed spendingMilestone variant.
+            'type': 2,
+            'isRead': false,
+          },
+        ]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      final notifications = container.read(notificationProvider);
+
+      expect(notifications, hasLength(1));
+      expect(notifications.single.type, NotifType.tip);
+    },
+  );
+
+  group('per-group "this is me" identity', () {
+    SplitGroup trip() => SplitGroup(
+      id: 'trip',
+      name: 'Trip',
+      participants: [
+        Participant(id: 'a', name: 'Asha', avatarColorValue: 0xFF123B5D),
+        Participant(id: 'b', name: 'Ben', avatarColorValue: 0xFF0F766E),
+      ],
+      createdAt: DateTime(2026),
+    );
+
+    // Ben paid 100, split 50/50 → Asha -50, Ben +50.
+    List<GroupExpense> expenses() => [
+      GroupExpense(
+        id: 'e1',
+        groupId: 'trip',
+        description: 'Hotel',
+        totalAmount: 100,
+        paidBy: 'b',
+        shares: [
+          ParticipantShare(participantId: 'a', amount: 50),
+          ParticipantShare(participantId: 'b', amount: 50),
+        ],
+        date: DateTime(2026),
+      ),
+    ];
+
+    Map<String, double> balancesFor(SplitGroup g, List<GroupExpense> ex) {
+      final paid = {for (final p in g.participants) p.id: 0.0};
+      final owed = {for (final p in g.participants) p.id: 0.0};
+      for (final e in ex) {
+        paid[e.paidBy] = (paid[e.paidBy] ?? 0) + e.totalAmount;
+        for (final s in e.shares) {
+          owed[s.participantId] = (owed[s.participantId] ?? 0) + s.amount;
+        }
+      }
+      return {for (final p in g.participants) p.id: paid[p.id]! - owed[p.id]!};
+    }
+
+    double myNet(SplitGroup g, Map<String, double> b) =>
+        b[g.meParticipantId] ?? 0;
+
+    test('default-null behaves as today: first participant is me', () {
+      final g = trip();
+      expect(g.myParticipantId, isNull);
+      expect(g.meParticipantId, 'a');
+      expect(myNet(g, balancesFor(g, expenses())), -50);
+    });
+
+    test('setting me changes the net direction', () async {
+      final storage = _FakeStorage(groups: [trip()]);
+      final container = ProviderContainer(
+        overrides: [storageServiceProvider.overrideWithValue(storage)],
+      );
+      addTearDown(container.dispose);
+
+      await container
+          .read(splitGroupProvider.notifier)
+          .setMyParticipant('trip', 'b');
+
+      final updated = container.read(splitGroupProvider).single;
+      expect(updated.myParticipantId, 'b');
+      expect(myNet(updated, balancesFor(updated, expenses())), 50);
+    });
+
+    test('switching me mid-group works and unknown ids are ignored', () async {
+      final storage = _FakeStorage(groups: [trip()]);
+      final container = ProviderContainer(
+        overrides: [storageServiceProvider.overrideWithValue(storage)],
+      );
+      addTearDown(container.dispose);
+      final notifier = container.read(splitGroupProvider.notifier);
+
+      await notifier.setMyParticipant('trip', 'b');
+      expect(container.read(splitGroupProvider).single.myParticipantId, 'b');
+
+      await notifier.setMyParticipant('trip', 'a');
+      final back = container.read(splitGroupProvider).single;
+      expect(back.myParticipantId, 'a');
+      expect(myNet(back, balancesFor(back, expenses())), -50);
+
+      // Unknown participant / group: state untouched.
+      await notifier.setMyParticipant('trip', 'ghost');
+      await notifier.setMyParticipant('nope', 'a');
+      expect(container.read(splitGroupProvider).single.myParticipantId, 'a');
+    });
+
+    test('a stored id that no longer names a member falls back to first', () {
+      final g = trip()..myParticipantId = 'removed';
+      expect(g.meParticipantId, 'a');
+    });
+
+    test('legacy payload without field 4 loads with null me', () {
+      final date = DateTime(2026);
+      final legacy = _StubReader([
+        4,
+        0, 'trip',
+        1, 'Trip',
+        2, [
+          {'id': 'a', 'name': 'Asha', 'avatarColorValue': 0xFF123B5D},
+          {'id': 'b', 'name': 'Ben', 'avatarColorValue': 0xFF0F766E},
+        ],
+        3, date,
+      ]);
+      final g = SplitGroupAdapter().read(legacy);
+      expect(g.myParticipantId, isNull);
+      expect(g.meParticipantId, 'a');
+      expect(g.participants, hasLength(2));
+    });
+
+    test('new payload with field 4 round-trips the me pick', () {
+      final date = DateTime(2026);
+      final reader = _StubReader([
+        5,
+        0, 'trip',
+        1, 'Trip',
+        2, [
+          {'id': 'a', 'name': 'Asha', 'avatarColorValue': 0xFF123B5D},
+          {'id': 'b', 'name': 'Ben', 'avatarColorValue': 0xFF0F766E},
+        ],
+        3, date,
+        4, 'b',
+      ]);
+      final g = SplitGroupAdapter().read(reader);
+      expect(g.myParticipantId, 'b');
+      expect(g.meParticipantId, 'b');
+    });
+  });
 }
 
 class _FakeStorage extends StorageService {
@@ -190,6 +349,12 @@ class _FakeStorage extends StorageService {
   List<SplitGroup> getAllSplitGroups() => List.of(groups);
 
   @override
+  Future<void> saveSplitGroup(SplitGroup group) async {
+    groups.removeWhere((g) => g.id == group.id);
+    groups.add(group);
+  }
+
+  @override
   List<GroupExpense> getAllGroupExpenses() => List.of(groupExpenses);
 
   @override
@@ -201,4 +366,24 @@ class _FakeStorage extends StorageService {
   Future<void> deleteSplitGroup(String id) async {
     groups.removeWhere((g) => g.id == id);
   }
+}
+
+/// Serves canned tokens to [SplitGroupAdapter.read] in the exact order the
+/// adapter pulls them (readByte/read interleaved), simulating raw Hive
+/// payloads without needing a Hive box on disk.
+class _StubReader implements BinaryReader {
+  _StubReader(this.tokens);
+
+  final List<Object?> tokens;
+  int _i = 0;
+
+  @override
+  int readByte() => tokens[_i++] as int;
+
+  @override
+  dynamic read([int? typeId]) => tokens[_i++];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) =>
+      super.noSuchMethod(invocation);
 }

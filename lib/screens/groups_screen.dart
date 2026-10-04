@@ -8,8 +8,8 @@ import '../providers/group_provider.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
-import '../widgets/glass_container.dart';
 import 'add_group_sheet.dart';
 import 'group_detail_screen.dart';
 
@@ -22,6 +22,7 @@ class GroupsScreen extends ConsumerWidget {
     final allExpenses = ref.watch(groupExpenseProvider);
     final settings = ref.watch(appSettingsProvider);
     final currency = settings.currency;
+    final scheme = SchemeTheme.of(context);
 
     // Summary totals across all groups
     double totalOwedToYou = 0;
@@ -29,37 +30,88 @@ class GroupsScreen extends ConsumerWidget {
 
     for (final group in groups) {
       final balances = _computeBalances(group, allExpenses);
-      for (final entry in balances.entries) {
-        if (entry.value > 0) totalOwedToYou += entry.value;
-        if (entry.value < 0) totalYouOwe += entry.value.abs();
-      }
+      final netMe = _myNetBalance(group, balances);
+      if (netMe > 0) totalOwedToYou += netMe;
+      if (netMe < 0) totalYouOwe += netMe.abs();
     }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Split Bills', style: TextStyle(fontWeight: FontWeight.bold)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.sm,
+            ),
+            child: Material(
+              color: scheme.ctaFill,
+              borderRadius: AppRadius.mdAll,
+              child: InkWell(
+                borderRadius: AppRadius.mdAll,
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                    ),
+                    builder: (_) => const AddGroupSheet(),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 18, color: scheme.ctaText),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'New Group',
+                        style: TextStyle(
+                          color: scheme.ctaText,
+                          fontSize: AppType.body,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       body: Column(children: [
-        // Summary banner
-        GlassContainer(
-          borderRadius: AppRadius.lg,
-          backgroundColor: AppColors.primary,
+        // Summary banner (solid surface + 1px border, compact)
+        Container(
           margin: const EdgeInsets.all(AppSpacing.lg),
-          padding: const EdgeInsets.all(AppSpacing.lg),
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.lg,
+            vertical: AppSpacing.md,
+          ),
+          decoration: BoxDecoration(
+            color: scheme.surface,
+            borderRadius: AppRadius.mdAll,
+            border: Border.all(color: scheme.border),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _summaryCol(
+                context,
                 'Owed to You',
                 totalOwedToYou,
-                AppColors.positiveGreen,
+                scheme.success,
                 currency,
               ),
-              Container(width: 1, height: 40, color: Colors.white24),
+              Container(width: 1, height: 36, color: scheme.border),
               _summaryCol(
+                context,
                 'You Owe',
                 totalYouOwe,
-                AppColors.negativeCoral,
+                scheme.error,
                 currency,
               ),
             ],
@@ -72,16 +124,44 @@ class GroupsScreen extends ConsumerWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.group_add_outlined, size: 72, color: Colors.grey.shade300),
+                  Icon(Icons.group_add_outlined, size: 72, color: scheme.muted),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'No groups yet',
-                    style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
+                    style: TextStyle(
+                      fontSize: AppType.headline,
+                      fontWeight: FontWeight.bold,
+                      color: scheme.ink,
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Create a group to start splitting expenses',
-                    style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.label),
+                    style: TextStyle(color: scheme.muted, fontSize: AppType.label),
+                  ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    height: 48,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          shape: const RoundedRectangleBorder(
+                            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                          ),
+                          builder: (_) => const AddGroupSheet(),
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: scheme.ctaFill,
+                        foregroundColor: scheme.ctaText,
+                        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                      ),
+                      child: const Text('Create group'),
+                    ),
                   ),
                 ],
               ),
@@ -95,12 +175,16 @@ class GroupsScreen extends ConsumerWidget {
               itemBuilder: (context, i) {
                 final group = groups[i];
                 final balances = _computeBalances(group, allExpenses);
-                final netYou = _myNetBalance(balances);
+                final netYou = _myNetBalance(group, balances);
                 final recentExpenses = allExpenses.where((e) => e.groupId == group.id).take(3).toList();
 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  color: scheme.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: AppRadius.mdAll,
+                    side: BorderSide(color: scheme.border),
+                  ),
                   child: InkWell(
                     onTap: () {
                       HapticFeedback.selectionClick();
@@ -111,7 +195,7 @@ class GroupsScreen extends ConsumerWidget {
                         ),
                       );
                     },
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: AppRadius.mdAll,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
@@ -132,8 +216,10 @@ class GroupsScreen extends ConsumerWidget {
                                         backgroundColor: Color(group.participants[j].avatarColorValue),
                                         child: Text(
                                           group.participants[j].name[0].toUpperCase(),
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: Scheme.onAvatar(
+                                              Color(group.participants[j].avatarColorValue),
+                                            ),
                                             fontWeight: FontWeight.bold,
                                             fontSize: AppType.caption,
                                           ),
@@ -145,11 +231,11 @@ class GroupsScreen extends ConsumerWidget {
                                       left: 3 * 18.0,
                                       child: CircleAvatar(
                                         radius: 16,
-                                        backgroundColor: Colors.grey.shade400,
+                                        backgroundColor: scheme.muted,
                                         child: Text(
                                           '+${group.participants.length - 3}',
-                                          style: const TextStyle(
-                                            color: Colors.white,
+                                          style: TextStyle(
+                                            color: scheme.surface,
                                             fontWeight: FontWeight.bold,
                                             fontSize: AppType.micro,
                                           ),
@@ -170,7 +256,7 @@ class GroupsScreen extends ConsumerWidget {
                                   ),
                                   Text(
                                     '${group.participants.length} members',
-                                    style: TextStyle(color: Colors.grey.shade500, fontSize: AppType.caption),
+                                    style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
                                   ),
                                 ],
                               ),
@@ -185,13 +271,13 @@ class GroupsScreen extends ConsumerWidget {
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
                                     fontSize: AppType.headline,
-                                    color: netYou >= 0 ? AppColors.success : AppColors.error,
+                                    color: netYou >= 0 ? scheme.success : scheme.error,
                                   ),
                                 ),
                                 Text(
                                   netYou >= 0 ? 'you are owed' : 'you owe',
                                   style: TextStyle(
-                                    color: Colors.grey.shade500,
+                                    color: scheme.muted,
                                     fontSize: AppType.caption,
                                   ),
                                 ),
@@ -200,7 +286,7 @@ class GroupsScreen extends ConsumerWidget {
                           ]),
                           if (recentExpenses.isNotEmpty) ...[
                             const SizedBox(height: 12),
-                            const Divider(height: 1),
+                            Divider(height: 1, color: scheme.border),
                             const SizedBox(height: 8),
                             ...recentExpenses.map((e) => Padding(
                               padding: const EdgeInsets.only(bottom: 4),
@@ -209,13 +295,13 @@ class GroupsScreen extends ConsumerWidget {
                                   Icon(
                                     Icons.receipt_outlined,
                                     size: 14,
-                                    color: Colors.grey.shade400,
+                                    color: scheme.muted,
                                   ),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
                                       e.description,
-                                      style: TextStyle(fontSize: AppType.caption, color: Colors.grey.shade600),
+                                      style: TextStyle(fontSize: AppType.caption, color: scheme.muted),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
@@ -225,7 +311,7 @@ class GroupsScreen extends ConsumerWidget {
                                     style: TextStyle(
                                       fontSize: AppType.caption,
                                       fontWeight: FontWeight.w600,
-                                      color: e.isSettled ? Colors.grey : AppColors.primary,
+                                      color: e.isSettled ? scheme.muted : scheme.primary,
                                     ),
                                   ),
                                 ],
@@ -241,32 +327,17 @@ class GroupsScreen extends ConsumerWidget {
             ),
           ),
       ]),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          HapticFeedback.lightImpact();
-          showModalBottomSheet(
-            context: context,
-            isScrollControlled: true,
-            shape: const RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-            ),
-            builder: (_) => const AddGroupSheet(),
-          );
-        },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('New Group', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-      ),
     );
   }
 
-  Widget _summaryCol(String label, double amount, Color valueColor, String currency) {
+  Widget _summaryCol(BuildContext context, String label, double amount, Color valueColor, String currency) {
+    final scheme = SchemeTheme.of(context);
     return Column(children: [
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: AppType.caption)),
+      Text(label, style: TextStyle(color: scheme.muted, fontSize: AppType.caption)),
       const SizedBox(height: 4),
       Text(
         '$currency${NumberFormat('#,##0').format(amount)}',
-        style: TextStyle(color: valueColor, fontSize: AppType.title, fontWeight: FontWeight.bold),
+        style: TextStyle(color: valueColor, fontSize: AppType.headline, fontWeight: FontWeight.bold),
       ),
     ]);
   }
@@ -294,9 +365,10 @@ class GroupsScreen extends ConsumerWidget {
     };
   }
 
-  double _myNetBalance(Map<String, double> balances) {
-    // For simplicity, treat the first participant as "me"
-    if (balances.isEmpty) return 0;
-    return balances.values.first;
+  double _myNetBalance(SplitGroup group, Map<String, double> balances) {
+    // Whoever the group marks as "me" (default: first participant).
+    final me = group.meParticipantId;
+    if (me == null) return 0;
+    return balances[me] ?? 0;
   }
 }

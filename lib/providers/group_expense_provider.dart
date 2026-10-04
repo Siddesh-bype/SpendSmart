@@ -22,11 +22,6 @@ class GroupExpenseNotifier extends Notifier<List<GroupExpense>> {
     _reload();
   }
 
-  Future<void> updateExpense(GroupExpense expense) async {
-    await ref.read(storageServiceProvider).saveGroupExpense(expense);
-    _reload();
-  }
-
   Future<void> deleteExpense(String id) async {
     await ref.read(storageServiceProvider).deleteGroupExpense(id);
     _reload();

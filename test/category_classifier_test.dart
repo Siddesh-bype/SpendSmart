@@ -142,18 +142,6 @@ void main() {
       expect(result.category, Category.food);
       expect(result.normalizedMerchant, 'swiggy');
     });
-
-    test('never reports the merchantMemory source', () {
-      const inputs = ['UPI-SWIGGY', 'Food', 'ACME WIDGETS', ''];
-
-      for (final input in inputs) {
-        expect(
-          CategoryClassifier.classify(input).source,
-          isNot(ClassificationSource.merchantMemory),
-          reason: input,
-        );
-      }
-    });
   });
 
   group('exact category name (CSV Category column)', () {
@@ -197,16 +185,6 @@ void main() {
       expect(result.isConfident, isFalse);
       expect(result.source, ClassificationSource.fallback);
       expect(result.normalizedMerchant, '');
-    });
-
-    test('education keywords deliberately fall through', () {
-      for (final keyword in CategoryClassifier.educationKeywords) {
-        final result = CategoryClassifier.classify(keyword);
-
-        expect(result.category, Category.other, reason: keyword);
-        expect(result.isConfident, isFalse, reason: keyword);
-        expect(result.source, ClassificationSource.fallback, reason: keyword);
-      }
     });
   });
 

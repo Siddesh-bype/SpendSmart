@@ -6,11 +6,10 @@ import '../providers/expense_provider.dart';
 import '../providers/spending_goal_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/category.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/financial_period.dart';
 import '../utils/validation.dart';
-import '../widgets/glass_container.dart';
 
 class SpendingGoalsScreen extends ConsumerStatefulWidget {
   const SpendingGoalsScreen({super.key});
@@ -21,14 +20,6 @@ class SpendingGoalsScreen extends ConsumerStatefulWidget {
 }
 
 class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
-  final _ctrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) {
     final goal = ref.watch(spendingGoalProvider);
@@ -56,6 +47,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     final isOver =
         goal.enabled && totalSpent > goal.monthlyLimit && goal.monthlyLimit > 0;
     final remaining = goal.enabled ? (goal.monthlyLimit - totalSpent) : 0.0;
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -66,21 +58,25 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
         actions: [
           if (goal.enabled)
             IconButton(
+              tooltip: 'Edit monthly goal',
+              constraints:
+                  const BoxConstraints.tightFor(width: 44, height: 44),
               icon: const Icon(Icons.edit_outlined),
-              onPressed: () => _showSetGoalDialog(context, goal.monthlyLimit),
+              onPressed: () => _showGoalSheet(goal.monthlyLimit),
             ),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(AppSpacing.lg),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Main goal card
             if (!goal.enabled)
-              _buildSetGoalCard(context, settings.currency)
+              _buildSetGoalCard(context)
             else ...[
               _buildGoalCard(
+                context,
                 totalSpent,
                 goal.monthlyLimit,
                 remaining,
@@ -88,13 +84,13 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 isOver,
                 settings.currency,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
             ],
 
             // Daily budget hint
             if (goal.enabled && !isOver && goal.monthlyLimit > 0) ...[
               _buildHintCard(context, remaining, now, settings.currency),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
             ],
 
             // Category breakdown vs goal
@@ -103,9 +99,10 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 'Spending by Category',
                 style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               ...catSums.entries.map(
                 (e) => _buildCategoryRow(
+                  context,
                   e.key,
                   e.value,
                   goal.monthlyLimit,
@@ -115,24 +112,37 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             ],
 
             if (goal.enabled) ...[
-              const SizedBox(height: 24),
-              OutlinedButton.icon(
-                icon: const Icon(Icons.cancel_outlined, color: AppColors.error),
-                label: const Text(
-                  'Disable Goal',
-                  style: TextStyle(color: AppColors.error),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.error),
-                  minimumSize: const Size.fromHeight(44),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: OutlinedButton.icon(
+                  icon: Icon(
+                    Icons.cancel_outlined,
+                    color: scheme.error,
                   ),
+                  label: Text(
+                    'Disable Goal',
+                    style: TextStyle(
+                      color: scheme.error,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(
+                      color: scheme.error.withValues(alpha: 0.5),
+                    ),
+                    backgroundColor:
+                        scheme.error.withValues(alpha: 0.08),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    ref.read(spendingGoalProvider.notifier).disableGoal();
+                  },
                 ),
-                onPressed: () {
-                  HapticFeedback.lightImpact();
-                  ref.read(spendingGoalProvider.notifier).disableGoal();
-                },
               ),
             ],
           ],
@@ -141,47 +151,68 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     );
   }
 
-  Widget _buildSetGoalCard(BuildContext context, String currency) {
-    return GlassContainer(
-      borderRadius: AppRadius.lg,
-      backgroundColor: AppColors.primary,
+  Widget _buildSetGoalCard(BuildContext context) {
+    final scheme = SchemeTheme.of(context);
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.border),
+      ),
       child: Column(
         children: [
-          const Icon(
-            Icons.track_changes_rounded,
-            size: 56,
-            color: Colors.white,
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.track_changes_rounded,
+              size: 40,
+              color: scheme.primary,
+            ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppSpacing.md),
           const Text(
             'Set a Monthly Goal',
             style: TextStyle(
-              color: Colors.white,
               fontSize: AppType.title,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 6),
-          const Text(
-            'Track your overall spending against a budget goal',
-            style: TextStyle(color: Colors.white70, fontSize: AppType.label),
+          Text(
+            'Track your overall spending against a monthly budget goal',
+            style: TextStyle(
+              color: scheme.muted,
+              fontSize: AppType.label,
+            ),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 20),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.white,
-              foregroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+          const SizedBox(height: AppSpacing.xl),
+          SizedBox(
+            height: 48,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: scheme.ctaFill,
+                foregroundColor: scheme.ctaText,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               ),
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
-            ),
-            onPressed: () => _showSetGoalDialog(context, 0),
-            child: const Text(
-              'Set Goal',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              onPressed: () => _showGoalSheet(0),
+              child: Text(
+                'Set Monthly Goal',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: scheme.ctaText,
+                ),
+              ),
             ),
           ),
         ],
@@ -190,6 +221,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
   }
 
   Widget _buildGoalCard(
+    BuildContext context,
     double spent,
     double limit,
     double remaining,
@@ -197,19 +229,29 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     bool isOver,
     String currency,
   ) {
-    return GlassContainer(
-      borderRadius: AppRadius.lg,
-      backgroundColor: isOver ? AppColors.error : AppColors.primary,
+    final scheme = SchemeTheme.of(context);
+    final statusColor = isOver ? scheme.error : scheme.primary;
+    final money = NumberFormat('#,##0');
+    return Container(
+      width: double.infinity,
       padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: scheme.border),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Monthly Goal',
-                style: TextStyle(color: Colors.white70, fontSize: AppType.label),
+                style: TextStyle(
+                  color: scheme.muted,
+                  fontSize: AppType.label,
+                ),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -217,64 +259,104 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
+                  color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  isOver
-                      ? 'Over goal'
-                      : '${(pct * 100).toStringAsFixed(0)}% used',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: AppType.caption,
-                    fontWeight: FontWeight.bold,
+                  border: Border.all(
+                    color: statusColor.withValues(alpha: 0.4),
                   ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (isOver)
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        size: 12,
+                        color: statusColor,
+                      ),
+                    if (isOver) const SizedBox(width: 4),
+                    Text(
+                      isOver
+                          ? 'Over goal'
+                          : '${(pct * 100).toStringAsFixed(0)}% used',
+                      style: TextStyle(
+                        color: statusColor,
+                        fontSize: AppType.caption,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(
-                '$currency${NumberFormat('#,##0').format(spent)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: AppType.display,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  '$currency${money.format(spent)}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: scheme.ink,
+                    fontSize: AppType.display,
+                    fontWeight: FontWeight.bold,
+                    fontFeatures: AppType.tabular,
+                  ),
                 ),
               ),
               Padding(
                 padding: const EdgeInsets.only(bottom: 4, left: 8),
                 child: Text(
-                  'of $currency${NumberFormat('#,##0').format(limit)}',
-                  style: const TextStyle(color: Colors.white70, fontSize: AppType.body),
+                  'of $currency${money.format(limit)}',
+                  style: TextStyle(
+                    color: scheme.muted,
+                    fontSize: AppType.body,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: AppSpacing.md),
           ClipRRect(
-            borderRadius: BorderRadius.circular(6),
+            borderRadius: AppRadius.smAll,
             child: TweenAnimationBuilder<double>(
               tween: Tween<double>(begin: 0, end: pct),
               duration: const Duration(milliseconds: 800),
               curve: Curves.easeOutCubic,
               builder: (context, val, _) => LinearProgressIndicator(
                 value: val,
-                backgroundColor: Colors.white24,
-                color: isOver ? Colors.orange.shade300 : Colors.white,
-                minHeight: 10,
+                backgroundColor: scheme.tint,
+                color: isOver ? scheme.error : scheme.primary,
+                minHeight: 8,
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Text(
-            isOver
-                ? '$currency${NumberFormat('#,##0').format(spent - limit)} over your goal'
-                : '$currency${NumberFormat('#,##0').format(remaining)} remaining',
-            style: const TextStyle(color: Colors.white70, fontSize: AppType.caption),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              if (isOver)
+                Icon(
+                  Icons.error_outline_rounded,
+                  size: 14,
+                  color: scheme.error,
+                ),
+              if (isOver) const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  isOver
+                      ? '$currency${money.format(spent - limit)} over your goal'
+                      : '$currency${money.format(remaining)} remaining',
+                  style: TextStyle(
+                    color: isOver ? scheme.error : scheme.muted,
+                    fontSize: AppType.caption,
+                    fontFeatures: AppType.tabular,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -287,24 +369,32 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     DateTime now,
     String currency,
   ) {
+    final scheme = SchemeTheme.of(context);
     final daysLeft =
         DateUtils.getDaysInMonth(now.year, now.month) - now.day + 1;
     final dailyBudget = daysLeft > 0 ? remaining / daysLeft : 0.0;
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(AppSpacing.md),
       decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+        color: scheme.surface,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: scheme.border),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.lightbulb_outline_rounded,
-            color: AppColors.primary,
-            size: 22,
+          Container(
+            padding: const EdgeInsets.all(AppSpacing.sm),
+            decoration: BoxDecoration(
+              color: scheme.primary.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              Icons.lightbulb_outline_rounded,
+              color: scheme.primary,
+              size: 22,
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: AppSpacing.md),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -313,12 +403,16 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                   'Daily Budget',
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
+                    color: scheme.ink,
                   ),
                 ),
                 Text(
                   '$currency${NumberFormat('#,##0').format(dailyBudget)}/day for the next $daysLeft days',
-                  style: const TextStyle(fontSize: AppType.caption, color: Colors.grey),
+                  style: TextStyle(
+                    fontSize: AppType.caption,
+                    color: scheme.muted,
+                    fontFeatures: AppType.tabular,
+                  ),
                 ),
               ],
             ),
@@ -329,24 +423,27 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
   }
 
   Widget _buildCategoryRow(
+    BuildContext context,
     Category cat,
     double spent,
     double goalLimit,
     String currency,
   ) {
+    final scheme = SchemeTheme.of(context);
+    final catColor = scheme.categoryColors[cat.index];
     final portion = goalLimit > 0 ? (spent / goalLimit).clamp(0.0, 1.0) : 0.0;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
         children: [
           Container(
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: cat.color.withValues(alpha: 0.15),
+              color: catColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(cat.icon, color: cat.color, size: 16),
+            child: Icon(cat.icon, color: catColor, size: 16),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -356,18 +453,25 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      cat.displayName,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: AppType.label,
+                    Flexible(
+                      child: Text(
+                        cat.displayName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: AppType.label,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: AppSpacing.sm),
                     Text(
                       '$currency${NumberFormat('#,##0').format(spent)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: AppType.caption,
                         fontWeight: FontWeight.w600,
+                        fontFeatures: AppType.tabular,
+                        color: scheme.ink,
                       ),
                     ),
                   ],
@@ -381,8 +485,8 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                     curve: Curves.easeOutCubic,
                     builder: (context, val, _) => LinearProgressIndicator(
                       value: val,
-                      backgroundColor: Colors.grey.shade200,
-                      color: cat.color,
+                      backgroundColor: scheme.tint,
+                      color: catColor,
                       minHeight: 6,
                     ),
                   ),
@@ -395,45 +499,103 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     );
   }
 
-  void _showSetGoalDialog(BuildContext context, double current) {
-    _ctrl.text = current > 0 ? current.toStringAsFixed(0) : '';
-    final currency = ref.read(appSettingsProvider).currency;
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Set Monthly Spending Goal'),
-        content: TextField(
-          controller: _ctrl,
-          autofocus: true,
-          keyboardType: TextInputType.number,
-          decoration: InputDecoration(
-            labelText: 'Monthly limit',
-            prefixText: '$currency ',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () async {
-              final val = parsePositiveAmount(_ctrl.text);
-              if (val != null) {
-                HapticFeedback.mediumImpact();
-                await ref.read(spendingGoalProvider.notifier).setGoal(val);
-                if (context.mounted) Navigator.pop(context);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
+  void _showGoalSheet(double current) {
+    final ctrl = TextEditingController(
+      text: current > 0 ? current.toStringAsFixed(0) : '',
     );
+    final amountError = ValueNotifier<String?>(null);
+    final currency = ref.read(appSettingsProvider).currency;
+    final isEdit = current > 0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        final scheme = SchemeTheme.of(sheetContext);
+        return Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            top: AppSpacing.xl,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isEdit ? 'Edit Monthly Goal' : 'Set Monthly Goal',
+                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              ValueListenableBuilder<String?>(
+                valueListenable: amountError,
+                builder: (ctx, error, _) => TextField(
+                  controller: ctrl,
+                  autofocus: true,
+                  keyboardType: TextInputType.number,
+                  onChanged: (v) {
+                    if (v.trim().isEmpty) {
+                      amountError.value = null;
+                    } else {
+                      amountError.value = parsePositiveAmount(v) == null
+                          ? 'Enter a valid monthly limit'
+                          : null;
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Monthly limit ($currency)',
+                    prefixText: '$currency ',
+                    errorText: error,
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+              SizedBox(
+                width: double.infinity,
+                height: 48,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scheme.ctaFill,
+                    foregroundColor: scheme.ctaText,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () async {
+                    final val = parsePositiveAmount(ctrl.text);
+                    if (val != null) {
+                      HapticFeedback.mediumImpact();
+                      await ref
+                          .read(spendingGoalProvider.notifier)
+                          .setGoal(val);
+                      if (mounted) Navigator.pop(context);
+                    } else {
+                      amountError.value = 'Enter a valid monthly limit';
+                    }
+                  },
+                  child: Text(
+                    'Save Goal',
+                    style: TextStyle(
+                      color: scheme.ctaText,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.lg),
+            ],
+          ),
+        );
+      },
+    ).whenComplete(() {
+      ctrl.dispose();
+      amountError.dispose();
+    });
   }
 }

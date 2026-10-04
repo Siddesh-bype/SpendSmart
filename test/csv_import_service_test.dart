@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:spendsmart/models/category.dart';
 import 'package:spendsmart/services/csv_import_service.dart';
 import 'package:spendsmart/services/export_service.dart';
 
@@ -43,5 +44,25 @@ Update,Paid By,Total
       "Date,Title,Amount\n2026-07-10,\"'Tis a shop\",100\n",
     );
     expect(result.imported.single.title, "'Tis a shop");
+  });
+
+  test('an explicit category name beats merchant memory', () {
+    final result = CsvImportService.parse(
+      'Date,Title,Amount,Category\n2026-07-10,Uber trip,100,Food\n',
+      memoryLookup: (_) => Category.bills,
+    );
+
+    expect(result.imported.single.category, Category.food);
+    expect(result.imported.single.isUncategorized, isFalse);
+  });
+
+  test('merchant memory beats the keyword rules', () {
+    final result = CsvImportService.parse(
+      'Date,Title,Amount\n2026-07-10,Swiggy dinner,100\n',
+      memoryLookup: (_) => Category.bills,
+    );
+
+    expect(result.imported.single.category, Category.bills);
+    expect(result.imported.single.isUncategorized, isFalse);
   });
 }

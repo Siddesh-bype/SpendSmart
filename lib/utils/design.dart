@@ -23,29 +23,24 @@ class AppRadius {
 }
 
 class AppDuration {
-  static const Duration fast = Duration(milliseconds: 150);
   static const Duration base = Duration(milliseconds: 250);
-  static const Duration slow = Duration(milliseconds: 400);
 }
 
 class AppElevation {
   static const double glassBlur = 20.0;
+}
 
-  static List<BoxShadow> low(bool isDark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.05),
-      blurRadius: 8,
-      offset: const Offset(0, 2),
-    ),
-  ];
+/// Focus-ring geometry (plan §2 inputs/sheets: visible keyboard focus).
+/// Color comes from [SchemeTheme.focus]; width/offset live here.
+class AppFocusRing {
+  static const double width = 2.0;
+  static const double offset = 2.0;
+}
 
-  static List<BoxShadow> high(bool isDark) => [
-    BoxShadow(
-      color: Colors.black.withValues(alpha: isDark ? 0.55 : 0.10),
-      blurRadius: 24,
-      offset: const Offset(0, 8),
-    ),
-  ];
+/// Scrim alpha for sheets/dialogs — sits inside the plan's 40–60% black band.
+/// (Actual color lives in [Scheme.scrim].)
+class AppScrim {
+  static const double alpha = 0.5;
 }
 
 class AppType {

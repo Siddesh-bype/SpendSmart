@@ -24,6 +24,5 @@ class AppNotification {
 enum NotifType {
   budgetWarning,
   budgetExceeded,
-  spendingMilestone,
   tip,
 }

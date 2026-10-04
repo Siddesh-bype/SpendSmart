@@ -7,6 +7,7 @@ import '../models/group_expense.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
 import '../utils/validation.dart';
 
@@ -30,6 +31,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   bool _equalSplit = true;
   late DateTime _date;
   late Map<String, TextEditingController> _shareCtrls;
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -75,6 +77,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     final desc = _descCtrl.text.trim();
     final amount = parsePositiveAmount(_amountCtrl.text);
     if (desc.isEmpty || amount == null) {
+      setState(() => _errorMessage = 'Please enter a valid description and amount');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid description and amount'),
@@ -91,6 +94,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     }).toList();
 
     if (shares.any((share) => share.amount <= 0)) {
+      setState(() => _errorMessage = 'Every participant share must be greater than zero');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Every participant share must be greater than zero'),
@@ -101,6 +105,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
 
     final diff = (amount - _totalShares).abs();
     if (diff > 0.02) {
+      setState(() => _errorMessage =
+          'Shares must sum to total (difference: ${diff.toStringAsFixed(2)})');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -140,6 +146,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final currency = ref.watch(appSettingsProvider).currency;
     final currencySymbol = currency.isNotEmpty ? currency : '\$';
 
@@ -160,7 +167,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: scheme.muted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -180,9 +187,6 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                 labelText: 'Description',
                 hintText: 'e.g., Dinner at restaurant',
                 prefixIcon: const Icon(Icons.description_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -195,9 +199,6 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               decoration: InputDecoration(
                 labelText: 'Amount ($currencySymbol)',
                 prefixIcon: const Icon(Icons.attach_money),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
             const SizedBox(height: 12),
@@ -206,9 +207,6 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               decoration: InputDecoration(
                 labelText: 'Paid by',
                 prefixIcon: const Icon(Icons.person_outline),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
               items: widget.group.participants.map((p) {
                 return DropdownMenuItem(value: p.id, child: Text(p.name));
@@ -226,8 +224,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: _equalSplit
-                            ? AppColors.primary
-                            : theme.colorScheme.surfaceContainerHighest,
+                            ? scheme.ctaFill
+                            : scheme.tint,
                         borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(12),
                         ),
@@ -238,8 +236,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: _equalSplit
-                                ? Colors.white
-                                : theme.colorScheme.onSurface,
+                                ? scheme.ctaText
+                                : scheme.ink,
                             fontSize: AppType.label,
                           ),
                         ),
@@ -255,8 +253,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
                         color: !_equalSplit
-                            ? AppColors.primary
-                            : theme.colorScheme.surfaceContainerHighest,
+                            ? scheme.ctaFill
+                            : scheme.tint,
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(12),
                         ),
@@ -267,8 +265,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             color: !_equalSplit
-                                ? Colors.white
-                                : theme.colorScheme.onSurface,
+                                ? scheme.ctaText
+                                : scheme.ink,
                             fontSize: AppType.label,
                           ),
                         ),
@@ -290,8 +288,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       backgroundColor: color,
                       child: Text(
                         p.name[0].toUpperCase(),
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: Scheme.onAvatar(color),
                           fontWeight: FontWeight.bold,
                           fontSize: AppType.caption,
                         ),
@@ -320,9 +318,6 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                             horizontal: 10,
                             vertical: 8,
                           ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
                         ),
                       ),
                     ),
@@ -343,8 +338,8 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                                         0))
                                 .abs() <
                             0.02
-                        ? AppColors.success
-                        : AppColors.error,
+                        ? scheme.success
+                        : scheme.error,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -355,22 +350,26 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               decoration: InputDecoration(
                 labelText: 'Note (optional)',
                 prefixIcon: const Icon(Icons.note_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
             const SizedBox(height: 20),
+            if (_errorMessage != null) ...[
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: scheme.error, fontSize: AppType.label),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdAll,
                   ),
                 ),
                 child: const Text(

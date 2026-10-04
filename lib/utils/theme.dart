@@ -8,7 +8,7 @@ class AppTheme {
     primary: AppColors.primary,
     background: AppColors.backgroundLight,
     surface: AppColors.surfaceLight,
-    surfaceElevated: AppColors.cardLight,
+    surfaceElevated: AppColors.surfaceLight,
     onSurface: AppColors.textLight,
     muted: AppColors.mutedLight,
     border: AppColors.borderLight,
@@ -231,4 +231,109 @@ class AppTheme {
       ),
     );
   }
+}
+
+/// Per-brightness view onto [Scheme]. ADDITIVE — the legacy AppColors-backed
+/// [AppTheme] above is untouched. Screens migrated in later tasks will read
+/// tokens via [SchemeTheme.of]; [Scheme] raw values stay token-layer only.
+class SchemeTheme {
+  const SchemeTheme({
+    required this.bg,
+    required this.surface,
+    required this.elevated,
+    required this.tint,
+    required this.ink,
+    required this.muted,
+    required this.border,
+    required this.primary,
+    required this.ctaFill,
+    required this.ctaText,
+    required this.success,
+    required this.warning,
+    required this.error,
+    required this.categoryFood,
+    required this.categoryTransport,
+    required this.categoryShopping,
+    required this.categoryHealth,
+    required this.categoryEntertainment,
+    required this.categoryBills,
+    required this.categoryOther,
+    required this.focus,
+  });
+
+  final Color bg, surface, elevated, tint, ink, muted, border, primary;
+  final Color ctaFill, ctaText;
+  final Color success, warning, error;
+  final Color categoryFood,
+      categoryTransport,
+      categoryShopping,
+      categoryHealth,
+      categoryEntertainment,
+      categoryBills,
+      categoryOther;
+  final Color focus;
+  Color get scrim => Scheme.scrim;
+
+  /// Categories in the same order as [AppColors.categoryColors].
+  List<Color> get categoryColors => [
+    categoryFood,
+    categoryTransport,
+    categoryShopping,
+    categoryHealth,
+    categoryEntertainment,
+    categoryBills,
+    categoryOther,
+  ];
+
+  static const dark = SchemeTheme(
+    bg: Scheme.darkBg,
+    surface: Scheme.darkSurface,
+    elevated: Scheme.darkElevated,
+    // Dark has no separate tint in the plan; elevated fills that role.
+    tint: Scheme.darkElevated,
+    ink: Scheme.darkInk,
+    muted: Scheme.darkMuted,
+    border: Scheme.darkBorder,
+    primary: Scheme.darkPrimary,
+    ctaFill: Scheme.darkCtaFill,
+    ctaText: Scheme.darkCtaText,
+    success: Scheme.darkSuccess,
+    warning: Scheme.darkWarning,
+    error: Scheme.darkError,
+    categoryFood: Scheme.darkFood,
+    categoryTransport: Scheme.darkTransport,
+    categoryShopping: Scheme.darkShopping,
+    categoryHealth: Scheme.darkHealth,
+    categoryEntertainment: Scheme.darkEntertainment,
+    categoryBills: Scheme.darkBills,
+    categoryOther: Scheme.darkOther,
+    focus: Scheme.darkFocus,
+  );
+
+  static const light = SchemeTheme(
+    bg: Scheme.lightBg,
+    surface: Scheme.lightSurface,
+    elevated: Scheme.lightTint,
+    tint: Scheme.lightTint,
+    ink: Scheme.lightInk,
+    muted: Scheme.lightMuted,
+    border: Scheme.lightBorder,
+    primary: Scheme.lightPrimary,
+    ctaFill: Scheme.lightCtaFill,
+    ctaText: Scheme.lightCtaText,
+    success: Scheme.lightSuccess,
+    warning: Scheme.lightWarning,
+    error: Scheme.lightError,
+    categoryFood: Scheme.lightFood,
+    categoryTransport: Scheme.lightTransport,
+    categoryShopping: Scheme.lightShopping,
+    categoryHealth: Scheme.lightHealth,
+    categoryEntertainment: Scheme.lightEntertainment,
+    categoryBills: Scheme.lightBills,
+    categoryOther: Scheme.lightOther,
+    focus: Scheme.lightFocus,
+  );
+
+  static SchemeTheme of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? dark : light;
 }

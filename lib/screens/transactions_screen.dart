@@ -10,9 +10,10 @@ import '../widgets/expense_tile.dart';
 import '../widgets/edit_expense_sheet.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/money_text.dart';
-import '../utils/constants.dart';
 import '../utils/date_extension.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
+import 'add_expense_screen.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   final Category? initialCategory;
@@ -55,7 +56,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
           label: 'UNDO',
-          textColor: AppColors.accent,
+          textColor: SchemeTheme.of(context).primary,
           onPressed: () {
             HapticFeedback.lightImpact();
             // A failed restore is the one case that loses user data outright,
@@ -112,15 +113,62 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     }
 
     final grouped = groupByMonth(expenses, (e) => e.date);
+    final scheme = SchemeTheme.of(context);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Transactions'),
         actions: [
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.xs,
+              vertical: AppSpacing.sm,
+            ),
+            child: Material(
+              color: scheme.ctaFill,
+              borderRadius: AppRadius.mdAll,
+              child: InkWell(
+                borderRadius: AppRadius.mdAll,
+                onTap: () {
+                  HapticFeedback.mediumImpact();
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const AddExpenseScreen(),
+                    ),
+                  );
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.add_rounded,
+                        size: 18,
+                        color: scheme.ctaText,
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        'Expense',
+                        style: TextStyle(
+                          color: scheme.ctaText,
+                          fontSize: AppType.body,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(
               Icons.date_range,
-              color: _dateRange != null ? AppColors.accent : null,
+              color: _dateRange != null ? scheme.primary : null,
             ),
             tooltip: 'Filter by date',
             onPressed: () async {
@@ -140,7 +188,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   data: Theme.of(ctx).copyWith(
                     colorScheme: Theme.of(
                       ctx,
-                    ).colorScheme.copyWith(primary: AppColors.secondary),
+                    ).colorScheme.copyWith(primary: scheme.primary),
                   ),
                   child: child!,
                 ),
@@ -148,23 +196,36 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               if (picked != null) setState(() => _dateRange = picked);
             },
           ),
-          if (_dateRange != null)
-            IconButton(
-              icon: const Icon(Icons.clear),
-              tooltip: 'Clear date filter',
-              onPressed: () => setState(() => _dateRange = null),
-            ),
           PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
+            tooltip: 'Sort transactions',
             onSelected: (v) => setState(() => _sortBy = v),
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'date', child: Text('Sort by Date')),
-              PopupMenuItem(value: 'amount', child: Text('Sort by Amount')),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                value: 'date',
+                child: Row(
+                  children: [
+                    const Expanded(child: Text('Date (newest first)')),
+                    if (_sortBy == 'date')
+                      Icon(Icons.check, size: 16, color: scheme.primary),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'amount',
+                child: Row(
+                  children: [
+                    const Expanded(child: Text('Amount (high to low)')),
+                    if (_sortBy == 'amount')
+                      Icon(Icons.check, size: 16, color: scheme.primary),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(_dateRange != null ? 130 : 112),
+          preferredSize: const Size.fromHeight(112),
           child: Column(
             children: [
               Padding(
@@ -187,33 +248,6 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   onChanged: (v) => setState(() => _searchQuery = v),
                 ),
               ),
-              if (_dateRange != null)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    0,
-                    AppSpacing.lg,
-                    AppSpacing.xs,
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.date_range,
-                        size: 14,
-                        color: AppColors.secondary,
-                      ),
-                      const SizedBox(width: AppSpacing.sm),
-                      Text(
-                        '${DateFormat('MMM d').format(_dateRange!.start)} - ${DateFormat('MMM d, yyyy').format(_dateRange!.end)}',
-                        style: Theme.of(context).textTheme.labelMedium
-                            ?.copyWith(
-                              color: AppColors.secondary,
-                              fontWeight: FontWeight.w600,
-                            ),
-                      ),
-                    ],
-                  ),
-                ),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.fromLTRB(
@@ -224,10 +258,39 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                 ),
                 child: Row(
                   children: [
+                    if (_dateRange != null)
+                      Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: InputChip(
+                          avatar: Icon(
+                            Icons.date_range,
+                            size: 14,
+                            color: scheme.primary,
+                          ),
+                          label: Text(
+                            '${DateFormat('MMM d').format(_dateRange!.start)} – ${DateFormat('MMM d').format(_dateRange!.end)}',
+                            style: TextStyle(
+                              color: scheme.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          backgroundColor: scheme.primary.withValues(
+                            alpha: 0.08,
+                          ),
+                          side: BorderSide(
+                            color: scheme.primary.withValues(alpha: 0.4),
+                          ),
+                          deleteIconColor: scheme.primary,
+                          onDeleted: () {
+                            HapticFeedback.selectionClick();
+                            setState(() => _dateRange = null);
+                          },
+                        ),
+                      ),
                     FilterChip(
                       label: const Text('All'),
                       selected: _selectedCategory == null,
-                      selectedColor: AppColors.secondary.withValues(alpha: 0.2),
+                      selectedColor: scheme.primary.withValues(alpha: 0.15),
                       onSelected: (_) {
                         HapticFeedback.selectionClick();
                         setState(() => _selectedCategory = null);
@@ -240,8 +303,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         child: FilterChip(
                           label: Text(cat.displayName),
                           selected: _selectedCategory == cat,
-                          selectedColor: cat.color.withValues(alpha: 0.25),
-                          avatar: Icon(cat.icon, size: 14, color: cat.color),
+                          selectedColor: scheme
+                              .categoryColors[cat.index]
+                              .withValues(alpha: 0.25),
+                          avatar: Icon(
+                            cat.icon,
+                            size: 14,
+                            color: scheme.categoryColors[cat.index],
+                          ),
                           onSelected: (v) {
                             HapticFeedback.selectionClick();
                             setState(() => _selectedCategory = v ? cat : null);
@@ -278,7 +347,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            month,
+                            '$month · ${txns.length}',
                             style: Theme.of(context).textTheme.labelLarge
                                 ?.copyWith(
                                   color: Theme.of(
@@ -290,8 +359,8 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             monthTotal,
                             currency: settings.currency,
                             size: AppType.body,
-                            weight: FontWeight.bold,
-                            color: AppColors.secondary,
+                            weight: FontWeight.w600,
+                            color: scheme.ink,
                             textAlign: TextAlign.right,
                           ),
                         ],
@@ -313,6 +382,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   }
 
   Widget _buildEmpty() {
+    final scheme = SchemeTheme.of(context);
     final hasFilters =
         _selectedCategory != null ||
         _searchQuery.isNotEmpty ||
@@ -322,14 +392,14 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       title: hasFilters ? 'No matching transactions' : 'No transactions yet',
       subtitle: hasFilters
           ? 'Try adjusting your filters or search'
-          : 'Add your first expense using the + button',
+          : 'Add your first expense from the + Expense action above',
       action: hasFilters
           ? OutlinedButton.icon(
               icon: const Icon(Icons.clear_all),
               label: const Text('Clear Filters'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primary,
-                side: const BorderSide(color: AppColors.primary),
+                foregroundColor: scheme.primary,
+                side: BorderSide(color: scheme.primary),
               ),
               onPressed: () => setState(() {
                 _selectedCategory = null;

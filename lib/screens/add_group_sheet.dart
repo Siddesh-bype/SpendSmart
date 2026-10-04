@@ -5,6 +5,7 @@ import 'package:uuid/uuid.dart';
 import '../models/split_group.dart';
 import '../providers/group_provider.dart';
 import '../utils/constants.dart';
+import '../utils/theme.dart';
 import '../utils/design.dart';
 
 const groupAvatarColors = AppColors.categoryColors;
@@ -22,6 +23,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
   final _nameCtrl = TextEditingController();
   late List<_ParticipantEntry> _participants;
   final _uuid = const Uuid();
+  String? _errorMessage;
 
   @override
   void initState() {
@@ -98,12 +100,14 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
         .toList();
 
     if (name.isEmpty) {
+      setState(() => _errorMessage = 'Please enter a group name');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a group name')),
       );
       return;
     }
     if (validParticipants.length < 2) {
+      setState(() => _errorMessage = 'Add at least 2 participants');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Add at least 2 participants')),
       );
@@ -113,20 +117,31 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
         .map((participant) => participant.name.toLowerCase())
         .toSet();
     if (participantNames.length != validParticipants.length) {
+      setState(() => _errorMessage = 'Participant names must be unique');
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Participant names must be unique')),
       );
       return;
     }
+    setState(() => _errorMessage = null);
 
+    final existing = widget.existingGroup;
+    // Preserve the "me" pick across edits; drop it if that participant
+    // was removed so the group falls back to first-participant behavior.
+    String? myParticipantId = existing?.myParticipantId;
+    if (myParticipantId != null &&
+        validParticipants.every((p) => p.id != myParticipantId)) {
+      myParticipantId = null;
+    }
     final group = SplitGroup(
-      id: widget.existingGroup?.id ?? _uuid.v4(),
+      id: existing?.id ?? _uuid.v4(),
       name: name,
       participants: validParticipants,
-      createdAt: widget.existingGroup?.createdAt ?? DateTime.now(),
+      createdAt: existing?.createdAt ?? DateTime.now(),
+      myParticipantId: myParticipantId,
     );
 
-    if (widget.existingGroup != null) {
+    if (existing != null) {
       await ref.read(splitGroupProvider.notifier).updateGroup(group);
     } else {
       await ref.read(splitGroupProvider.notifier).addGroup(group);
@@ -139,6 +154,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     final isEditing = widget.existingGroup != null;
 
     return Padding(
@@ -158,7 +174,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: scheme.muted.withValues(alpha: 0.4),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -178,9 +194,6 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 labelText: 'Group Name',
                 hintText: 'e.g., Trip to Goa, Room Rent',
                 prefixIcon: const Icon(Icons.group_outlined),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -221,8 +234,8 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                           p.nameCtrl.text.isEmpty
                               ? '?'
                               : p.nameCtrl.text[0].toUpperCase(),
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: Scheme.onAvatar(groupAvatarColors[p.colorIndex]),
                             fontWeight: FontWeight.bold,
                             fontSize: AppType.label,
                           ),
@@ -238,9 +251,6 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                         decoration: InputDecoration(
                           hintText: 'Name',
                           isDense: true,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
                           contentPadding: const EdgeInsets.symmetric(
                             horizontal: 12,
                             vertical: 10,
@@ -254,7 +264,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                         icon: Icon(
                           Icons.close,
                           size: 18,
-                          color: Colors.grey.shade400,
+                          color: scheme.muted,
                         ),
                       ),
                   ],
@@ -262,16 +272,23 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
               );
             }),
             const SizedBox(height: 16),
+            if (_errorMessage != null) ...[
+              Text(
+                _errorMessage!,
+                style: TextStyle(color: scheme.error, fontSize: AppType.label),
+              ),
+              const SizedBox(height: 8),
+            ],
             SizedBox(
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
                 onPressed: _save,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  backgroundColor: scheme.ctaFill,
+                  foregroundColor: scheme.ctaText,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: AppRadius.mdAll,
                   ),
                 ),
                 child: Text(
