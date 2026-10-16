@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 
 class GlassContainer extends StatelessWidget {
   final Widget child;
@@ -26,6 +26,7 @@ class GlassContainer extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final scheme = SchemeTheme.of(context);
     final effectiveBorder =
         border ??
         Border.all(
@@ -37,10 +38,9 @@ class GlassContainer extends StatelessWidget {
     final shadowAlpha = isDark ? 0.22 : 0.08;
 
     final baseColor =
-        backgroundColor ??
-        (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
+        backgroundColor ?? scheme.surface;
     final fillAlpha =
-        backgroundColor != null ? (isDark ? 0.72 : 0.82) : AppColors.glassAlpha;
+        backgroundColor != null ? (isDark ? 0.72 : 0.82) : (isDark ? 0.72 : 0.82);
 
     return RepaintBoundary(
       child: Container(

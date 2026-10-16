@@ -5,15 +5,19 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/custom_category_provider.dart';
 import '../providers/budget_provider.dart';
+import '../providers/daily_goal_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/group_expense_provider.dart';
 import '../providers/group_provider.dart';
 import '../providers/income_provider.dart';
 import '../providers/lending_provider.dart';
 import '../providers/merchant_memory_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/recurring_expense_provider.dart';
 import '../providers/service_provider.dart';
+import '../providers/spending_goal_provider.dart';
 import '../services/csv_import_service.dart';
 import '../services/export_service.dart';
 import '../services/pdf_export_service.dart';
@@ -24,6 +28,9 @@ import 'pdf_import_screen.dart';
 import 'insights_screen.dart';
 import 'lending_screen.dart';
 import 'spending_goals_screen.dart';
+import 'report_screen.dart';
+import 'backup_screen.dart';
+import 'category_manager_screen.dart';
 
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
@@ -157,9 +164,41 @@ class SettingsScreen extends ConsumerWidget {
             color: SchemeTheme.of(context).primary,
             onTap: () => _importCSV(context, ref),
           ),
+          _tile(
+            icon: Icons.backup_outlined,
+            title: 'Backup & Restore',
+            subtitle: const Text('Create or merge an offline JSON backup'),
+            color: SchemeTheme.of(context).primary,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const BackupScreen()),
+            ),
+          ),
+          _tile(
+            icon: Icons.category_outlined,
+            title: 'Manage Categories',
+            subtitle: const Text('Create, rename, archive, or combine categories'),
+            color: SchemeTheme.of(context).primary,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CategoryManagerScreen()),
+            ),
+          ),
 
           const SizedBox(height: 16),
           _sectionTitle('Export'),
+          _tile(
+            icon: Icons.assessment_outlined,
+            title: 'Report Center',
+            subtitle: const Text(
+              'Configure and share date-to-date expense reports',
+            ),
+            color: SchemeTheme.of(context).primary,
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ReportScreen()),
+            ),
+          ),
           _tile(
             icon: Icons.picture_as_pdf,
             title: 'Export to PDF',
@@ -239,35 +278,35 @@ class SettingsScreen extends ConsumerWidget {
               color: Colors.transparent,
               child: ListTile(
                 leading: Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scheme.tint,
-                  shape: BoxShape.circle,
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: scheme.tint,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, color: iconColor, size: 22),
                 ),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              title: Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: scheme.ink,
+                title: Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    color: scheme.ink,
+                  ),
                 ),
-              ),
-              subtitle: subtitle != null
-                  ? DefaultTextStyle(
-                      style: TextStyle(
-                        color: scheme.muted,
-                        fontSize: AppType.caption,
-                      ),
-                      child: subtitle,
-                    )
-                  : null,
-              trailing: onTap != null
-                  ? Icon(Icons.chevron_right, color: scheme.muted)
-                  : null,
-              onTap: onTap,
-              shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
+                subtitle: subtitle != null
+                    ? DefaultTextStyle(
+                        style: TextStyle(
+                          color: scheme.muted,
+                          fontSize: AppType.caption,
+                        ),
+                        child: subtitle,
+                      )
+                    : null,
+                trailing: onTap != null
+                    ? Icon(Icons.chevron_right, color: scheme.muted)
+                    : null,
+                onTap: onTap,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
               ),
             ),
           );
@@ -293,9 +332,7 @@ class SettingsScreen extends ConsumerWidget {
             decoration: BoxDecoration(
               color: scheme.surface,
               borderRadius: AppRadius.mdAll,
-              border: Border.all(
-                color: scheme.error.withValues(alpha: 0.6),
-              ),
+              border: Border.all(color: scheme.error.withValues(alpha: 0.6)),
             ),
             child: Material(
               color: Colors.transparent,
@@ -380,7 +417,8 @@ class SettingsScreen extends ConsumerWidget {
               Text(
                 'This permanently deletes all expenses, budgets, income, '
                 'lendings, recurring rules, split groups, group expenses and '
-                'learned merchant data stored on this device. '
+                'learned merchant data, goals, notifications and preferences '
+                'stored on this device. '
                 'This cannot be undone.',
                 style: Theme.of(sheetContext).textTheme.bodyMedium,
               ),
@@ -411,9 +449,7 @@ class SettingsScreen extends ConsumerWidget {
                   style: ElevatedButton.styleFrom(
                     minimumSize: const Size.fromHeight(48),
                     backgroundColor: scheme.error,
-                    foregroundColor: Theme.of(
-                      sheetContext,
-                    ).colorScheme.onError,
+                    foregroundColor: Theme.of(sheetContext).colorScheme.onError,
                   ),
                   onPressed: () => Navigator.pop(sheetContext, true),
                   child: const Text(
@@ -431,25 +467,38 @@ class SettingsScreen extends ConsumerWidget {
 
     if (confirmed != true || !context.mounted) return;
 
+    final failures = <String>[];
     try {
       await ref.read(storageServiceProvider).clearAllData();
     } catch (error) {
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).clearSnackBars();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not erase data. $error'),
-          backgroundColor: SchemeTheme.of(context).error,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-          ),
-        ),
-      );
-      return;
+      failures.add(error.toString());
     }
 
-    // Boxes are empty now; rebuild every Hive-backed provider from them.
+    final prefs = ref.read(sharedPreferencesProvider);
+    for (final key in const [
+      'currency',
+      'monthlyBudget',
+      'monthlyIncome',
+      'theme',
+      'onboardingDone',
+      'startingDayOfMonth',
+      'goal_monthly_limit',
+      'goal_enabled',
+      'daily_goals',
+      'app_notifications_v1',
+    ]) {
+      try {
+        if (prefs.containsKey(key) && !await prefs.remove(key)) {
+          failures.add('Could not remove preference "$key"');
+        }
+      } catch (error) {
+        failures.add('$key: $error');
+      }
+    }
+
+    // Rebuild providers even when one storage operation failed. This prevents
+    // the UI from presenting stale in-memory data after a partial wipe.
+    ref.invalidate(appSettingsProvider);
     ref.invalidate(expenseProvider);
     ref.invalidate(budgetProvider);
     ref.invalidate(incomeProvider);
@@ -458,16 +507,31 @@ class SettingsScreen extends ConsumerWidget {
     ref.invalidate(splitGroupProvider);
     ref.invalidate(groupExpenseProvider);
     ref.invalidate(merchantNotifierProvider);
+    ref.invalidate(dailyGoalProvider);
+    ref.invalidate(spendingGoalProvider);
+    ref.invalidate(notificationProvider);
+    ref.invalidate(customCategoryProvider);
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('All data erased')),
-    );
+    if (failures.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Data was partially erased. ${failures.join(' ')}'),
+          backgroundColor: SchemeTheme.of(context).error,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All data erased')));
+    }
   }
 
   Future<void> _importCSV(BuildContext context, WidgetRef ref) async {
-    final memoryLookup = ref.read(storageServiceProvider).lookupMerchantCategory;
+    final memoryLookup = ref
+        .read(storageServiceProvider)
+        .lookupMerchantCategory;
     CsvImportResult? result;
     try {
       result = await CsvImportService.pickAndParse(memoryLookup: memoryLookup);
@@ -585,7 +649,6 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-
   Future<void> _exportPDF(
     BuildContext context,
     WidgetRef ref,
@@ -602,9 +665,9 @@ class SettingsScreen extends ConsumerWidget {
       return;
     }
     try {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Generating PDF report...')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Generating PDF report...')));
       final path = await PdfExportService.exportToPDF(
         expenses,
         currency: currency,
@@ -679,8 +742,9 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               Text(
                 'Select Currency',
-                style: Theme.of(sheetContext).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
               for (final c in ['₹', '\$', '€', '£', '¥'])
@@ -749,8 +813,9 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               Text(
                 'Monthly Budget',
-                style: Theme.of(sheetContext).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
               ValueListenableBuilder<String?>(
@@ -770,8 +835,7 @@ class SettingsScreen extends ConsumerWidget {
                   },
                   decoration: InputDecoration(
                     labelText: 'Total monthly budget',
-                    prefixText:
-                        '${ref.read(appSettingsProvider).currency} ',
+                    prefixText: '${ref.read(appSettingsProvider).currency} ',
                     errorText: error,
                   ),
                 ),
@@ -835,8 +899,9 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               Text(
                 'Starting Day of Month',
-                style: Theme.of(sheetContext).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
               SizedBox(
@@ -912,8 +977,9 @@ class SettingsScreen extends ConsumerWidget {
             children: [
               Text(
                 'Select Theme',
-                style: Theme.of(sheetContext).textTheme.titleMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
               for (final t in options)

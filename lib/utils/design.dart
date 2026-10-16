@@ -26,6 +26,18 @@ class AppDuration {
   static const Duration base = Duration(milliseconds: 250);
 }
 
+/// Motion tokens that respect the platform's reduced-motion preference.
+class AppMotion {
+  static bool reduced(BuildContext context) =>
+      MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+
+  static Duration duration(BuildContext context, Duration normal) =>
+      reduced(context) ? Duration.zero : normal;
+
+  static Curve curve(BuildContext context, Curve normal) =>
+      reduced(context) ? Curves.linear : normal;
+}
+
 class AppElevation {
   static const double glassBlur = 20.0;
 }
@@ -58,10 +70,7 @@ class AppType {
   /// Fixed-width digits so money columns stay aligned as values change.
   static const List<FontFeature> tabular = [FontFeature.tabularFigures()];
 
-  static TextTheme textTheme({
-    required Color onSurface,
-    required Color muted,
-  }) {
+  static TextTheme textTheme({required Color onSurface, required Color muted}) {
     TextStyle s(
       double size,
       FontWeight weight,

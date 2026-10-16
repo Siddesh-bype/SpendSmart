@@ -5,12 +5,14 @@ import 'package:uuid/uuid.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../models/lending.dart';
+import '../models/custom_category.dart';
 import '../providers/expense_provider.dart';
 import '../providers/lending_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/merchant_memory_provider.dart';
+import '../providers/custom_category_provider.dart';
+import 'category_manager_screen.dart';
 import '../services/category_classifier.dart';
-import '../widgets/category_grid.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/validation.dart';
@@ -28,7 +30,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
   final _noteCtrl = TextEditingController();
   final _friendNameCtrl = TextEditingController();
   final _splitAmountCtrl = TextEditingController();
+  final _categorySearchCtrl = TextEditingController();
   Category? _selectedCategory;
+  String? _selectedCustomCategoryId;
+  String _categoryQuery = '';
   DateTime _selectedDate = DateTime.now();
   String _merchantText = '';
   bool _splitWithFriend = false;
@@ -64,6 +69,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     _noteCtrl.dispose();
     _friendNameCtrl.dispose();
     _splitAmountCtrl.dispose();
+    _categorySearchCtrl.dispose();
     _merchantFocusNode?.removeListener(_onMerchantFocusChange);
     super.dispose();
   }
@@ -152,17 +158,164 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
     );
   }
 
+  Widget _buildCategoryPicker(
+    BuildContext context,
+    List<CustomCategory> customCategories,
+    SchemeTheme scheme,
+  ) {
+    final query = _categoryQuery.trim().toLowerCase();
+    final builtIns = Category.values
+        .where((category) => category.displayName.toLowerCase().contains(query))
+        .toList();
+    final customs = customCategories
+        .where((category) => category.name.toLowerCase().contains(query))
+        .toList();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TextField(
+          controller: _categorySearchCtrl,
+          onChanged: (value) => setState(() => _categoryQuery = value),
+          decoration: _inputDecoration(
+            scheme: scheme,
+            label: 'Find a category',
+            hint: 'Type and use backspace to correct',
+            prefixIcon: const Icon(Icons.search),
+            suffixIcon: _categoryQuery.isEmpty
+                ? null
+                : IconButton(
+                    tooltip: 'Clear category search',
+                    onPressed: () {
+                      _categorySearchCtrl.clear();
+                      setState(() => _categoryQuery = '');
+                    },
+                    icon: const Icon(Icons.close),
+                  ),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (builtIns.isEmpty && customs.isEmpty)
+          Text(
+            'No matching categories. Add a custom category in Settings.',
+            style: TextStyle(color: scheme.muted),
+          )
+        else
+          GridView.count(
+            crossAxisCount: 4,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 0.8,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            children: [
+              for (final category in builtIns)
+                _categoryOption(
+                  context,
+                  name: category.displayName,
+                  icon: category.icon,
+                  color: scheme.categoryColors[category.index],
+                  selected: _selectedCustomCategoryId == null &&
+                      _selectedCategory == category,
+                  onTap: () => setState(() {
+                    _selectedCategory = category;
+                    _selectedCustomCategoryId = null;
+                  }),
+                ),
+              for (final category in customs)
+                _categoryOption(
+                  context,
+                  name: category.name,
+                  icon: category.icon,
+                  color: category.color,
+                  selected: _selectedCustomCategoryId == category.id,
+                  onTap: () => setState(() {
+                    _selectedCategory = Category.other;
+                    _selectedCustomCategoryId = category.id;
+                  }),
+                ),
+            ],
+          ),
+        const SizedBox(height: AppSpacing.sm),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: TextButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const CategoryManagerScreen()),
+            ),
+            icon: const Icon(Icons.add),
+            label: const Text('Add or combine categories'),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _categoryOption(
+    BuildContext context, {
+    required String name,
+    required IconData icon,
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    final scheme = SchemeTheme.of(context);
+    return InkWell(
+      onTap: onTap,
+      borderRadius: AppRadius.mdAll,
+      child: AnimatedContainer(
+        duration: AppMotion.duration(context, AppDuration.base),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.16) : scheme.surface,
+          borderRadius: AppRadius.mdAll,
+          border: Border.all(color: selected ? color : scheme.border, width: selected ? 2 : 1),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 26),
+            const SizedBox(height: AppSpacing.xs),
+            Text(
+              name,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: selected ? color : scheme.ink,
+                fontSize: AppType.caption,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final scheme = SchemeTheme.of(context);
 
     final settings = ref.watch(appSettingsProvider);
     _syncMerchantIndex(ref.watch(expenseProvider));
+    final customCategories = ref
+        .watch(customCategoryProvider)
+        .where((category) => !category.archived)
+        .toList();
+    CustomCategory? selectedCustomCategory;
+    for (final category in customCategories) {
+      if (category.id == _selectedCustomCategoryId) {
+        selectedCustomCategory = category;
+        break;
+      }
+    }
 
     // Suggestion row is explicit-accept only and never an override.
     final suggestion = _suggestionFor(_merchantText);
     final showSuggestion =
-        suggestion != null && suggestion != _selectedCategory;
+        _selectedCustomCategoryId == null &&
+        suggestion != null &&
+        suggestion != _selectedCategory;
 
     return Scaffold(
       appBar: AppBar(
@@ -309,7 +462,10 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                 borderRadius: AppRadius.mdAll,
                 child: InkWell(
                   borderRadius: AppRadius.mdAll,
-                  onTap: () => setState(() => _selectedCategory = suggestion),
+                   onTap: () => setState(() {
+                     _selectedCategory = suggestion;
+                     _selectedCustomCategoryId = null;
+                   }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: AppSpacing.md,
@@ -359,23 +515,31 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.md),
-            if (_selectedCategory != null)
-              Semantics(
-                button: true,
-                label:
-                    'Selected category ${_selectedCategory!.displayName}, tap to clear',
-                child: SizedBox(
+             if (_selectedCategory != null || _selectedCustomCategoryId != null)
+               Semantics(
+                 button: true,
+                 label:
+                     'Selected category, tap to clear',
+                 child: SizedBox(
                   height: 48,
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: InputChip(
                       materialTapTargetSize: MaterialTapTargetSize.padded,
-                      avatar: Icon(
-                        _selectedCategory!.icon,
-                        size: 18,
-                        color: scheme.categoryColors[_selectedCategory!.index],
-                      ),
-                      label: Text(_selectedCategory!.displayName),
+                         avatar: Icon(
+                          selectedCustomCategory == null
+                              ? _selectedCategory!.icon
+                              : selectedCustomCategory.icon,
+                         size: 18,
+                          color: selectedCustomCategory == null
+                              ? scheme.categoryColors[_selectedCategory!.index]
+                              : selectedCustomCategory.color,
+                       ),
+                       label: Text(
+                          selectedCustomCategory == null
+                              ? _selectedCategory!.displayName
+                              : selectedCustomCategory.name,
+                       ),
                       labelStyle: TextStyle(
                         fontSize: AppType.body,
                         fontWeight: FontWeight.w600,
@@ -383,7 +547,9 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       ),
                       backgroundColor: scheme.surface,
                       side: BorderSide(
-                        color: scheme.categoryColors[_selectedCategory!.index],
+                          color: selectedCustomCategory == null
+                              ? scheme.categoryColors[_selectedCategory!.index]
+                              : selectedCustomCategory.color,
                         width: 1.5,
                       ),
                       deleteIcon: Icon(
@@ -394,17 +560,15 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       deleteButtonTooltipMessage: 'Clear category',
                       onDeleted: () => setState(() {
                         // Clearing re-arms suggestion; merchant text untouched.
-                        _selectedCategory = null;
-                      }),
+                         _selectedCategory = null;
+                         _selectedCustomCategoryId = null;
+                       }),
                     ),
                   ),
                 ),
               )
             else
-              CategoryGrid(
-                selectedCategory: _selectedCategory,
-                onSelect: (c) => setState(() => _selectedCategory = c),
-              ),
+               _buildCategoryPicker(context, customCategories, scheme),
             const SizedBox(height: AppSpacing.xl),
 
             // Date picker
@@ -588,7 +752,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       if (amt == null ||
                           amt <= 0 ||
                           title.isEmpty ||
-                          _selectedCategory == null) {
+                           _selectedCategory == null &&
+                           _selectedCustomCategoryId == null) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -639,7 +804,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         id: const Uuid().v4(),
                         title: title,
                         amount: amt,
-                        category: _selectedCategory!,
+                         category: _selectedCategory ?? Category.other,
+                         customCategoryId: _selectedCustomCategoryId,
                         date: _selectedDate,
                         note: _noteCtrl.text,
                         isManual: true,
@@ -654,7 +820,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                             .read(expenseProvider.notifier)
                             .addExpense(exp);
                         expenseSaved = true;
-                        if (mounted) {
+                           if (mounted && _selectedCustomCategoryId == null) {
                           ref
                               .read(merchantNotifierProvider.notifier)
                               .correctMerchant(title, exp.category);

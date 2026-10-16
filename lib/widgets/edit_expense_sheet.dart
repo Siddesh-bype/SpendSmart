@@ -7,8 +7,10 @@ import '../models/category.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../providers/merchant_memory_provider.dart';
+import '../providers/custom_category_provider.dart';
 import '../widgets/category_grid.dart';
-import '../utils/constants.dart';
+import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/validation.dart';
 
 /// Shared edit bottom sheet used by both HomeScreen and TransactionsScreen
@@ -25,6 +27,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   late final TextEditingController _titleCtrl;
   late final TextEditingController _noteCtrl;
   late Category _selectedCategory;
+  String? _selectedCustomCategoryId;
   late DateTime _selectedDate;
 
   @override
@@ -36,6 +39,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     _titleCtrl = TextEditingController(text: widget.expense.title);
     _noteCtrl = TextEditingController(text: widget.expense.note ?? '');
     _selectedCategory = widget.expense.category;
+    _selectedCustomCategoryId = widget.expense.customCategoryId;
     _selectedDate = widget.expense.date;
   }
 
@@ -50,12 +54,18 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   @override
   Widget build(BuildContext context) {
     final currency = ref.watch(appSettingsProvider).currency;
+    final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
+    final customCategories = ref
+        .watch(customCategoryProvider)
+        .where((category) => !category.archived)
+        .toList();
     return Padding(
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
-        left: 24,
-        right: 24,
-        top: 20,
+        left: AppSpacing.xl,
+        right: AppSpacing.xl,
+        top: AppSpacing.lg,
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -66,17 +76,14 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Edit Expense',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text('Edit Expense', style: theme.textTheme.titleLarge),
                 IconButton(
                   icon: const Icon(Icons.close),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
 
             // Amount
             TextField(
@@ -84,86 +91,92 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
-              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
+              style: theme.textTheme.displaySmall?.copyWith(
+                fontFeatures: AppType.tabular,
+              ),
               decoration: InputDecoration(
                 prefixText: '$currency ',
                 labelText: 'Amount',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.secondary,
-                    width: 2,
-                  ),
+                  borderRadius: AppRadius.mdAll,
+                  borderSide: BorderSide(color: scheme.focus, width: 2),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
 
             // Title
             TextField(
               controller: _titleCtrl,
               decoration: InputDecoration(
                 labelText: 'Merchant / Title',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: AppColors.secondary,
-                    width: 2,
-                  ),
+                  borderRadius: AppRadius.mdAll,
+                  borderSide: BorderSide(color: scheme.focus, width: 2),
                 ),
               ),
             ),
-            const SizedBox(height: 10),
+            const SizedBox(height: AppSpacing.sm),
 
             // Note
             TextField(
               controller: _noteCtrl,
               decoration: InputDecoration(
                 labelText: 'Note (Optional)',
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: AppSpacing.md),
 
             // Category
-            const Text(
-              'Category',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
+            Text('Category', style: theme.textTheme.titleSmall),
+            const SizedBox(height: AppSpacing.sm),
             CategoryGrid(
-              selectedCategory: _selectedCategory,
-              onSelect: (c) {
-                HapticFeedback.selectionClick();
-                setState(() => _selectedCategory = c);
-              },
-            ),
-            const SizedBox(height: 10),
+               selectedCategory: _selectedCustomCategoryId == null
+                   ? _selectedCategory
+                   : null,
+               onSelect: (c) {
+                 HapticFeedback.selectionClick();
+                 setState(() {
+                   _selectedCategory = c;
+                   _selectedCustomCategoryId = null;
+                 });
+               },
+             ),
+             if (customCategories.isNotEmpty) ...[
+               const SizedBox(height: AppSpacing.sm),
+               Wrap(
+                 spacing: AppSpacing.sm,
+                 runSpacing: AppSpacing.xs,
+                 children: [
+                   for (final category in customCategories)
+                     ChoiceChip(
+                       avatar: Icon(category.icon, size: 16, color: category.color),
+                       label: Text(category.name),
+                       selected: _selectedCustomCategoryId == category.id,
+                       onSelected: (selected) => setState(() {
+                         _selectedCustomCategoryId = selected ? category.id : null;
+                         if (selected) _selectedCategory = Category.other;
+                       }),
+                     ),
+                 ],
+               ),
+             ],
+            const SizedBox(height: AppSpacing.sm),
 
             // Date
             OutlinedButton.icon(
-              icon: const Icon(
-                Icons.calendar_today,
-                size: 16,
-                color: AppColors.secondary,
-              ),
+              icon: Icon(Icons.calendar_today, size: 16, color: scheme.focus),
               label: Text(
                 DateFormat('dd MMM yyyy').format(_selectedDate),
-                style: const TextStyle(color: AppColors.secondary),
+                style: TextStyle(color: scheme.primary),
               ),
               style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: AppColors.secondary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
+                foregroundColor: scheme.primary,
+                side: BorderSide(color: scheme.primary),
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
               ),
               onPressed: () async {
                 final dt = await showDatePicker(
@@ -182,25 +195,20 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                 }
               },
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.lg),
 
             // Save
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 minimumSize: const Size.fromHeight(50),
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
+                backgroundColor: scheme.ctaFill,
+                foregroundColor: scheme.ctaText,
+                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
               ),
               onPressed: _save,
-              child: const Text(
-                'Save Changes',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
+              child: Text('Save Changes', style: theme.textTheme.labelLarge),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: AppSpacing.xl),
           ],
         ),
       ),
@@ -208,6 +216,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   }
 
   Future<void> _save() async {
+    final scheme = SchemeTheme.of(context);
     final amt = parsePositiveAmount(_amountCtrl.text);
     final title = _titleCtrl.text.trim();
     if (amt == null || amt <= 0 || title.isEmpty) {
@@ -217,11 +226,15 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       return;
     }
     HapticFeedback.mediumImpact();
-    final categoryChanged = _selectedCategory != widget.expense.category;
+    final categoryChanged =
+        _selectedCategory != widget.expense.category ||
+        _selectedCustomCategoryId != widget.expense.customCategoryId;
     final updated = widget.expense.copyWith(
       title: title,
       amount: amt,
       category: _selectedCategory,
+      customCategoryId: _selectedCustomCategoryId,
+      clearCustomCategory: _selectedCustomCategoryId == null,
       date: _selectedDate,
       note: _noteCtrl.text,
       isUncategorized: false,
@@ -239,7 +252,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       return;
     }
     if (!mounted) return;
-    if (categoryChanged) {
+    if (categoryChanged && _selectedCustomCategoryId == null) {
       ref
           .read(merchantNotifierProvider.notifier)
           .correctMerchant(title, _selectedCategory);
@@ -250,9 +263,9 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
     messenger.showSnackBar(
       SnackBar(
         content: const Text('Expense updated ✓'),
-        backgroundColor: Colors.green.shade600,
+        backgroundColor: scheme.success,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
         duration: const Duration(seconds: 2),
       ),
     );

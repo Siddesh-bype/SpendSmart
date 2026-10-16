@@ -38,13 +38,20 @@ class Lending extends HiveObject {
   });
 
   /// Returns a new Lending with updated fields. Does NOT mutate this object.
-  Lending copyWith({bool? isSettled}) => Lending(
+  Lending copyWith({
+    String? friendName,
+    double? amount,
+    bool? isIGave,
+    DateTime? date,
+    String? note,
+    bool? isSettled,
+  }) => Lending(
         id: id,
-        friendName: friendName,
-        amount: amount,
-        isIGave: isIGave,
-        date: date,
-        note: note,
+        friendName: friendName ?? this.friendName,
+        amount: amount ?? this.amount,
+        isIGave: isIGave ?? this.isIGave,
+        date: date ?? this.date,
+        note: note ?? this.note,
         isSettled: isSettled ?? this.isSettled,
       );
 }

@@ -5,12 +5,13 @@ import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/budget_provider.dart';
 import '../providers/app_settings_provider.dart';
-import '../models/category.dart';
+import '../providers/expense_category_provider.dart';
 import '../models/expense.dart';
 import '../models/app_settings.dart';
 import '../services/merchant_anomaly_service.dart';
 import '../services/ai_financial_advisor_service.dart';
 import '../services/financial_calculation_engine.dart';
+import '../services/expense_category_resolver.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/financial_period.dart';
@@ -25,6 +26,7 @@ class InsightsScreen extends ConsumerWidget {
     final allExpenses = ref.watch(expenseProvider);
     final expenses = allExpenses.where((e) => !e.isUncategorized).toList();
     final budgets = ref.watch(budgetProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final settings = ref.watch(appSettingsProvider);
     final now = DateTime.now();
     final period = FinancialPeriod.containing(now, settings.startingDayOfMonth);
@@ -44,16 +46,19 @@ class InsightsScreen extends ConsumerWidget {
       budgets: budgets,
       settings: settings,
       referenceDate: now,
+      catalog: catalog,
     );
 
     // Category breakdown this month
-    final catSums = <Category, double>{};
+    final catSums = <ExpenseCategoryKey, double>{};
     for (final e in thisMonth) {
-      catSums[e.category] = (catSums[e.category] ?? 0) + e.amount;
+      final key = catalog.keyOf(e);
+      catSums[key] = (catSums[key] ?? 0) + e.amount;
     }
     final topCat = catSums.entries.isEmpty
         ? null
         : catSums.entries.reduce((a, b) => a.value > b.value ? a : b);
+    final topResolved = topCat == null ? null : catalog.resolveKey(topCat.key);
 
     // Recurring expenses
     final recurring = _detectRecurring(expenses);
@@ -70,7 +75,8 @@ class InsightsScreen extends ConsumerWidget {
               Icons.chat_bubble_outline,
               color: SchemeTheme.of(context).primary,
             ),
-            onPressed: () => _showAiChatModal(context, expenses, settings),
+             onPressed: () =>
+                 _showAiChatModal(context, expenses, settings, catalog),
           ),
         ],
       ),
@@ -114,11 +120,9 @@ class InsightsScreen extends ConsumerWidget {
                 if (topCat != null) ...[
                   _infoCard(
                     context,
-                    icon: topCat.key.icon,
-                    color: SchemeTheme.of(
-                      context,
-                    ).categoryColors[topCat.key.index],
-                    title: 'Top Category: ${topCat.key.displayName}',
+                     icon: topResolved!.icon,
+                     color: topResolved.color,
+                     title: 'Top Category: ${topResolved.label}',
                     subtitle:
                         '${settings.currency}${NumberFormat('#,##0').format(topCat.value)} this month'
                         ' (${thisTotal > 0 ? (topCat.value / thisTotal * 100).toStringAsFixed(0) : 0}% of spending)',
@@ -343,14 +347,23 @@ class InsightsScreen extends ConsumerWidget {
     );
   }
 
-  void _showAiChatModal(BuildContext context, List<Expense> expenses, AppSettings settings) {
+  void _showAiChatModal(
+    BuildContext context,
+    List<Expense> expenses,
+    AppSettings settings,
+    ExpenseCategoryCatalog catalog,
+  ) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (ctx) => _AiAssistantSheet(expenses: expenses, settings: settings),
+       builder: (ctx) => _AiAssistantSheet(
+         expenses: expenses,
+         settings: settings,
+         catalog: catalog,
+       ),
     );
   }
 
@@ -584,10 +597,12 @@ class InsightsScreen extends ConsumerWidget {
 class _AiAssistantSheet extends StatefulWidget {
   final List<Expense> expenses;
   final AppSettings settings;
+  final ExpenseCategoryCatalog catalog;
 
   const _AiAssistantSheet({
     required this.expenses,
     required this.settings,
+    required this.catalog,
   });
 
   @override
@@ -612,6 +627,7 @@ class _AiAssistantSheetState extends State<_AiAssistantSheet> {
         query: prompt,
         expenses: widget.expenses,
         settings: widget.settings,
+        catalog: widget.catalog,
       );
       setState(() {
         _answer = reply;

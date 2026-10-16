@@ -11,6 +11,7 @@ import '../models/income.dart';
 import '../models/recurring_expense.dart';
 import '../models/split_group.dart';
 import '../models/group_expense.dart';
+import '../models/custom_category.dart';
 import 'category_classifier.dart';
 
 class StorageService {
@@ -22,6 +23,7 @@ class StorageService {
   static const String recurringBoxName = 'recurring_expenses';
   static const String splitGroupBoxName = 'split_groups';
   static const String groupExpenseBoxName = 'group_expenses';
+  static const String customCategoryBoxName = 'custom_categories';
 
   /// Boxes that could not be opened, with the error that stopped them.
   ///
@@ -52,6 +54,7 @@ class StorageService {
     await _open<RecurringExpense>(recurringBoxName);
     await _open<SplitGroup>(splitGroupBoxName);
     await _open<GroupExpense>(groupExpenseBoxName);
+    await _open<CustomCategory>(customCategoryBoxName);
   }
 
   /// Opens one box. Never deletes data.
@@ -88,9 +91,10 @@ class StorageService {
   /// data file, or null if there was nothing to move.
   Future<String?> _quarantine(String name) async {
     final dir = await getApplicationDocumentsDirectory();
-    final stamp = DateTime.now()
-        .toIso8601String()
-        .replaceAll(RegExp(r'[:.]'), '-');
+    final stamp = DateTime.now().toIso8601String().replaceAll(
+      RegExp(r'[:.]'),
+      '-',
+    );
     String? movedDataFile;
 
     // Hive writes '<name>.hive' plus a '<name>.lock' sidecar. Both must move
@@ -132,6 +136,9 @@ class StorageService {
     }
     if (!Hive.isAdapterRegistered(8)) {
       Hive.registerAdapter(GroupExpenseAdapter());
+    }
+    if (!Hive.isAdapterRegistered(9)) {
+      Hive.registerAdapter(CustomCategoryAdapter());
     }
   }
 
@@ -263,8 +270,16 @@ class StorageService {
   Box<Budget> get budgetBox => Hive.box<Budget>(budgetBoxName);
 
   Future<void> saveBudget(Budget budget) async {
-    await budgetBox.put(budget.category.index, budget);
+    await budgetBox.put(_budgetKey(budget), budget);
   }
+
+  Future<void> deleteBudget(Budget budget) async {
+    await budgetBox.delete(_budgetKey(budget));
+  }
+
+  dynamic _budgetKey(Budget budget) => budget.customCategoryId == null
+      ? budget.category.index
+      : 'custom:${budget.customCategoryId}';
 
   List<Budget> getAllBudgets() {
     return budgetBox.values.toList();
@@ -312,6 +327,21 @@ class StorageService {
   Box<GroupExpense> get groupExpenseBox =>
       Hive.box<GroupExpense>(groupExpenseBoxName);
 
+  Box<CustomCategory> get customCategoryBox =>
+      Hive.box<CustomCategory>(customCategoryBoxName);
+
+  List<CustomCategory> getAllCustomCategories() =>
+      customCategoryBox.values.toList()
+        ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+
+  Future<void> saveCustomCategory(CustomCategory category) async {
+    await customCategoryBox.put(category.id, category);
+  }
+
+  Future<void> deleteCustomCategory(String id) async {
+    await customCategoryBox.delete(id);
+  }
+
   Future<void> saveGroupExpense(GroupExpense expense) async {
     await groupExpenseBox.put(expense.id, expense);
   }
@@ -333,21 +363,28 @@ class StorageService {
   /// instead of leaving a half-wiped state unexplained.
   Future<void> clearAllData() async {
     final boxes = <String, Future<void> Function()>{
-      expenseBoxName: expenseBox.clear,
-      merchantBoxName: merchantBox.clear,
-      budgetBoxName: budgetBox.clear,
-      lendingBoxName: lendingBox.clear,
-      incomeBoxName: incomeBox.clear,
-      recurringBoxName: recurringBox.clear,
-      splitGroupBoxName: splitGroupBox.clear,
-      groupExpenseBoxName: groupExpenseBox.clear,
+      // Keep these closures lazy. A box that failed to open must not throw
+      // while this map is being built and prevent healthy boxes from clearing.
+      expenseBoxName: () => expenseBox.clear(),
+      merchantBoxName: () => merchantBox.clear(),
+      budgetBoxName: () => budgetBox.clear(),
+      lendingBoxName: () => lendingBox.clear(),
+      incomeBoxName: () => incomeBox.clear(),
+      recurringBoxName: () => recurringBox.clear(),
+      splitGroupBoxName: () => splitGroupBox.clear(),
+      groupExpenseBoxName: () => groupExpenseBox.clear(),
+      customCategoryBoxName: () => customCategoryBox.clear(),
     };
+    final failures = <String>[];
     for (final entry in boxes.entries) {
       try {
         await entry.value();
       } catch (error) {
-        throw StateError('Could not erase "${entry.key}": $error');
+        failures.add('${entry.key}: $error');
       }
+    }
+    if (failures.isNotEmpty) {
+      throw StateError('Could not erase ${failures.join('; ')}');
     }
   }
 }

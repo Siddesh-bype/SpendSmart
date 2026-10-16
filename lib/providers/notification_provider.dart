@@ -4,6 +4,8 @@ import 'package:uuid/uuid.dart';
 import '../models/app_notification.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
+import '../services/expense_category_resolver.dart';
+import '../utils/financial_period.dart';
 import 'app_settings_provider.dart';
 
 final notificationProvider =
@@ -51,62 +53,92 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
 
   /// Checks budgets against spending and adds relevant notifications.
   /// [currency] should come from appSettingsProvider.currency.
-  void checkBudgets(
+  void checkBudgets<K>(
     List<Budget> budgets,
-    Map<Category, double> spending, {
+    Map<K, double> spending, {
     String currency = '₹',
+    FinancialPeriod? period,
+    ExpenseCategoryCatalog catalog = const ExpenseCategoryCatalog.empty(),
   }) {
     final now = DateTime.now();
-    bool isCurrentMonth(AppNotification notification) =>
-        notification.time.year == now.year &&
-        notification.time.month == now.month;
+    final activePeriod = period ?? FinancialPeriod.containing(now, 1);
+    bool isInActivePeriod(AppNotification notification) =>
+        activePeriod.contains(notification.time);
 
     for (final budget in budgets) {
       if (budget.monthlyLimit <= 0) continue;
-      final spent = spending[budget.category] ?? 0.0;
+      final label = budget.customCategoryId == null
+          ? budget.category.displayName
+          : (catalog.customById(budget.customCategoryId!)?.name ??
+              budget.customCategoryId!);
+      final categoryKey = budget.customCategoryId == null
+          ? ExpenseCategoryKey.builtIn(budget.category).storageKey
+          : ExpenseCategoryKey.custom(budget.customCategoryId!).storageKey;
+      final spent = _spendingForBudget(spending, budget);
       final pct = spent / budget.monthlyLimit;
+      // Notifications saved before 2.2.0 have no categoryKey; match their
+      // "<Kind>: <label>" title instead so the upgrade doesn't re-alert.
+      bool sameBudget(AppNotification n) =>
+          n.categoryKey == categoryKey ||
+          (n.categoryKey == null && n.title.endsWith(': $label'));
 
       final alreadyHas80 = state.any(
         (n) =>
-            isCurrentMonth(n) &&
+            isInActivePeriod(n) &&
             n.type == NotifType.budgetWarning &&
-            n.title.contains(budget.category.displayName),
+            sameBudget(n),
       );
       final alreadyHasOver = state.any(
         (n) =>
-            isCurrentMonth(n) &&
+            isInActivePeriod(n) &&
             n.type == NotifType.budgetExceeded &&
-            n.title.contains(budget.category.displayName),
+            sameBudget(n),
       );
 
       if (pct >= 1.0 && !alreadyHasOver) {
         _add(
           AppNotification(
             id: const Uuid().v4(),
-            title: '🚨 Budget Exceeded: ${budget.category.displayName}',
-            body:
+             title: '🚨 Budget Exceeded: $label',
+             body:
                 'You\'ve spent $currency${spent.toStringAsFixed(0)} of your '
                 '$currency${budget.monthlyLimit.toStringAsFixed(0)} '
-                '${budget.category.displayName} budget.',
-            time: DateTime.now(),
-            type: NotifType.budgetExceeded,
+                 '$label budget.',
+             time: DateTime.now(),
+             type: NotifType.budgetExceeded,
+             categoryKey: categoryKey,
           ),
         );
       } else if (pct >= budget.alertAt && !alreadyHas80) {
         _add(
           AppNotification(
             id: const Uuid().v4(),
-            title: '⚠️ Budget Warning: ${budget.category.displayName}',
+             title: '⚠️ Budget Warning: $label',
             body:
                 '${(pct * 100).toStringAsFixed(0)}% of your '
-                '${budget.category.displayName} budget used. '
+                 '$label budget used. '
                 '$currency${(budget.monthlyLimit - spent).toStringAsFixed(0)} remaining.',
-            time: DateTime.now(),
-            type: NotifType.budgetWarning,
+             time: DateTime.now(),
+             type: NotifType.budgetWarning,
+             categoryKey: categoryKey,
           ),
         );
       }
     }
+  }
+
+  double _spendingForBudget<K>(Map<K, double> spending, Budget budget) {
+    final expected = budget.customCategoryId == null
+        ? ExpenseCategoryKey.builtIn(budget.category)
+        : ExpenseCategoryKey.custom(budget.customCategoryId!);
+    // Also accept the legacy key shapes: a bare Category or custom id.
+    final legacy = budget.customCategoryId ?? budget.category;
+    for (final entry in spending.entries) {
+      if (entry.key == expected || entry.key == legacy) {
+        return entry.value;
+      }
+    }
+    return 0;
   }
 
   void _add(AppNotification notif) {
@@ -140,6 +172,7 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
       NotifType.tip => 3,
     },
     'isRead': n.isRead,
+    'categoryKey': n.categoryKey,
   };
 
   static AppNotification _notifFromJson(Map<String, dynamic> m) =>
@@ -156,5 +189,6 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
           _ => NotifType.tip,
         },
         isRead: (m['isRead'] as bool?) ?? false,
+        categoryKey: m['categoryKey'] as String?,
       );
 }

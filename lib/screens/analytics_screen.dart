@@ -5,11 +5,13 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/expense_category_provider.dart';
 import '../models/category.dart';
 import '../models/expense.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
 import '../utils/theme.dart';
+import '../services/expense_category_resolver.dart';
 import '../widgets/money_text.dart';
 import '../widgets/section_header.dart';
 import '../widgets/spending_calendar.dart';
@@ -32,6 +34,25 @@ Map<Category, double> categoryTotalsForDay(
   return totals;
 }
 
+Map<ExpenseCategoryKey, double> resolvedCategoryTotalsForDay(
+  Iterable<Expense> expenses,
+  DateTime day,
+  ExpenseCategoryCatalog catalog,
+) {
+  final totals = <ExpenseCategoryKey, double>{};
+  for (final expense in expenses) {
+    if (expense.isUncategorized ||
+        expense.date.year != day.year ||
+        expense.date.month != day.month ||
+        expense.date.day != day.day) {
+      continue;
+    }
+    final key = catalog.keyOf(expense);
+    totals[key] = (totals[key] ?? 0) + expense.amount;
+  }
+  return totals;
+}
+
 class AnalyticsScreen extends ConsumerStatefulWidget {
   const AnalyticsScreen({super.key});
 
@@ -49,6 +70,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
   @override
   void initState() {
     super.initState();
+    final currentPeriod = FinancialPeriod.containing(
+      DateTime.now(),
+      ref.read(appSettingsProvider).startingDayOfMonth,
+    );
+    _selectedMonth = DateTime(
+      currentPeriod.start.year,
+      currentPeriod.start.month,
+    );
+    _selectedDay = DateUtils.dateOnly(DateTime.now());
     _tabs = TabController(length: 3, vsync: this);
   }
 
@@ -58,8 +88,8 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     super.dispose();
   }
 
-  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month);
-  DateTime _selectedDay = DateTime.now();
+  late DateTime _selectedMonth;
+  late DateTime _selectedDay;
 
   void _changeMonth(int delta) {
     HapticFeedback.lightImpact();
@@ -67,11 +97,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
   }
 
   void _selectMonth(DateTime month) {
-    final days = DateTime(month.year, month.month + 1, 0).day;
-    final day = _selectedDay.day.clamp(1, days);
+    final period = FinancialPeriod.startingIn(
+      month.year,
+      month.month,
+      ref.read(appSettingsProvider).startingDayOfMonth,
+    );
+    final today = DateUtils.dateOnly(DateTime.now());
     setState(() {
       _selectedMonth = DateTime(month.year, month.month);
-      _selectedDay = DateTime(month.year, month.month, day);
+      _selectedDay = period.contains(today) ? today : period.start;
     });
   }
 
@@ -81,10 +115,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
   }
 
   Future<void> _pickDay() async {
-    final now = DateTime.now();
-    final first = DateTime(_selectedMonth.year, _selectedMonth.month);
-    final monthEnd = DateTime(_selectedMonth.year, _selectedMonth.month + 1, 0);
-    final last = monthEnd.isAfter(now) ? now : monthEnd;
+    final now = DateUtils.dateOnly(DateTime.now());
+    final period = FinancialPeriod.startingIn(
+      _selectedMonth.year,
+      _selectedMonth.month,
+      ref.read(appSettingsProvider).startingDayOfMonth,
+    );
+    final first = period.start;
+    final periodEnd = period.endExclusive.subtract(const Duration(days: 1));
+    final last = periodEnd.isAfter(now) ? now : periodEnd;
     final picked = await showDatePicker(
       context: context,
       initialDate: _selectedDay.isAfter(last) ? last : _selectedDay,
@@ -101,6 +140,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
         .where((e) => !e.isUncategorized)
         .toList();
     final settings = ref.watch(appSettingsProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final scheme = SchemeTheme.of(context);
     final now = DateTime.now();
 
@@ -135,21 +175,20 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     // the days shown are the days the totals above are made of.
     final firstSelectableDay = period.start;
     final lastSelectableDay = isCurrentMonth
-        ? now
+        ? DateUtils.dateOnly(now)
         : period.endExclusive.subtract(const Duration(days: 1));
     final canSelectPreviousDay = _selectedDay.isAfter(firstSelectableDay);
     final canSelectNextDay = _selectedDay.isBefore(lastSelectableDay);
 
-    final catSums = <Category, double>{};
-    for (final e in monthlyExpenses) {
-      catSums[e.category] = (catSums[e.category] ?? 0) + e.amount;
-    }
+    final catSums = catalog.sumByCategory(monthlyExpenses);
     final sortedCats = catSums.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
-    final dailyCatSums = categoryTotalsForDay(monthlyExpenses, _selectedDay);
-    final dailyCats = Category.values
-        .where(dailyCatSums.containsKey)
-        .map((category) => MapEntry(category, dailyCatSums[category]!))
+    final dailyCatSums = resolvedCategoryTotalsForDay(
+      monthlyExpenses,
+      _selectedDay,
+      catalog,
+    );
+    final dailyCats = dailyCatSums.entries
         .toList();
 
     // 6-month bar data — keep list so index maps to DateTime for tap
@@ -184,60 +223,60 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
               children: [
                 // Month Switcher
                 Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.chevron_left),
-                          onPressed: () => _changeMonth(-1),
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          DateFormat('MMMM yyyy').format(_selectedMonth),
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        if (isCurrentMonth)
-                          Container(
-                            margin: const EdgeInsets.only(left: AppSpacing.sm),
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.sm,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: SchemeTheme.of(
-                                context,
-                              ).primary.withValues(alpha: 0.15),
-                              borderRadius: AppRadius.smAll,
-                            ),
-                            child: Text(
-                              'Current',
-                              style: Theme.of(context).textTheme.labelSmall
-                                  ?.copyWith(
-                                    color: SchemeTheme.of(context).primary,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ),
-                        const SizedBox(width: AppSpacing.xs),
-                        IconButton(
-                          icon: Icon(
-                            Icons.chevron_right,
-                            color: isCurrentMonth
-                                ? Theme.of(context).colorScheme.outline
-                                : null,
-                          ),
-                          onPressed: isCurrentMonth
-                              ? null
-                              : () => _changeMonth(1),
-                        ),
-                      ],
-                    ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.sm,
+                    vertical: AppSpacing.xs,
                   ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.chevron_left),
+                        onPressed: () => _changeMonth(-1),
+                      ),
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        DateFormat('MMMM yyyy').format(_selectedMonth),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                      if (isCurrentMonth)
+                        Container(
+                          margin: const EdgeInsets.only(left: AppSpacing.sm),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.sm,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: SchemeTheme.of(
+                              context,
+                            ).primary.withValues(alpha: 0.15),
+                            borderRadius: AppRadius.smAll,
+                          ),
+                          child: Text(
+                            'Current',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: SchemeTheme.of(context).primary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      const SizedBox(width: AppSpacing.xs),
+                      IconButton(
+                        icon: Icon(
+                          Icons.chevron_right,
+                          color: isCurrentMonth
+                              ? Theme.of(context).colorScheme.outline
+                              : null,
+                        ),
+                        onPressed: isCurrentMonth
+                            ? null
+                            : () => _changeMonth(1),
+                      ),
+                    ],
+                  ),
+                ),
                 TabBar(
                   controller: _tabs,
                   tabs: const [
@@ -253,574 +292,648 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                       CustomScrollView(
                         key: const PageStorageKey('analytics-overview'),
                         slivers: [
-                // Total Spent Card
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                    ),
-                    child: _totalCard(
-                      totalSpent,
-                      prevTotal,
-                      momChange,
-                      settings.currency,
-                    ),
-                  ),
-                ),
-
-                // Stats row — Daily Avg + Biggest Expense
-                if (totalSpent > 0)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: _statChip(
-                              icon: Icons.today_rounded,
-                              label: 'Daily Avg',
-                              amount: dailyAvg,
-                              currency: settings.currency,
-                              color: scheme.primary,
-                            ),
-                          ),
-                          const SizedBox(width: AppSpacing.md),
-                          if (biggestExpense != null)
-                            Expanded(
-                              child: _statChip(
-                                icon: Icons.arrow_upward_rounded,
-                                label: 'Top Expense',
-                                amount: biggestExpense.amount,
-                                currency: settings.currency,
-                                sublabel: biggestExpense.title,
-                                color: scheme.warning,
+                          // Total Spent Card
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                0,
+                                AppSpacing.lg,
+                                AppSpacing.md,
+                              ),
+                              child: _totalCard(
+                                totalSpent,
+                                prevTotal,
+                                momChange,
+                                settings.currency,
                               ),
                             ),
-                        ],
-                      ),
-                    ),
-                  ),
+                          ),
 
-                // Pie Chart
-                // Daily Spending Chart
-                if (monthlyExpenses.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        0,
-                      ),
-                      child: const SectionHeader(title: 'Daily Spending'),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        AppSpacing.sm,
-                      ),
-                      child: SizedBox(
-                        height: 180,
-                        child: _dailySpendingChart(
-                          monthlyExpenses,
-                          period,
-                          settings.currency,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: const SectionHeader(
-                      title: 'Calendar',
-                      subtitle: 'Tap a day to see its breakdown below',
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: SpendingCalendar(
-                      period: period,
-                      selectedDay: _selectedDay,
-                      expenses: monthlyExpenses,
-                      currency: settings.currency,
-                      lastSelectableDay: lastSelectableDay,
-                      onDaySelected: (day) =>
-                          setState(() => _selectedDay = day),
-                    ),
-                  ),
-                ),
-
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: const SectionHeader(title: 'Day by Category'),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.lg,
-                    ),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          tooltip: 'Previous day',
-                          onPressed: canSelectPreviousDay
-                              ? () => _changeDay(-1)
-                              : null,
-                          icon: const Icon(Icons.chevron_left_rounded),
-                        ),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: _pickDay,
-                            icon: const Icon(
-                              Icons.calendar_today_outlined,
-                              size: AppType.headline,
+                          // Stats row — Daily Avg + Biggest Expense
+                          if (totalSpent > 0)
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  0,
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: _statChip(
+                                        icon: Icons.today_rounded,
+                                        label: 'Daily Avg',
+                                        amount: dailyAvg,
+                                        currency: settings.currency,
+                                        color: scheme.primary,
+                                      ),
+                                    ),
+                                    const SizedBox(width: AppSpacing.md),
+                                    if (biggestExpense != null)
+                                      Expanded(
+                                        child: _statChip(
+                                          icon: Icons.arrow_upward_rounded,
+                                          label: 'Top Expense',
+                                          amount: biggestExpense.amount,
+                                          currency: settings.currency,
+                                          sublabel: biggestExpense.title,
+                                          color: scheme.warning,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             ),
-                            label: Text(
-                              DateFormat('EEE, d MMM').format(_selectedDay),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+
+                          // Pie Chart
+                          // Daily Spending Chart
+                          if (monthlyExpenses.isNotEmpty) ...[
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  0,
+                                ),
+                                child: const SectionHeader(
+                                  title: 'Daily Spending',
+                                ),
+                              ),
+                            ),
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  0,
+                                  AppSpacing.lg,
+                                  AppSpacing.sm,
+                                ),
+                                child: SizedBox(
+                                  height: 180,
+                                  child: _dailySpendingChart(
+                                    monthlyExpenses,
+                                    period,
+                                    settings.currency,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                0,
+                              ),
+                              child: const SectionHeader(
+                                title: 'Calendar',
+                                subtitle:
+                                    'Tap a day to see its breakdown below',
+                              ),
                             ),
                           ),
-                        ),
-                        IconButton(
-                          tooltip: 'Next day',
-                          onPressed: canSelectNextDay
-                              ? () => _changeDay(1)
-                              : null,
-                          icon: const Icon(Icons.chevron_right_rounded),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                    ),
-                    child: _dailyCategoryCard(dailyCats, settings.currency),
-                  ),
-                ),
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                                AppSpacing.lg,
+                                0,
+                              ),
+                              child: SpendingCalendar(
+                                period: period,
+                                selectedDay: _selectedDay,
+                                expenses: monthlyExpenses,
+                                currency: settings.currency,
+                                lastSelectableDay: lastSelectableDay,
+                                onDaySelected: (day) =>
+                                    setState(() => _selectedDay = day),
+                              ),
+                            ),
+                          ),
 
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                                0,
+                              ),
+                              child: const SectionHeader(
+                                title: 'Day by Category',
+                              ),
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: AppSpacing.lg,
+                              ),
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Previous day',
+                                    onPressed: canSelectPreviousDay
+                                        ? () => _changeDay(-1)
+                                        : null,
+                                    icon: const Icon(
+                                      Icons.chevron_left_rounded,
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      onPressed: _pickDay,
+                                      icon: const Icon(
+                                        Icons.calendar_today_outlined,
+                                        size: AppType.headline,
+                                      ),
+                                      label: Text(
+                                        DateFormat(
+                                          'EEE, d MMM',
+                                        ).format(_selectedDay),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Next day',
+                                    onPressed: canSelectNextDay
+                                        ? () => _changeDay(1)
+                                        : null,
+                                    icon: const Icon(
+                                      Icons.chevron_right_rounded,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                              ),
+                              child: _dailyCategoryCard(
+                                dailyCats,
+                                settings.currency,
+                                catalog,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                       CustomScrollView(
                         key: const PageStorageKey('analytics-categories'),
                         slivers: [
-                if (sortedCats.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        0,
-                        AppSpacing.lg,
-                        0,
-                      ),
-                      child: const SectionHeader(title: 'Spending Breakdown'),
-                    ),
-                  ),
-                  SliverToBoxAdapter(
-                    child: SizedBox(
-                      height: 140,
-                      child: PieChart(
-                        PieChartData(
-                          sections: sortedCats
-                              .map(
-                                (e) {
-                                  final slice =
-                                      scheme.categoryColors[e.key.index];
-                                  return PieChartSectionData(
-                                    value: e.value,
-                                    color: slice,
-                                    title:
-                                        '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
-                                    titleStyle: TextStyle(
-                                      fontSize: AppType.caption,
-                                      color: _pieLabelColor(slice, scheme),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    radius: 56,
-                                  );
-                                },
-                              )
-                              .toList(),
-                          sectionsSpace: 3,
-                          centerSpaceRadius: 20,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                // Category List
-                if (sortedCats.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        AppSpacing.lg,
-                        0,
-                      ),
-                      child: const SectionHeader(title: 'By Category'),
-                    ),
-                  ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate((context, i) {
-                      final e = sortedCats[i];
-                      final pct = totalSpent > 0 ? e.value / totalSpent : 0.0;
-                      final theme = Theme.of(context);
-                      final catColor = scheme.categoryColors[e.key.index];
-                      return Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.lg,
-                          0,
-                          AppSpacing.lg,
-                          AppSpacing.md,
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            HapticFeedback.lightImpact();
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    TransactionsScreen(initialCategory: e.key),
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(AppSpacing.lg),
-                            decoration: BoxDecoration(
-                              color: scheme.surface,
-                              borderRadius: AppRadius.mdAll,
-                              border: Border.all(color: scheme.border),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Container(
-                                          width: 38,
-                                          height: 38,
-                                          decoration: BoxDecoration(
-                                            color: catColor.withValues(
-                                              alpha: 0.15,
-                                            ),
-                                            shape: BoxShape.circle,
-                                          ),
-                                          child: Icon(
-                                            e.key.icon,
-                                            color: catColor,
-                                            size: 20,
-                                          ),
-                                        ),
-                                        const SizedBox(width: AppSpacing.md),
-                                        Text(
-                                          e.key.displayName,
-                                          style: theme.textTheme.titleSmall
-                                              ?.copyWith(
-                                                fontWeight: FontWeight.w700,
-                                                color: scheme.ink,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                    Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.end,
-                                      children: [
-                                        MoneyText(
-                                          e.value,
-                                          currency: settings.currency,
-                                          size: AppType.headline,
-                                          weight: FontWeight.w800,
-                                          color: scheme.ink,
-                                          textAlign: TextAlign.right,
-                                        ),
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '${(pct * 100).toStringAsFixed(1)}%',
-                                          style: theme.textTheme.labelMedium
-                                              ?.copyWith(
-                                                color: scheme.muted,
-                                                fontWeight: FontWeight.bold,
-                                                fontFeatures: AppType.tabular,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                          if (sortedCats.isNotEmpty) ...[
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  0,
+                                  AppSpacing.lg,
+                                  0,
                                 ),
-                                const SizedBox(height: AppSpacing.md),
-                                ClipRRect(
-                                  borderRadius: AppRadius.smAll,
-                                  child: TweenAnimationBuilder<double>(
-                                    tween: Tween<double>(begin: 0, end: pct),
-                                    duration: MediaQuery.disableAnimationsOf(
-                                          context,
-                                        )
-                                        ? Duration.zero
-                                        : const Duration(milliseconds: 1000),
-                                    curve: Curves.easeOutExpo,
-                                    builder: (context, val, _) =>
-                                        LinearProgressIndicator(
-                                          value: val,
-                                          backgroundColor: scheme.tint
-                                              .withValues(alpha: 0.5),
-                                          color: catColor,
-                                          minHeight: 8,
+                                child: const SectionHeader(
+                                  title: 'Spending Breakdown',
+                                ),
+                              ),
+                            ),
+                            SliverToBoxAdapter(
+                              child: SizedBox(
+                                height: 140,
+                                child: PieChart(
+                                  PieChartData(
+                                    sections: sortedCats.map((e) {
+                                      final category = catalog.resolveKey(e.key)!;
+                                      final slice = category.color;
+                                      return PieChartSectionData(
+                                        value: e.value,
+                                        color: slice,
+                                        title:
+                                            '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
+                                        titleStyle: TextStyle(
+                                          fontSize: AppType.caption,
+                                          color: _pieLabelColor(slice, scheme),
+                                          fontWeight: FontWeight.bold,
                                         ),
+                                        radius: 56,
+                                      );
+                                    }).toList(),
+                                    sectionsSpace: 3,
+                                    centerSpaceRadius: 20,
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }, childCount: sortedCats.length),
-                  ),
-                ],
+                          ],
 
+                          // Category List
+                          if (sortedCats.isNotEmpty) ...[
+                            SliverToBoxAdapter(
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  AppSpacing.lg,
+                                  0,
+                                ),
+                                child: const SectionHeader(
+                                  title: 'By Category',
+                                ),
+                              ),
+                            ),
+                            SliverList(
+                              delegate: SliverChildBuilderDelegate((
+                                context,
+                                i,
+                              ) {
+                                final e = sortedCats[i];
+                                final pct = totalSpent > 0
+                                    ? e.value / totalSpent
+                                    : 0.0;
+                                final theme = Theme.of(context);
+                                 final category = catalog.resolveKey(e.key)!;
+                                 final catColor = category.color;
+                                return Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AppSpacing.lg,
+                                    0,
+                                    AppSpacing.lg,
+                                    AppSpacing.md,
+                                  ),
+                                  child: GestureDetector(
+                                    onTap: () {
+                                      HapticFeedback.lightImpact();
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => TransactionsScreen(
+                                            initialCategory: e.key.builtIn,
+                                            initialCustomCategoryId:
+                                                e.key.customCategoryId,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.all(
+                                        AppSpacing.lg,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: scheme.surface,
+                                        borderRadius: AppRadius.mdAll,
+                                        border: Border.all(
+                                          color: scheme.border,
+                                        ),
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Row(
+                                                children: [
+                                                  Container(
+                                                    width: 38,
+                                                    height: 38,
+                                                    decoration: BoxDecoration(
+                                                      color: catColor
+                                                          .withValues(
+                                                            alpha: 0.15,
+                                                          ),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: Icon(
+                                                       category.icon,
+                                                      color: catColor,
+                                                      size: 20,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(
+                                                    width: AppSpacing.md,
+                                                  ),
+                                                  Text(
+                                                     category.label,
+                                                    style: theme
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: scheme.ink,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                              Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.end,
+                                                children: [
+                                                  MoneyText(
+                                                    e.value,
+                                                    currency: settings.currency,
+                                                    size: AppType.headline,
+                                                    weight: FontWeight.w800,
+                                                    color: scheme.ink,
+                                                    textAlign: TextAlign.right,
+                                                  ),
+                                                  const SizedBox(height: 2),
+                                                  Text(
+                                                    '${(pct * 100).toStringAsFixed(1)}%',
+                                                    style: theme
+                                                        .textTheme
+                                                        .labelMedium
+                                                        ?.copyWith(
+                                                          color: scheme.muted,
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                          fontFeatures:
+                                                              AppType.tabular,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
+                                          ),
+                                          const SizedBox(height: AppSpacing.md),
+                                          ClipRRect(
+                                            borderRadius: AppRadius.smAll,
+                                            child: TweenAnimationBuilder<double>(
+                                              tween: Tween<double>(
+                                                begin: 0,
+                                                end: pct,
+                                              ),
+                                              duration:
+                                                  MediaQuery.disableAnimationsOf(
+                                                    context,
+                                                  )
+                                                  ? Duration.zero
+                                                  : const Duration(
+                                                      milliseconds: 1000,
+                                                    ),
+                                              curve: Curves.easeOutExpo,
+                                              builder: (context, val, _) =>
+                                                  LinearProgressIndicator(
+                                                    value: val,
+                                                    backgroundColor: scheme.tint
+                                                        .withValues(alpha: 0.5),
+                                                    color: catColor,
+                                                    minHeight: 8,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }, childCount: sortedCats.length),
+                            ),
+                          ],
                         ],
                       ),
                       CustomScrollView(
                         key: const PageStorageKey('analytics-trends'),
                         slivers: [
-                // 6-Month Bar Chart
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                      AppSpacing.lg,
-                      0,
-                    ),
-                    child: const SectionHeader(title: '6-Month Overview'),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      0,
-                      AppSpacing.lg,
-                      AppSpacing.lg,
-                    ),
-                    child: SizedBox(
-                      height: 200,
-                      child: Stack(
-                        children: [
-                          BarChart(
-                        BarChartData(
-                          gridData: const FlGridData(show: false),
-                          borderData: FlBorderData(show: false),
-                          barTouchData: BarTouchData(
-                            touchCallback: (event, response) {
-                              if (event is FlTapUpEvent &&
-                                  response != null &&
-                                  response.spot != null) {
-                                final idx = response.spot!.touchedBarGroupIndex;
-                                if (idx >= 0 && idx < sixMonths.length) {
-                                  HapticFeedback.selectionClick();
-                                  _selectMonth(sixMonths[idx].month);
-                                }
-                              }
-                            },
+                          // 6-Month Bar Chart
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.sm,
+                                AppSpacing.lg,
+                                0,
+                              ),
+                              child: const SectionHeader(
+                                title: '6-Month Overview',
+                              ),
+                            ),
                           ),
-                          titlesData: FlTitlesData(
-                            bottomTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                getTitlesWidget: (v, m) {
-                                  final idx = v.toInt();
-                                  if (idx >= 0 && idx < sixMonths.length) {
-                                    return Padding(
-                                      padding: const EdgeInsets.only(
-                                        top: AppSpacing.xs,
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                0,
+                                AppSpacing.lg,
+                                AppSpacing.lg,
+                              ),
+                              child: SizedBox(
+                                height: 200,
+                                child: Stack(
+                                  children: [
+                                    BarChart(
+                                      BarChartData(
+                                        gridData: const FlGridData(show: false),
+                                        borderData: FlBorderData(show: false),
+                                        barTouchData: BarTouchData(
+                                          touchCallback: (event, response) {
+                                            if (event is FlTapUpEvent &&
+                                                response != null &&
+                                                response.spot != null) {
+                                              final idx = response
+                                                  .spot!
+                                                  .touchedBarGroupIndex;
+                                              if (idx >= 0 &&
+                                                  idx < sixMonths.length) {
+                                                HapticFeedback.selectionClick();
+                                                _selectMonth(
+                                                  sixMonths[idx].month,
+                                                );
+                                              }
+                                            }
+                                          },
+                                        ),
+                                        titlesData: FlTitlesData(
+                                          bottomTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              getTitlesWidget: (v, m) {
+                                                final idx = v.toInt();
+                                                if (idx >= 0 &&
+                                                    idx < sixMonths.length) {
+                                                  return Padding(
+                                                    padding:
+                                                        const EdgeInsets.only(
+                                                          top: AppSpacing.xs,
+                                                        ),
+                                                    child: Text(
+                                                      sixMonths[idx].label,
+                                                      style: _axisLabelStyle(
+                                                        context,
+                                                      ),
+                                                    ),
+                                                  );
+                                                }
+                                                return const SizedBox();
+                                              },
+                                            ),
+                                          ),
+                                          leftTitles: AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: true,
+                                              reservedSize: 44,
+                                              getTitlesWidget: (v, m) => Text(
+                                                NumberFormat.compact().format(
+                                                  v,
+                                                ),
+                                                style: _axisLabelStyle(context),
+                                              ),
+                                            ),
+                                          ),
+                                          topTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                          rightTitles: const AxisTitles(
+                                            sideTitles: SideTitles(
+                                              showTitles: false,
+                                            ),
+                                          ),
+                                        ),
+                                        barGroups: sixMonths.asMap().entries.map((
+                                          entry,
+                                        ) {
+                                          final idx = entry.key;
+                                          final data = entry.value;
+                                          final isSelected =
+                                              data.month.month ==
+                                                  _selectedMonth.month &&
+                                              data.month.year ==
+                                                  _selectedMonth.year;
+                                          return BarChartGroupData(
+                                            x: idx,
+                                            barRods: [
+                                              BarChartRodData(
+                                                toY: data.total,
+                                                color: isSelected
+                                                    ? scheme.primary
+                                                    : scheme.muted.withValues(
+                                                        alpha: 0.55,
+                                                      ),
+                                                width: 28,
+                                                borderRadius:
+                                                    const BorderRadius.vertical(
+                                                      top: Radius.circular(
+                                                        AppRadius.sm,
+                                                      ),
+                                                    ),
+                                              ),
+                                            ],
+                                          );
+                                        }).toList(),
                                       ),
-                                      child: Text(
-                                        sixMonths[idx].label,
-                                        style: _axisLabelStyle(context),
+                                    ),
+                                    // Full-column tap targets: each bar's hit area is
+                                    // the whole vertical slice, not just the rod.
+                                    Row(
+                                      children: List.generate(
+                                        sixMonths.length,
+                                        (i) => Expanded(
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () {
+                                              HapticFeedback.selectionClick();
+                                              _selectMonth(sixMonths[i].month);
+                                            },
+                                            child: const SizedBox.expand(),
+                                          ),
+                                        ),
                                       ),
-                                    );
-                                  }
-                                  return const SizedBox();
-                                },
-                              ),
-                            ),
-                            leftTitles: AxisTitles(
-                              sideTitles: SideTitles(
-                                showTitles: true,
-                                reservedSize: 44,
-                                getTitlesWidget: (v, m) => Text(
-                                  NumberFormat.compact().format(v),
-                                  style: _axisLabelStyle(context),
+                                    ),
+                                  ],
                                 ),
                               ),
-                            ),
-                            topTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
-                            ),
-                            rightTitles: const AxisTitles(
-                              sideTitles: SideTitles(showTitles: false),
                             ),
                           ),
-                          barGroups: sixMonths.asMap().entries.map((entry) {
-                            final idx = entry.key;
-                            final data = entry.value;
-                            final isSelected =
-                                data.month.month == _selectedMonth.month &&
-                                data.month.year == _selectedMonth.year;
-                            return BarChartGroupData(
-                              x: idx,
-                              barRods: [
-                                BarChartRodData(
-                                  toY: data.total,
-                                  color: isSelected
-                                      ? scheme.primary
-                                      : scheme.muted.withValues(alpha: 0.55),
-                                  width: 28,
-                                  borderRadius: const BorderRadius.vertical(
-                                    top: Radius.circular(AppRadius.sm),
-                                  ),
-                                ),
-                              ],
-                            );
-                          }).toList(),
-                         ),
-                          ),
-                          // Full-column tap targets: each bar's hit area is
-                          // the whole vertical slice, not just the rod.
-                          Row(
-                            children: List.generate(
-                              sixMonths.length,
-                              (i) => Expanded(
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () {
-                                    HapticFeedback.selectionClick();
-                                    _selectMonth(sixMonths[i].month);
-                                  },
-                                  child: const SizedBox.expand(),
-                                ),
+                          // MoM delta: "am I improving?" under the 6-month bars.
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding: const EdgeInsets.fromLTRB(
+                                AppSpacing.lg,
+                                AppSpacing.md,
+                                AppSpacing.lg,
+                                AppSpacing.sm,
                               ),
+                              child: prevTotal > 0
+                                  ? Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: AppSpacing.md,
+                                        vertical: AppSpacing.sm,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            (momChange > 0
+                                                    ? scheme.error
+                                                    : scheme.success)
+                                                .withValues(alpha: 0.12),
+                                        borderRadius: AppRadius.mdAll,
+                                        border: Border.all(
+                                          color:
+                                              (momChange > 0
+                                                      ? scheme.error
+                                                      : scheme.success)
+                                                  .withValues(alpha: 0.4),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            momChange > 0
+                                                ? Icons.trending_up_rounded
+                                                : Icons.trending_down_rounded,
+                                            color: momChange > 0
+                                                ? scheme.error
+                                                : scheme.success,
+                                            size: AppType.headline,
+                                          ),
+                                          const SizedBox(width: AppSpacing.sm),
+                                          Expanded(
+                                            child: Text(
+                                              '${momChange > 0 ? '+' : ''}${momChange.toStringAsFixed(1)}% vs previous period — '
+                                              '${momChange > 0 ? 'spending up' : 'spending down'}',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelMedium
+                                                  ?.copyWith(
+                                                    color: momChange > 0
+                                                        ? scheme.error
+                                                        : scheme.success,
+                                                    fontWeight: FontWeight.bold,
+                                                    fontFeatures:
+                                                        AppType.tabular,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : Text(
+                                      'No previous period to compare yet',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelMedium
+                                          ?.copyWith(color: scheme.muted),
+                                    ),
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ),
-                ),
-                // MoM delta: "am I improving?" under the 6-month bars.
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(
-                      AppSpacing.lg,
-                      AppSpacing.md,
-                      AppSpacing.lg,
-                      AppSpacing.sm,
-                    ),
-                    child: prevTotal > 0
-                        ? Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                              vertical: AppSpacing.sm,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  (momChange > 0 ? scheme.error : scheme.success)
-                                      .withValues(alpha: 0.12),
-                              borderRadius: AppRadius.mdAll,
-                              border: Border.all(
-                                color:
-                                    (momChange > 0
-                                            ? scheme.error
-                                            : scheme.success)
-                                        .withValues(alpha: 0.4),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(
-                                  momChange > 0
-                                      ? Icons.trending_up_rounded
-                                      : Icons.trending_down_rounded,
-                                  color: momChange > 0
-                                      ? scheme.error
-                                      : scheme.success,
-                                  size: AppType.headline,
-                                ),
-                                const SizedBox(width: AppSpacing.sm),
-                                Expanded(
-                                  child: Text(
-                                    '${momChange > 0 ? '+' : ''}${momChange.toStringAsFixed(1)}% vs previous period — '
-                                    '${momChange > 0 ? 'spending up' : 'spending down'}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelMedium
-                                        ?.copyWith(
-                                          color: momChange > 0
-                                              ? scheme.error
-                                              : scheme.success,
-                                          fontWeight: FontWeight.bold,
-                                          fontFeatures: AppType.tabular,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          )
-                        : Text(
-                            'No previous period to compare yet',
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(color: scheme.muted),
-                          ),
-                  ),
-                ),
-                ],
                       ),
                     ],
                   ),
@@ -842,16 +955,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
       return (hi + 0.05) / (lo + 0.05);
     }
 
-    return contrast(scheme.ink) >= contrast(scheme.bg)
-        ? scheme.ink
-        : scheme.bg;
+    return contrast(scheme.ink) >= contrast(scheme.bg) ? scheme.ink : scheme.bg;
   }
 
   /// Chart axis labels: theme-muted, tabular so tick values don't jitter.
-  TextStyle? _axisLabelStyle(BuildContext context) =>
-      Theme.of(context).textTheme.labelSmall?.copyWith(
-        fontFeatures: AppType.tabular,
-      );
+  TextStyle? _axisLabelStyle(BuildContext context) => Theme.of(
+    context,
+  ).textTheme.labelSmall?.copyWith(fontFeatures: AppType.tabular);
 
   Widget _totalCard(
     double total,
@@ -960,9 +1070,11 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
     );
     final dailySpending = List<double>.filled(totalDays, 0);
     for (final e in expenses) {
-      final day = DateTime(e.date.year, e.date.month, e.date.day)
-          .difference(startDay)
-          .inDays;
+      final day = DateTime(
+        e.date.year,
+        e.date.month,
+        e.date.day,
+      ).difference(startDay).inDays;
       if (day >= 0 && day < totalDays) {
         dailySpending[day] += e.amount;
       }
@@ -991,8 +1103,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
             show: true,
             drawVerticalLine: false,
             horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-            getDrawingHorizontalLine: (value) =>
-                FlLine(color: colorScheme.outlineVariant, strokeWidth: hairline),
+            getDrawingHorizontalLine: (value) => FlLine(
+              color: colorScheme.outlineVariant,
+              strokeWidth: hairline,
+            ),
           ),
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
@@ -1072,8 +1186,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
   }
 
   Widget _dailyCategoryCard(
-    List<MapEntry<Category, double>> categories,
+    List<MapEntry<ExpenseCategoryKey, double>> categories,
     String currency,
+    ExpenseCategoryCatalog catalog,
   ) {
     if (categories.isEmpty) {
       final scheme0 = SchemeTheme.of(context);
@@ -1092,9 +1207,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: AppSpacing.sm),
-            const Flexible(
-              child: Text('No spending recorded for this day'),
-            ),
+            const Flexible(child: Text('No spending recorded for this day')),
           ],
         ),
       );
@@ -1129,8 +1242,10 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                 gridData: FlGridData(
                   drawVerticalLine: false,
                   horizontalInterval: maxY > 0 ? maxY / 4 : 1,
-                  getDrawingHorizontalLine: (_) =>
-                      FlLine(color: colorScheme.outlineVariant, strokeWidth: hairline),
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: colorScheme.outlineVariant,
+                    strokeWidth: hairline,
+                  ),
                 ),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(
@@ -1153,12 +1268,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                         if (index < 0 || index >= categories.length) {
                           return const SizedBox();
                         }
-                        final category = categories[index].key;
+                         final category =
+                             catalog.resolveKey(categories[index].key)!;
                         return Padding(
                           padding: const EdgeInsets.only(top: AppSpacing.xs),
                           child: Icon(
                             category.icon,
-                            color: scheme.categoryColors[category.index],
+                             color: category.color,
                             size: AppType.headline,
                           ),
                         );
@@ -1178,7 +1294,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                     getTooltipItem: (group, groupIndex, rod, rodIndex) {
                       final entry = categories[group.x.toInt()];
                       return BarTooltipItem(
-                        '${entry.key.displayName}\n$currency${NumberFormat('#,##0').format(entry.value)}',
+                         '${catalog.resolveKey(entry.key)!.label}\n$currency${NumberFormat('#,##0').format(entry.value)}',
                         TextStyle(
                           color: scheme.ink,
                           fontWeight: FontWeight.bold,
@@ -1189,13 +1305,13 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   ),
                 ),
                 barGroups: categories.asMap().entries.map((item) {
-                  final category = item.value.key;
+                   final category = catalog.resolveKey(item.value.key)!;
                   return BarChartGroupData(
                     x: item.key,
                     barRods: [
                       BarChartRodData(
                         toY: item.value.value,
-                        color: scheme.categoryColors[category.index],
+                         color: category.color,
                         width: 22,
                         borderRadius: const BorderRadius.vertical(
                           top: Radius.circular(AppRadius.sm),
@@ -1219,15 +1335,15 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                   vertical: AppSpacing.xs,
                 ),
                 decoration: BoxDecoration(
-                  color: scheme.categoryColors[entry.key.index].withValues(
+                   color: catalog.resolveKey(entry.key)!.color.withValues(
                     alpha: 0.12,
                   ),
                   borderRadius: AppRadius.smAll,
                 ),
                 child: Text(
-                  '${entry.key.displayName} $currency${NumberFormat.compact().format(entry.value)}',
+                   '${catalog.resolveKey(entry.key)!.label} $currency${NumberFormat.compact().format(entry.value)}',
                   style: TextStyle(
-                    color: scheme.categoryColors[entry.key.index],
+                     color: catalog.resolveKey(entry.key)!.color,
                     fontSize: AppType.caption,
                     fontWeight: FontWeight.w700,
                     fontFeatures: AppType.tabular,

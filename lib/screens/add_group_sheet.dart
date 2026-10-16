@@ -24,6 +24,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
   late List<_ParticipantEntry> _participants;
   final _uuid = const Uuid();
   String? _errorMessage;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -87,6 +88,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final name = _nameCtrl.text.trim();
     final validParticipants = _participants
         .where((p) => p.nameCtrl.text.trim().isNotEmpty)
@@ -141,14 +143,29 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
       myParticipantId: myParticipantId,
     );
 
-    if (existing != null) {
-      await ref.read(splitGroupProvider.notifier).updateGroup(group);
-    } else {
-      await ref.read(splitGroupProvider.notifier).addGroup(group);
+    setState(() => _saving = true);
+    try {
+      if (existing != null) {
+        await ref.read(splitGroupProvider.notifier).updateGroup(group);
+      } else {
+        await ref.read(splitGroupProvider.notifier).addGroup(group);
+      }
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(existing != null ? 'Group updated' : 'Group created'),
+        ),
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _errorMessage = 'Could not save the group. Try again.';
+      });
     }
-
-    if (mounted) Navigator.pop(context);
-    HapticFeedback.mediumImpact();
   }
 
   @override
@@ -235,7 +252,9 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                               ? '?'
                               : p.nameCtrl.text[0].toUpperCase(),
                           style: TextStyle(
-                            color: Scheme.onAvatar(groupAvatarColors[p.colorIndex]),
+                            color: Scheme.onAvatar(
+                              groupAvatarColors[p.colorIndex],
+                            ),
                             fontWeight: FontWeight.bold,
                             fontSize: AppType.label,
                           ),
@@ -261,11 +280,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                     if (_participants.length > 2)
                       IconButton(
                         onPressed: () => _removeParticipant(i),
-                        icon: Icon(
-                          Icons.close,
-                          size: 18,
-                          color: scheme.muted,
-                        ),
+                        icon: Icon(Icons.close, size: 18, color: scheme.muted),
                       ),
                   ],
                 ),
@@ -283,16 +298,16 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _save,
+                onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: scheme.ctaFill,
                   foregroundColor: scheme.ctaText,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.mdAll,
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                 ),
                 child: Text(
-                  isEditing ? 'Save Changes' : 'Create Group',
+                  _saving
+                      ? 'Saving…'
+                      : (isEditing ? 'Save Changes' : 'Create Group'),
                   style: const TextStyle(
                     fontSize: AppType.headline,
                     fontWeight: FontWeight.bold,

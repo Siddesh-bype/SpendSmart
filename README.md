@@ -297,7 +297,7 @@ Per-architecture APKs (`armeabi-v7a`, `arm64-v8a`, `x86_64`) land in `build\app\
 
 ## 🛠 Tech Stack
 
-App version **2.1.7+217** (Dart SDK `^3.10.7`).
+App version **2.2.0+220** (Dart SDK `^3.10.7`).
 
 | Layer | Package | Version |
 | :--- | :--- | :--- |

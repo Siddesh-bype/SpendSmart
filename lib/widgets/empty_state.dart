@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../utils/design.dart';
+import '../utils/theme.dart';
+
 /// A reusable empty-state placeholder widget.
 /// Replaces duplicated empty-column patterns across screens.
 ///
@@ -31,16 +34,16 @@ class EmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final color =
-        iconColor ?? theme.colorScheme.primary.withValues(alpha: 0.24);
+    final scheme = SchemeTheme.of(context);
+    final color = iconColor ?? scheme.primary.withValues(alpha: 0.24);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppSpacing.xxl),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 72, color: color),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppSpacing.lg),
             Text(
               title,
               style: theme.textTheme.titleMedium?.copyWith(
@@ -49,16 +52,17 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             if (subtitle != null) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Text(
                 subtitle!,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.58),
-                ),
+                style: theme.textTheme.bodySmall?.copyWith(color: scheme.muted),
                 textAlign: TextAlign.center,
               ),
             ],
-            if (action != null) ...[const SizedBox(height: 20), action!],
+            if (action != null) ...[
+              const SizedBox(height: AppSpacing.lg),
+              action!,
+            ],
           ],
         ),
       ),

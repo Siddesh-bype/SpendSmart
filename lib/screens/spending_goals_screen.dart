@@ -5,7 +5,8 @@ import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
 import '../providers/spending_goal_provider.dart';
 import '../providers/app_settings_provider.dart';
-import '../models/category.dart';
+import '../providers/expense_category_provider.dart';
+import '../services/expense_category_resolver.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/financial_period.dart';
@@ -24,6 +25,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
   Widget build(BuildContext context) {
     final goal = ref.watch(spendingGoalProvider);
     final settings = ref.watch(appSettingsProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final expenses = ref
         .watch(expenseProvider)
         .where((e) => !e.isUncategorized)
@@ -36,9 +38,10 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     final totalSpent = monthlyExpenses.fold(0.0, (a, b) => a + b.amount);
 
     // Category sub-goals
-    final catSums = <Category, double>{};
+    final catSums = <ExpenseCategoryKey, double>{};
     for (final e in monthlyExpenses) {
-      catSums[e.category] = (catSums[e.category] ?? 0) + e.amount;
+      final key = catalog.keyOf(e);
+      catSums[key] = (catSums[key] ?? 0) + e.amount;
     }
 
     final pct = goal.enabled && goal.monthlyLimit > 0
@@ -59,8 +62,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
           if (goal.enabled)
             IconButton(
               tooltip: 'Edit monthly goal',
-              constraints:
-                  const BoxConstraints.tightFor(width: 44, height: 44),
+              constraints: const BoxConstraints.tightFor(width: 44, height: 44),
               icon: const Icon(Icons.edit_outlined),
               onPressed: () => _showGoalSheet(goal.monthlyLimit),
             ),
@@ -89,7 +91,13 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
 
             // Daily budget hint
             if (goal.enabled && !isOver && goal.monthlyLimit > 0) ...[
-              _buildHintCard(context, remaining, now, settings.currency),
+              _buildHintCard(
+                context,
+                remaining,
+                now,
+                period,
+                settings.currency,
+              ),
               const SizedBox(height: AppSpacing.xl),
             ],
 
@@ -97,13 +105,16 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             if (catSums.isNotEmpty) ...[
               const Text(
                 'Spending by Category',
-                style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: AppType.headline,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: AppSpacing.md),
               ...catSums.entries.map(
                 (e) => _buildCategoryRow(
                   context,
-                  e.key,
+                   catalog.resolveKey(e.key)!,
                   e.value,
                   goal.monthlyLimit,
                   settings.currency,
@@ -117,10 +128,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 width: double.infinity,
                 height: 48,
                 child: OutlinedButton.icon(
-                  icon: Icon(
-                    Icons.cancel_outlined,
-                    color: scheme.error,
-                  ),
+                  icon: Icon(Icons.cancel_outlined, color: scheme.error),
                   label: Text(
                     'Disable Goal',
                     style: TextStyle(
@@ -132,8 +140,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                     side: BorderSide(
                       color: scheme.error.withValues(alpha: 0.5),
                     ),
-                    backgroundColor:
-                        scheme.error.withValues(alpha: 0.08),
+                    backgroundColor: scheme.error.withValues(alpha: 0.08),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -186,10 +193,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
           const SizedBox(height: 6),
           Text(
             'Track your overall spending against a monthly budget goal',
-            style: TextStyle(
-              color: scheme.muted,
-              fontSize: AppType.label,
-            ),
+            style: TextStyle(color: scheme.muted, fontSize: AppType.label),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: AppSpacing.xl),
@@ -202,8 +206,10 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
                 ),
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 12,
+                ),
               ),
               onPressed: () => _showGoalSheet(0),
               child: Text(
@@ -248,10 +254,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             children: [
               Text(
                 'Monthly Goal',
-                style: TextStyle(
-                  color: scheme.muted,
-                  fontSize: AppType.label,
-                ),
+                style: TextStyle(color: scheme.muted, fontSize: AppType.label),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(
@@ -261,9 +264,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: statusColor.withValues(alpha: 0.4),
-                  ),
+                  border: Border.all(color: statusColor.withValues(alpha: 0.4)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -311,10 +312,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                 padding: const EdgeInsets.only(bottom: 4, left: 8),
                 child: Text(
                   'of $currency${money.format(limit)}',
-                  style: TextStyle(
-                    color: scheme.muted,
-                    fontSize: AppType.body,
-                  ),
+                  style: TextStyle(color: scheme.muted, fontSize: AppType.body),
                 ),
               ),
             ],
@@ -367,11 +365,11 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
     BuildContext context,
     double remaining,
     DateTime now,
+    FinancialPeriod period,
     String currency,
   ) {
     final scheme = SchemeTheme.of(context);
-    final daysLeft =
-        DateUtils.getDaysInMonth(now.year, now.month) - now.day + 1;
+    final daysLeft = period.daysRemaining(now);
     final dailyBudget = daysLeft > 0 ? remaining / daysLeft : 0.0;
     return Container(
       padding: const EdgeInsets.all(AppSpacing.md),
@@ -424,13 +422,13 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
 
   Widget _buildCategoryRow(
     BuildContext context,
-    Category cat,
+    ResolvedExpenseCategory category,
     double spent,
     double goalLimit,
     String currency,
   ) {
     final scheme = SchemeTheme.of(context);
-    final catColor = scheme.categoryColors[cat.index];
+    final catColor = category.color;
     final portion = goalLimit > 0 ? (spent / goalLimit).clamp(0.0, 1.0) : 0.0;
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -443,7 +441,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
               color: catColor.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: Icon(cat.icon, color: catColor, size: 16),
+             child: Icon(category.icon, color: catColor, size: 16),
           ),
           const SizedBox(width: 10),
           Expanded(
@@ -455,7 +453,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                   children: [
                     Flexible(
                       child: Text(
-                        cat.displayName,
+                         category.label,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -528,9 +526,9 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
             children: [
               Text(
                 isEdit ? 'Edit Monthly Goal' : 'Set Monthly Goal',
-                style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+                style: Theme.of(
+                  sheetContext,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
               ValueListenableBuilder<String?>(

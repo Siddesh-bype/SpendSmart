@@ -6,6 +6,7 @@ import '../models/app_settings.dart';
 import '../utils/financial_period.dart';
 import 'category_classifier.dart';
 import 'financial_calculation_engine.dart';
+import 'expense_category_resolver.dart';
 import 'storage_service.dart';
 
 /// Confidence level of an AI categorization suggestion.
@@ -63,7 +64,7 @@ class AiFinancialReview {
   final HealthScoreReport healthReport;
   final PacingAnalysis pacing;
   final List<AiRecommendation> recommendations;
-  final Map<Category, double> categoryDistribution;
+  final Map<ExpenseCategoryKey, double> categoryDistribution;
   final double totalSpend;
   final double burnRateMultiplier;
 
@@ -162,6 +163,7 @@ class AiFinancialAdvisorService {
     required List<Budget> budgets,
     required AppSettings settings,
     DateTime? referenceDate,
+    ExpenseCategoryCatalog catalog = const ExpenseCategoryCatalog.empty(),
   }) {
     final now = referenceDate ?? DateTime.now();
     final period = FinancialPeriod.containing(now, settings.startingDayOfMonth);
@@ -173,9 +175,19 @@ class AiFinancialAdvisorService {
     final totalCurrentSpend = currentCycleExpenses.fold(0.0, (sum, e) => sum + e.amount);
 
     // Category distribution
-    final catSums = <Category, double>{};
-    for (final e in currentCycleExpenses) {
-      catSums[e.category] = (catSums[e.category] ?? 0.0) + e.amount;
+    final catSums = catalog.sumByCategory(currentCycleExpenses);
+    final categoryLabelCounts = <String, int>{};
+    for (final key in catSums.keys) {
+      final label = catalog.resolveKey(key)!.label;
+      categoryLabelCounts[label] = (categoryLabelCounts[label] ?? 0) + 1;
+    }
+    final categorySpends = <String, double>{};
+    for (final entry in catSums.entries) {
+      final resolved = catalog.resolveKey(entry.key)!;
+      final label = categoryLabelCounts[resolved.label]! > 1 && resolved.isCustom
+          ? '${resolved.label} (custom)'
+          : resolved.label;
+      categorySpends[label] = (categorySpends[label] ?? 0) + entry.value;
     }
 
     // Pacing
@@ -194,7 +206,7 @@ class AiFinancialAdvisorService {
       currentSpend: totalCurrentSpend,
       budget: settings.monthlyBudget,
       recurringTotal: recurringTotal,
-      categorySpends: catSums.map((k, v) => MapEntry(k.name, v)),
+      categorySpends: categorySpends,
       daysElapsed: period.daysElapsed(now),
       totalDays: period.totalDays,
     );
@@ -240,15 +252,16 @@ class AiFinancialAdvisorService {
     // Recommendation 2: Dominant Category Insight
     if (catSums.isNotEmpty && totalCurrentSpend > 0) {
       final topCategoryEntry = catSums.entries.reduce((a, b) => a.value > b.value ? a : b);
+      final topCategory = catalog.resolveKey(topCategoryEntry.key)!;
       final pct = (topCategoryEntry.value / totalCurrentSpend) * 100;
       if (pct > 35) {
         recommendations.add(
           AiRecommendation(
-            title: '${topCategoryEntry.key.displayName} Spending Surge',
-            message:
-                '${topCategoryEntry.key.displayName} accounts for ${pct.toStringAsFixed(0)}% of your total spend ($currency${money.format(topCategoryEntry.value)}).',
+             title: '${topCategory.label} Spending Surge',
+             message:
+                 '${topCategory.label} accounts for ${pct.toStringAsFixed(0)}% of your total spend ($currency${money.format(topCategoryEntry.value)}).',
             type: AiInsightType.trendAlert,
-            relatedCategory: topCategoryEntry.key,
+             relatedCategory: topCategory.builtInCategory,
             impactAmount: topCategoryEntry.value,
           ),
         );
@@ -258,16 +271,21 @@ class AiFinancialAdvisorService {
     // Recommendation 3: Category Budget Limits Check
     for (final b in budgets) {
       if (b.monthlyLimit > 0) {
-        final spent = catSums[b.category] ?? 0.0;
+        final budgetKey = b.customCategoryId == null
+            ? ExpenseCategoryKey.builtIn(b.category)
+            : ExpenseCategoryKey.custom(b.customCategoryId!);
+        final spent = catSums[budgetKey] ?? 0.0;
         final ratio = spent / b.monthlyLimit;
         if (ratio >= 0.90) {
+          final budgetLabel = catalog.resolveKey(budgetKey)?.label ??
+              b.category.displayName;
           recommendations.add(
             AiRecommendation(
-              title: '${b.category.displayName} Budget Near Limit',
+              title: '$budgetLabel Budget Near Limit',
               message:
-                  'You have reached ${(ratio * 100).toStringAsFixed(0)}% of your ${b.category.displayName} budget. $currency${money.format(b.monthlyLimit - spent)} remaining.',
+                  'You have reached ${(ratio * 100).toStringAsFixed(0)}% of your $budgetLabel budget. $currency${money.format(b.monthlyLimit - spent)} remaining.',
               type: ratio >= 1.0 ? AiInsightType.criticalWarning : AiInsightType.trendAlert,
-              relatedCategory: b.category,
+              relatedCategory: b.customCategoryId == null ? b.category : null,
             ),
           );
         }
@@ -300,6 +318,7 @@ class AiFinancialAdvisorService {
     required String query,
     required List<Expense> expenses,
     required AppSettings settings,
+    ExpenseCategoryCatalog catalog = const ExpenseCategoryCatalog.empty(),
   }) {
     final cleanQuery = query.toLowerCase().trim();
     final cur = settings.currency;
@@ -312,16 +331,38 @@ class AiFinancialAdvisorService {
       return 'Your largest single expense is "${highest.title}" for $cur${money.format(highest.amount)} on ${DateFormat('MMM dd, yyyy').format(highest.date)}.';
     }
 
-    // 2. Query category specific
+    // 2. Prefer an exact custom-category mention before built-ins. Custom
+    // categories are allowed to share a display name such as "Food".
+    final customMatch = catalog.customCategories
+        .where(
+          (custom) =>
+              !custom.archived && cleanQuery.contains(custom.name.toLowerCase()),
+        )
+        .toList()
+      ..sort((a, b) => b.name.length.compareTo(a.name.length));
+    if (customMatch.isNotEmpty) {
+      final custom = customMatch.first;
+      final catExpenses = expenses
+          .where(
+            (e) => catalog.keyOf(e) == ExpenseCategoryKey.custom(custom.id),
+          )
+          .toList();
+      final catTotal = catExpenses.fold(0.0, (a, b) => a + b.amount);
+      return 'You have spent $cur${money.format(catTotal)} on ${custom.name} across ${catExpenses.length} transactions.';
+    }
+
+    // 3. Query built-in category specific
     for (final cat in Category.values) {
       if (cleanQuery.contains(cat.name.toLowerCase()) || cleanQuery.contains(cat.displayName.toLowerCase())) {
-        final catExpenses = expenses.where((e) => e.category == cat).toList();
+        final catExpenses = expenses
+            .where((e) => catalog.keyOf(e) == ExpenseCategoryKey.builtIn(cat))
+            .toList();
         final catTotal = catExpenses.fold(0.0, (a, b) => a + b.amount);
         return 'You have spent $cur${money.format(catTotal)} on ${cat.displayName} across ${catExpenses.length} transactions.';
       }
     }
 
-    // 3. Query total spending
+    // 4. Query total spending
     if (cleanQuery.contains('total') || cleanQuery.contains('overall') || cleanQuery.contains('how much did i spend')) {
       final total = expenses.fold(0.0, (a, b) => a + b.amount);
       return 'Your total recorded spending is $cur${money.format(total)} across ${expenses.length} transactions.';

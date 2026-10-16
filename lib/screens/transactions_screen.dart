@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../providers/expense_provider.dart';
+import '../providers/custom_category_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
@@ -17,7 +18,12 @@ import 'add_expense_screen.dart';
 
 class TransactionsScreen extends ConsumerStatefulWidget {
   final Category? initialCategory;
-  const TransactionsScreen({super.key, this.initialCategory});
+  final String? initialCustomCategoryId;
+  const TransactionsScreen({
+    super.key,
+    this.initialCategory,
+    this.initialCustomCategoryId,
+  });
 
   @override
   ConsumerState<TransactionsScreen> createState() => _TransactionsScreenState();
@@ -25,6 +31,7 @@ class TransactionsScreen extends ConsumerStatefulWidget {
 
 class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   Category? _selectedCategory;
+  String? _selectedCustomCategoryId;
   String _searchQuery = '';
   String _sortBy = 'date';
   DateTimeRange? _dateRange;
@@ -33,6 +40,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
   void initState() {
     super.initState();
     _selectedCategory = widget.initialCategory;
+    _selectedCustomCategoryId = widget.initialCustomCategoryId;
   }
 
   // ref is always valid here; parent is still alive
@@ -48,31 +56,35 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
       return;
     }
     if (!mounted) return;
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
+    final scheme = SchemeTheme.of(context);
+    messenger.clearMaterialBanners();
+    messenger.showMaterialBanner(
+      MaterialBanner(
         content: Text('Deleted "${expense.title}"'),
-        duration: const Duration(seconds: 6),
-        behavior: SnackBarBehavior.floating,
-        action: SnackBarAction(
-          label: 'UNDO',
-          textColor: SchemeTheme.of(context).primary,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            // A failed restore is the one case that loses user data outright,
-            // so it is surfaced rather than swallowed.
-            ref
-                .read(expenseProvider.notifier)
-                .addExpense(expense)
-                .catchError(
-                  (_) => messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Could not restore "${expense.title}".'),
-                    ),
-                  ),
+        leading: Icon(Icons.delete_outline, color: scheme.error),
+        backgroundColor: scheme.surface,
+        forceActionsBelow: true,
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              messenger.hideCurrentMaterialBanner();
+              ref
+                  .read(expenseProvider.notifier)
+                  .addExpense(expense)
+                  .catchError((_) {
+                messenger.showSnackBar(
+                  SnackBar(content: Text('Could not restore "${expense.title}".')),
                 );
-          },
-        ),
+              });
+            },
+            child: const Text('UNDO'),
+          ),
+          TextButton(
+            onPressed: messenger.hideCurrentMaterialBanner,
+            child: const Text('DISMISS'),
+          ),
+        ],
       ),
     );
   }
@@ -84,10 +96,21 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
         .where((e) => !e.isUncategorized)
         .toList();
     final settings = ref.watch(appSettingsProvider);
+    final customCategories = ref
+        .watch(customCategoryProvider)
+        .where((category) => !category.archived)
+        .toList();
 
-    if (_selectedCategory != null) {
+    if (_selectedCustomCategoryId != null) {
       expenses = expenses
-          .where((e) => e.category == _selectedCategory)
+          .where((e) => e.customCategoryId == _selectedCustomCategoryId)
+          .toList();
+    } else if (_selectedCategory != null) {
+      expenses = expenses
+          .where(
+            (e) =>
+                e.customCategoryId == null && e.category == _selectedCategory,
+          )
           .toList();
     }
     if (_searchQuery.isNotEmpty) {
@@ -289,11 +312,15 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                       ),
                     FilterChip(
                       label: const Text('All'),
-                      selected: _selectedCategory == null,
+                      selected: _selectedCategory == null &&
+                          _selectedCustomCategoryId == null,
                       selectedColor: scheme.primary.withValues(alpha: 0.15),
                       onSelected: (_) {
                         HapticFeedback.selectionClick();
-                        setState(() => _selectedCategory = null);
+                        setState(() {
+                          _selectedCategory = null;
+                          _selectedCustomCategoryId = null;
+                        });
                       },
                     ),
                     const SizedBox(width: AppSpacing.sm),
@@ -302,7 +329,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                         padding: const EdgeInsets.only(right: AppSpacing.sm),
                         child: FilterChip(
                           label: Text(cat.displayName),
-                          selected: _selectedCategory == cat,
+                            selected: _selectedCategory == cat,
                           selectedColor: scheme
                               .categoryColors[cat.index]
                               .withValues(alpha: 0.25),
@@ -311,9 +338,30 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                             size: 14,
                             color: scheme.categoryColors[cat.index],
                           ),
-                          onSelected: (v) {
+                            onSelected: (v) {
+                              HapticFeedback.selectionClick();
+                              setState(() {
+                                _selectedCategory = v ? cat : null;
+                                _selectedCustomCategoryId = null;
+                              });
+                            },
+                        ),
+                      ),
+                    ),
+                    ...customCategories.map(
+                      (category) => Padding(
+                        padding: const EdgeInsets.only(right: AppSpacing.sm),
+                        child: FilterChip(
+                          label: Text(category.name),
+                          selected: _selectedCustomCategoryId == category.id,
+                          selectedColor: category.color.withValues(alpha: 0.25),
+                          avatar: Icon(category.icon, size: 14, color: category.color),
+                          onSelected: (selected) {
                             HapticFeedback.selectionClick();
-                            setState(() => _selectedCategory = v ? cat : null);
+                            setState(() {
+                              _selectedCustomCategoryId = selected ? category.id : null;
+                              _selectedCategory = null;
+                            });
                           },
                         ),
                       ),
@@ -385,6 +433,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
     final scheme = SchemeTheme.of(context);
     final hasFilters =
         _selectedCategory != null ||
+        _selectedCustomCategoryId != null ||
         _searchQuery.isNotEmpty ||
         _dateRange != null;
     return EmptyState(
@@ -403,6 +452,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
               ),
               onPressed: () => setState(() {
                 _selectedCategory = null;
+                _selectedCustomCategoryId = null;
                 _searchQuery = '';
                 _dateRange = null;
               }),

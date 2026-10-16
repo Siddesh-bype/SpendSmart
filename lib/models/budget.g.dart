@@ -20,19 +20,22 @@ class BudgetAdapter extends TypeAdapter<Budget> {
       category: fields[0] as Category,
       monthlyLimit: fields[1] as double,
       alertAt: fields[2] as double,
+      customCategoryId: fields[3] as String?,
     );
   }
 
   @override
   void write(BinaryWriter writer, Budget obj) {
     writer
-      ..writeByte(3)
+      ..writeByte(4)
       ..writeByte(0)
       ..write(obj.category)
       ..writeByte(1)
       ..write(obj.monthlyLimit)
       ..writeByte(2)
-      ..write(obj.alertAt);
+      ..write(obj.alertAt)
+      ..writeByte(3)
+      ..write(obj.customCategoryId);
   }
 
   @override

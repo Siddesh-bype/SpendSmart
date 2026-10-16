@@ -56,11 +56,11 @@ class AppColors {
 /// New redesign palette (plan §0.2). ADDITIVE — existing [AppColors] stays.
 ///
 /// Contrast (WCAG) notes, computed 2026-10-04:
-/// - dark muted #9AA6C2 vs dark bg 7.93:1 (≥4.5 OK), vs dark surface 6.82:1
-/// - dark ink #E9EDF5 vs dark bg 16.50:1; light ink #112D4E vs light bg 13.04:1
+/// - dark muted #9AA6C2 vs deep navy-black remains comfortably above 4.5:1
+/// - dark ink #E9EDF5 remains high-contrast on the deep navy-black base
 /// - light primary #3F72AF vs light bg 4.64:1, vs white 4.96:1
-/// - dark primary/focus #8FB0E8 vs dark bg 8.80:1
-/// - CTA text #010736 on ink fill 16.50:1; white on light CTA (#3F72AF) 4.96:1
+/// - dark primary/focus #9AB8EE remains high-contrast on the dark base
+/// - dark CTA text #00021A on ink fill; white on light CTA (#3F72AF) 4.96:1
 /// - Semantic trio: dark success #4ADE80 11.11 / warning #FBBF24 11.59 /
 ///   error #F87171 7.00 vs #010736; light success #1B7A4A 5.01 /
 ///   warning #8A5A00 5.55 / error #B42318 6.16 vs #F9F7F7 (all ≥4.5 vs
@@ -70,14 +70,15 @@ class AppColors {
 /// - Category hues are likewise per-theme; each ≥4.5:1 on its own theme bg.
 ///   Dark set vs #010736; light set vs #F9F7F7 / #FFFFFF noted in comments.
 class Scheme {
-  // ---- Dark theme (plan §0.2) ----
-  static const Color darkBg = Color(0xFF010736);
-  static const Color darkSurface = Color(0xFF0D1C42);
-  static const Color darkElevated = Color(0xFF22396F); // sparingly
+  // ---- Dark theme ----
+  // Deep navy-black keeps the app darker without losing the blue brand tone.
+  static const Color darkBg = Color(0xFF00021A);
+  static const Color darkSurface = Color(0xFF080F2E);
+  static const Color darkElevated = Color(0xFF172957); // sparingly
   static const Color darkInk = Color(0xFFE9EDF5);
   static const Color darkMuted = Color(0xFF9AA6C2); // 7.93:1 vs darkBg
   static const Color darkBorder = Color(0x1AE9EDF5); // ink @ ~10% alpha
-  static const Color darkPrimary = Color(0xFF8FB0E8); // 8.80:1 vs darkBg
+  static const Color darkPrimary = Color(0xFF9AB8EE);
   static const Color darkCtaFill = darkInk;
   static const Color darkCtaText = darkBg; // 16.50:1 on ink fill
 
@@ -96,7 +97,7 @@ class Scheme {
   static const Color darkBills = Color(0xFFC39BF2);
   static const Color darkOther = Color(0xFFAEBEC8);
 
-  static const Color darkFocus = Color(0xFF8FB0E8); // == darkPrimary
+  static const Color darkFocus = darkPrimary;
 
   // ---- Light theme (plan §0.2, ColorHunt f9f7f7/dbe2ef/3f72af/112d4e) ----
   static const Color lightBg = Color(0xFFF9F7F7);

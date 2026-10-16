@@ -8,9 +8,11 @@ import '../providers/app_settings_provider.dart';
 import '../providers/daily_goal_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/income_provider.dart';
+import '../providers/expense_category_provider.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../models/budget.dart';
+import '../services/expense_category_resolver.dart';
 import '../widgets/expense_tile.dart';
 import '../widgets/day_detail_sheet.dart';
 import '../widgets/edit_expense_sheet.dart';
@@ -58,32 +60,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       return;
     }
     if (!mounted) return;
-    messenger.clearSnackBars();
-    messenger.showSnackBar(
-      SnackBar(
+    final scheme = SchemeTheme.of(context);
+    messenger.clearMaterialBanners();
+    messenger.showMaterialBanner(
+      MaterialBanner(
         content: Text('Deleted "${expense.title}"'),
-        duration: const Duration(seconds: 15),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-        action: SnackBarAction(
-          label: 'UNDO',
-          textColor: SchemeTheme.of(context).primary,
-          onPressed: () {
-            HapticFeedback.lightImpact();
-            // A failed restore is the one case that loses user data outright,
-            // so it is surfaced rather than swallowed.
-            ref
-                .read(expenseProvider.notifier)
-                .addExpense(expense)
-                .catchError(
-                  (_) => messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Could not restore "${expense.title}".'),
+        leading: Icon(Icons.delete_outline, color: scheme.error),
+        backgroundColor: scheme.surface,
+        forceActionsBelow: true,
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              messenger.hideCurrentMaterialBanner();
+              ref
+                  .read(expenseProvider.notifier)
+                  .addExpense(expense)
+                  .catchError(
+                    (_) => messenger.showSnackBar(
+                      SnackBar(
+                        content: Text('Could not restore "${expense.title}".'),
+                      ),
                     ),
-                  ),
-                );
-          },
-        ),
+                  );
+            },
+            child: const Text('UNDO'),
+          ),
+          TextButton(
+            onPressed: messenger.hideCurrentMaterialBanner,
+            child: const Text('DISMISS'),
+          ),
+        ],
       ),
     );
   }
@@ -105,6 +112,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final expenses = ref.watch(expenseProvider);
     final settings = ref.watch(appSettingsProvider);
     final budgets = ref.watch(budgetProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final notifications = ref.watch(notificationProvider);
     final incomes = ref.watch(incomeProvider);
     final dailyGoals = ref.watch(dailyGoalProvider);
@@ -164,9 +172,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         final currentMonthly = currentExpenses
             .where((e) => currentPeriod.contains(e.date) && !e.isUncategorized)
             .toList();
-        final Map<Category, double> spending = {};
+        final spending = <ExpenseCategoryKey, double>{};
         for (var e in currentMonthly) {
-          spending[e.category] = (spending[e.category] ?? 0) + e.amount;
+          final key = catalog.keyOf(e);
+          spending[key] = (spending[key] ?? 0) + e.amount;
         }
         ref
             .read(notificationProvider.notifier)
@@ -174,6 +183,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               currentBudgets,
               spending,
               currency: ref.read(appSettingsProvider).currency,
+              period: currentPeriod,
+              catalog: catalog,
             );
       });
     });
@@ -194,7 +205,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          DateFormat('MMMM yyyy').format(now),
+                          period.label,
                           style: TextStyle(
                             fontSize: AppType.label,
                             color: scheme.muted,
@@ -290,9 +301,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                         shape: BoxShape.circle,
                                       ),
                                       child: Text(
-                                        unreadCount > 9
-                                            ? '9+'
-                                            : '$unreadCount',
+                                        unreadCount > 9 ? '9+' : '$unreadCount',
                                         style: TextStyle(
                                           color: scheme.ctaText,
                                           fontSize: AppType.micro,
@@ -371,16 +380,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                     vertical: 4,
                                   ),
                                   decoration: BoxDecoration(
-                                    color: (netBalance >= 0
-                                            ? scheme.success
-                                            : scheme.error)
-                                        .withValues(alpha: 0.15),
+                                    color:
+                                        (netBalance >= 0
+                                                ? scheme.success
+                                                : scheme.error)
+                                            .withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: (netBalance >= 0
-                                              ? scheme.success
-                                              : scheme.error)
-                                          .withValues(alpha: 0.5),
+                                      color:
+                                          (netBalance >= 0
+                                                  ? scheme.success
+                                                  : scheme.error)
+                                              .withValues(alpha: 0.5),
                                     ),
                                   ),
                                   child: Text(
@@ -446,7 +457,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                           ],
-                          if (settings.monthlyBudget > 0 && dailyLeft.isFinite) ...[
+                          if (settings.monthlyBudget > 0 &&
+                              dailyLeft.isFinite) ...[
                             const SizedBox(width: 8),
                             Expanded(
                               child: _statChip(
@@ -592,7 +604,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           builder: (_) => const AnalyticsScreen(),
                         ),
                       ),
-                      child: Text('See All', style: TextStyle(color: scheme.primary)),
+                      child: Text(
+                        'See All',
+                        style: TextStyle(color: scheme.primary),
+                      ),
                     ),
                   ],
                 ),
@@ -604,6 +619,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 monthlyExpenses,
                 budgets,
                 settings.currency,
+                catalog,
               ),
             ),
 
@@ -657,8 +673,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         goals: dailyGoals,
                         onDaySelected: (day) {
                           setState(
-                            () => _selectedDay =
-                                _isSameDay(day, _selectedDay) ? null : day,
+                            () => _selectedDay = _isSameDay(day, _selectedDay)
+                                ? null
+                                : day,
                           );
                           showModalBottomSheet<void>(
                             context: context,
@@ -844,11 +861,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     List<Expense> expenses,
     List<Budget> budgets,
     String currency,
+    ExpenseCategoryCatalog catalog,
   ) {
     final scheme = SchemeTheme.of(context);
-    final Map<Category, double> sums = {};
+    final sums = <ExpenseCategoryKey, double>{};
     for (var e in expenses) {
-      sums[e.category] = (sums[e.category] ?? 0) + e.amount;
+      final key = catalog.keyOf(e);
+      sums[key] = (sums[key] ?? 0) + e.amount;
     }
     if (sums.isEmpty) {
       return Padding(
@@ -875,12 +894,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         child: Column(
           children: [
             ...topCats.take(4).map((e) {
-              final cat = e.key;
+              final resolved = catalog.resolveKey(e.key)!;
               final spent = e.value;
-              final catColor = scheme.categoryColors[cat.index];
+              final catColor = resolved.color;
               final budget = budgets.firstWhere(
-                (b) => b.category == cat,
-                orElse: () => Budget(category: cat, monthlyLimit: 0),
+                (b) => b.customCategoryId == e.key.customCategoryId &&
+                    (b.customCategoryId != null || b.category == e.key.builtIn),
+                orElse: () => Budget(
+                  category: resolved.builtInCategory ?? Category.other,
+                  customCategoryId: resolved.customCategoryId,
+                  monthlyLimit: 0,
+                ),
               );
               final limit = budget.monthlyLimit > 0
                   ? budget.monthlyLimit
@@ -902,11 +926,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 color: catColor.withValues(alpha: 0.15),
                                 shape: BoxShape.circle,
                               ),
-                              child: Icon(cat.icon, size: 16, color: catColor),
+                               child: Icon(
+                                 resolved.icon,
+                                 size: 16,
+                                 color: catColor,
+                               ),
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              cat.displayName,
+                               resolved.label,
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 color: scheme.ink,

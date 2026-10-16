@@ -32,6 +32,9 @@ class Expense extends HiveObject {
   @HiveField(8)
   final String source;
 
+  @HiveField(9)
+  final String? customCategoryId;
+
   Expense({
     required this.id,
     required this.title,
@@ -42,6 +45,7 @@ class Expense extends HiveObject {
     required this.isManual,
     required this.isUncategorized,
     required this.source,
+    this.customCategoryId,
   });
 
   Expense copyWith({
@@ -54,6 +58,8 @@ class Expense extends HiveObject {
     bool? isManual,
     bool? isUncategorized,
     String? source,
+    String? customCategoryId,
+    bool clearCustomCategory = false,
   }) {
     return Expense(
       id: id ?? this.id,
@@ -65,6 +71,9 @@ class Expense extends HiveObject {
       isManual: isManual ?? this.isManual,
       isUncategorized: isUncategorized ?? this.isUncategorized,
       source: source ?? this.source,
+      customCategoryId: clearCustomCategory
+          ? null
+          : (customCategoryId ?? this.customCategoryId),
     );
   }
 }

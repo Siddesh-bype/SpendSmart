@@ -141,7 +141,8 @@ class CsvImportService {
   static CsvImportResult _parseRows(
     List<List<dynamic>> rows, {
     MerchantCategoryLookup? memoryLookup,
-  }) {    if (rows.length < 2) {
+  }) {
+    if (rows.length < 2) {
       return const CsvImportResult(
         imported: [],
         skipped: 0,
@@ -156,7 +157,12 @@ class CsvImportService {
     int col(Set<String> names) => headers.indexWhere(names.contains);
 
     final idIdx = col({'id', 'transaction id', 'reference id'});
-    final dateIdx = col({'date', 'transaction date', 'txn date'});
+    final dateIdx = col({
+      'date',
+      'posting date',
+      'transaction date',
+      'txn date',
+    });
     final titleIdx = col({'title', 'merchant', 'description', 'narration'});
     final amountIdx = col({
       'amount',

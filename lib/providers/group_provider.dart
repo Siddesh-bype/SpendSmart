@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/split_group.dart';
 import 'service_provider.dart';
+import 'group_expense_provider.dart';
 
 final splitGroupProvider =
     NotifierProvider<SplitGroupNotifier, List<SplitGroup>>(
@@ -36,19 +37,30 @@ class SplitGroupNotifier extends Notifier<List<SplitGroup>> {
     }
     if (group == null) return;
     if (group.participants.every((p) => p.id != participantId)) return;
-    group.myParticipantId = participantId;
-    await ref.read(storageServiceProvider).saveSplitGroup(group);
+    final updated = SplitGroup(
+      id: group.id,
+      name: group.name,
+      participants: List.of(group.participants),
+      createdAt: group.createdAt,
+      myParticipantId: participantId,
+    );
+    await ref.read(storageServiceProvider).saveSplitGroup(updated);
     _reload();
   }
 
   Future<void> deleteGroup(String id) async {
     final storage = ref.read(storageServiceProvider);
-    for (final expense in storage.getAllGroupExpenses().where(
-      (e) => e.groupId == id,
-    )) {
-      await storage.deleteGroupExpense(expense.id);
+    try {
+      for (final expense in storage.getAllGroupExpenses().where(
+        (e) => e.groupId == id,
+      )) {
+        await storage.deleteGroupExpense(expense.id);
+      }
+      await storage.deleteSplitGroup(id);
+    } finally {
+      // Refresh both lists even if a multi-write deletion stops partway.
+      ref.invalidate(groupExpenseProvider);
+      _reload();
     }
-    await storage.deleteSplitGroup(id);
-    _reload();
   }
 }
