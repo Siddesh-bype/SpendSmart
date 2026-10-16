@@ -7,6 +7,7 @@ import '../models/income.dart';
 import '../providers/income_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/design.dart';
+import '../utils/financial_period.dart';
 import '../utils/theme.dart';
 import '../utils/validation.dart';
 
@@ -19,17 +20,22 @@ class IncomeScreen extends ConsumerWidget {
     final settings = ref.watch(appSettingsProvider);
     final currency = settings.currency;
 
-    // Group by month
-    final Map<String, List<Income>> grouped = {};
+    // Group by the user's financial cycle rather than calendar month.
+    final Map<FinancialPeriod, List<Income>> grouped = {};
     for (final inc in incomes) {
-      final key = DateFormat('MMMM yyyy').format(inc.date);
+      final key = FinancialPeriod.containing(
+        inc.date,
+        settings.startingDayOfMonth,
+      );
       grouped.putIfAbsent(key, () => []).add(inc);
     }
 
-    // Current month total
     final now = DateTime.now();
-    final thisMonthKey = DateFormat('MMMM yyyy').format(now);
-    final thisMonthTotal = (grouped[thisMonthKey] ?? []).fold(
+    final currentPeriod = FinancialPeriod.containing(
+      now,
+      settings.startingDayOfMonth,
+    );
+    final thisPeriodTotal = (grouped[currentPeriod] ?? []).fold(
       0.0,
       (s, i) => s + i.amount,
     );
@@ -99,7 +105,7 @@ class IncomeScreen extends ConsumerWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'This Month',
+                      'This Period',
                       style: TextStyle(
                         color: scheme.muted,
                         fontSize: AppType.caption,
@@ -107,7 +113,7 @@ class IncomeScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$currency${NumberFormat('#,##0').format(thisMonthTotal)}',
+                      '$currency${NumberFormat('#,##0').format(thisPeriodTotal)}',
                       style: TextStyle(
                         color: scheme.ink,
                         fontSize: AppType.title,
@@ -176,7 +182,7 @@ class IncomeScreen extends ConsumerWidget {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              entry.key,
+                              entry.key.label,
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: AppType.label,
@@ -255,7 +261,10 @@ class _IncomeTile extends ConsumerWidget {
       ),
       title: Text(
         income.source,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: AppType.body),
+        style: const TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: AppType.body,
+        ),
       ),
       subtitle: Text(
         '${DateFormat('d MMM y').format(income.date)}${income.note.isNotEmpty ? ' · ${income.note}' : ''}',
@@ -467,7 +476,10 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
                 ),
                 child: const Text(
                   'Save',
-                  style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    fontSize: AppType.headline,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

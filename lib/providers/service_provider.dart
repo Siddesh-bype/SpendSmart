@@ -1,4 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'app_settings_provider.dart';
+import '../services/backup_service.dart';
 import '../services/storage_service.dart';
 
 /// Must be overridden in main.dart with an initialized StorageService instance.
@@ -7,5 +9,12 @@ final storageServiceProvider = Provider<StorageService>((ref) {
   throw UnimplementedError(
     'storageServiceProvider was not initialized. '
     'Call ProviderScope(overrides: [storageServiceProvider.overrideWithValue(...)]) in main.dart.',
+  );
+});
+
+final backupServiceProvider = Provider<BackupService>((ref) {
+  return BackupService(
+    storage: ref.watch(storageServiceProvider),
+    preferences: ref.watch(sharedPreferencesProvider),
   );
 });

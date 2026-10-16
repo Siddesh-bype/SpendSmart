@@ -4,6 +4,20 @@ import 'package:spendsmart/services/csv_import_service.dart';
 import 'package:spendsmart/services/export_service.dart';
 
 void main() {
+  test('CSV parser accepts the documented Posting Date alias', () {
+    final result = CsvImportService.parse('''
+ Posting Date ,Description,Withdrawal Amount
+2026-07-10,Coffee Shop,250.50
+2026-02-30,Impossible Date,100
+''');
+
+    expect(result.errors, hasLength(1));
+    expect(result.skipped, 1);
+    expect(result.imported.single.date, DateTime(2026, 7, 10));
+    expect(result.imported.single.title, 'Coffee Shop');
+    expect(result.imported.single.amount, 250.50);
+  });
+
   test('CSV parser accepts explicit aliases and skips malformed rows', () {
     final result = CsvImportService.parse('''
 Transaction Date,Merchant,Debit Amount

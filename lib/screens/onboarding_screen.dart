@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../utils/theme.dart';
 import '../utils/design.dart';
 import '../providers/app_settings_provider.dart';
-import '../providers/service_provider.dart';
 import 'main_scaffold.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -63,6 +62,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pageAnimCtrl.duration = AppMotion.duration(
+      context,
+      const Duration(milliseconds: 500),
+    );
+  }
+
+  @override
   void dispose() {
     _controller.dispose();
     _pageAnimCtrl.dispose();
@@ -83,7 +91,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
   Future<void> _finish() async {
     HapticFeedback.mediumImpact();
     await ref.read(appSettingsProvider.notifier).completeOnboarding();
-    await ref.read(storageServiceProvider).init();
     if (!mounted) return;
     Navigator.of(
       context,
@@ -100,8 +107,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
       onPopInvokedWithResult: (didPop, _) {
         if (!didPop && _page > 0) {
           _controller.previousPage(
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
+            duration: AppMotion.duration(
+              context,
+              const Duration(milliseconds: 300),
+            ),
+            curve: AppMotion.curve(context, Curves.easeInOut),
           );
         }
       },
@@ -151,7 +161,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                   alignment: Alignment.centerLeft,
                   child: Text(
                     'Your personal expense tracker',
-                    style: TextStyle(color: scheme.muted, fontSize: AppType.label),
+                    style: TextStyle(
+                      color: scheme.muted,
+                      fontSize: AppType.label,
+                    ),
                   ),
                 ),
               ),
@@ -179,7 +192,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                 children: List.generate(
                   _pages.length,
                   (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: AppMotion.duration(
+                      context,
+                      const Duration(milliseconds: 300),
+                    ),
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: _page == i ? 24 : 8,
                     height: 8,
@@ -210,8 +226,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
                     HapticFeedback.lightImpact();
                     if (!isLast) {
                       _controller.nextPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
+                        duration: AppMotion.duration(
+                          context,
+                          const Duration(milliseconds: 300),
+                        ),
+                        curve: AppMotion.curve(context, Curves.easeInOut),
                       );
                     } else {
                       _finish();
@@ -248,10 +267,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen>
               decoration: BoxDecoration(
                 color: scheme.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
-                border: Border.all(
-                  color: scheme.border,
-                  width: 1,
-                ),
+                border: Border.all(color: scheme.border, width: 1),
               ),
               child: Icon(page.icon, size: 56, color: scheme.primary),
             ),

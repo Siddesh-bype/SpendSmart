@@ -5,6 +5,7 @@ class AppNotification {
   final DateTime time;
   final NotifType type;
   final bool isRead;
+  final String? categoryKey;
 
   const AppNotification({
     required this.id,
@@ -13,11 +14,13 @@ class AppNotification {
     required this.time,
     required this.type,
     this.isRead = false,
+    this.categoryKey,
   });
 
   AppNotification copyWith({bool? isRead}) => AppNotification(
     id: id, title: title, body: body, time: time, type: type,
     isRead: isRead ?? this.isRead,
+    categoryKey: categoryKey,
   );
 }
 

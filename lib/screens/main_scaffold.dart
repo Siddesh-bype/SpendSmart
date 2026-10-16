@@ -20,6 +20,9 @@ class MainScaffold extends ConsumerStatefulWidget {
 
 class _MainScaffoldState extends ConsumerState<MainScaffold> {
   int _currentIndex = 0;
+  // Tab a tap is animating to; pages passed on the way are ignored.
+  int? _tapTarget;
+  late final PageController _pageController;
 
   final List<Widget> _screens = const [
     HomeScreen(),
@@ -32,6 +35,7 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController();
     // Generate any overdue recurring expenses on startup
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
@@ -41,7 +45,33 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
     });
   }
 
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
   void _onTabTap(int index) {
+    if (_currentIndex == index) return;
+    HapticFeedback.selectionClick();
+    setState(() => _currentIndex = index);
+    final duration = AppMotion.duration(context, AppDuration.base);
+    if (duration == Duration.zero) {
+      _pageController.jumpToPage(index);
+    } else {
+      _tapTarget = index;
+      _pageController
+          .animateToPage(
+            index,
+            duration: duration,
+            curve: AppMotion.curve(context, Curves.easeOutCubic),
+          )
+          .whenComplete(() => _tapTarget = null);
+    }
+  }
+
+  void _onPageChanged(int index) {
+    if (_tapTarget != null && index != _tapTarget) return;
     if (_currentIndex == index) return;
     HapticFeedback.selectionClick();
     setState(() => _currentIndex = index);
@@ -53,7 +83,11 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
 
     return Scaffold(
       extendBody: false,
-      body: IndexedStack(index: _currentIndex, children: _screens),
+      body: PageView(
+        controller: _pageController,
+        onPageChanged: _onPageChanged,
+        children: [for (final screen in _screens) _KeepAliveTab(child: screen)],
+      ),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: scheme.surface,
@@ -144,8 +178,8 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
             mainAxisSize: MainAxisSize.min,
             children: [
               AnimatedContainer(
-                duration: AppDuration.base,
-                curve: Curves.easeOutExpo,
+                duration: AppMotion.duration(context, AppDuration.base),
+                curve: AppMotion.curve(context, Curves.easeOutExpo),
                 padding: EdgeInsets.symmetric(
                   horizontal: 14,
                   vertical: selected ? 6 : 4,
@@ -162,7 +196,10 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
               ),
               const SizedBox(height: 2),
               AnimatedDefaultTextStyle(
-                duration: const Duration(milliseconds: 200),
+                duration: AppMotion.duration(
+                  context,
+                  const Duration(milliseconds: 200),
+                ),
                 style: TextStyle(
                   fontSize: AppType.micro,
                   color: selected ? scheme.primary : scheme.muted,
@@ -170,12 +207,37 @@ class _MainScaffoldState extends ConsumerState<MainScaffold> {
                   letterSpacing: 0.2,
                   height: 1.2,
                 ),
-                child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
         ),
       ),
     );
+  }
+}
+
+class _KeepAliveTab extends StatefulWidget {
+  const _KeepAliveTab({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_KeepAliveTab> createState() => _KeepAliveTabState();
+}
+
+class _KeepAliveTabState extends State<_KeepAliveTab>
+    with AutomaticKeepAliveClientMixin<_KeepAliveTab> {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

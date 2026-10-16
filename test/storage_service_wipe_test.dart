@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:hive/hive.dart';
 import 'package:spendsmart/models/budget.dart';
 import 'package:spendsmart/models/category.dart';
+import 'package:spendsmart/models/custom_category.dart';
 import 'package:spendsmart/models/expense.dart';
 import 'package:spendsmart/models/group_expense.dart';
 import 'package:spendsmart/models/income.dart';
@@ -38,6 +39,9 @@ void main() {
     if (!Hive.isAdapterRegistered(8)) {
       Hive.registerAdapter(GroupExpenseAdapter());
     }
+    if (!Hive.isAdapterRegistered(9)) {
+      Hive.registerAdapter(CustomCategoryAdapter());
+    }
 
     await Hive.openBox<Expense>(StorageService.expenseBoxName);
     await Hive.openBox<MerchantMemory>(StorageService.merchantBoxName);
@@ -47,6 +51,7 @@ void main() {
     await Hive.openBox<RecurringExpense>(StorageService.recurringBoxName);
     await Hive.openBox<SplitGroup>(StorageService.splitGroupBoxName);
     await Hive.openBox<GroupExpense>(StorageService.groupExpenseBoxName);
+    await Hive.openBox<CustomCategory>(StorageService.customCategoryBoxName);
 
     storage = StorageService();
   });
@@ -132,12 +137,22 @@ void main() {
         date: now,
       ),
     );
+    await storage.customCategoryBox.put(
+      'cat-1',
+      CustomCategory(
+        id: 'cat-1',
+        name: 'Subscriptions',
+        iconCodePoint: 0xe3b0,
+        colorValue: 0xFF9AB8EE,
+      ),
+    );
   }
 
   test('wipe clears all seeded boxes', () async {
     await seedAll();
     expect(storage.expenseBox.isNotEmpty, isTrue);
     expect(storage.groupExpenseBox.isNotEmpty, isTrue);
+    expect(storage.customCategoryBox.isNotEmpty, isTrue);
 
     await storage.clearAllData();
 
@@ -149,6 +164,7 @@ void main() {
     expect(storage.recurringBox.isEmpty, isTrue);
     expect(storage.splitGroupBox.isEmpty, isTrue);
     expect(storage.groupExpenseBox.isEmpty, isTrue);
+    expect(storage.customCategoryBox.isEmpty, isTrue);
   });
 
   test('wipe on empty boxes succeeds without throwing', () async {
@@ -156,5 +172,6 @@ void main() {
 
     expect(storage.expenseBox.isEmpty, isTrue);
     expect(storage.groupExpenseBox.isEmpty, isTrue);
+    expect(storage.customCategoryBox.isEmpty, isTrue);
   });
 }

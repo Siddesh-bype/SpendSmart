@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import '../models/category.dart';
 import '../models/expense.dart';
 import '../providers/daily_goal_provider.dart';
-import '../utils/constants.dart';
+import '../providers/expense_category_provider.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import '../utils/validation.dart';
 import 'money_text.dart';
 
@@ -86,16 +86,15 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
 
     controller.dispose();
     if (saved == null || !mounted) return;
-    await ref
-        .read(dailyGoalProvider.notifier)
-        .setGoal(widget.day, saved);
+    await ref.read(dailyGoalProvider.notifier).setGoal(widget.day, saved);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = SchemeTheme.of(context);
     final goals = ref.watch(dailyGoalProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final goal = goals[DailyGoalNotifier.keyFor(widget.day)];
 
     final spent = widget.expenses.fold(0.0, (sum, e) => sum + e.amount);
@@ -113,7 +112,7 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: scheme.outlineVariant,
+                  color: scheme.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -133,7 +132,7 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                   currency: widget.currency,
                   size: AppType.title,
                   weight: FontWeight.w700,
-                  color: overGoal ? AppColors.error : scheme.onSurface,
+                  color: overGoal ? scheme.error : scheme.ink,
                 ),
                 if (goal != null) ...[
                   const SizedBox(width: AppSpacing.xs),
@@ -151,8 +150,8 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                 child: LinearProgressIndicator(
                   value: (spent / goal).clamp(0.0, 1.0),
                   minHeight: 6,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                  color: overGoal ? AppColors.error : AppColors.success,
+                  backgroundColor: scheme.elevated,
+                  color: overGoal ? scheme.error : scheme.success,
                 ),
               ),
               const SizedBox(height: AppSpacing.xs),
@@ -161,7 +160,7 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                     ? '${widget.currency}${(spent - goal).toStringAsFixed(0)} over the goal'
                     : '${widget.currency}${(goal - spent).toStringAsFixed(0)} left',
                 style: theme.textTheme.labelMedium?.copyWith(
-                  color: overGoal ? AppColors.error : AppColors.success,
+                  color: overGoal ? scheme.error : scheme.success,
                 ),
               ),
             ],
@@ -194,11 +193,12 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (context, index) {
                     final expense = widget.expenses[index];
+                    final category = catalog.resolve(expense);
                     return ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: Icon(
-                        expense.category.icon,
-                        color: expense.category.color,
+                         category.icon,
+                         color: category.color,
                         size: 20,
                       ),
                       title: Text(
@@ -213,7 +213,7 @@ class _DayDetailSheetState extends ConsumerState<DayDetailSheet> {
                         decimals: true,
                         size: AppType.body,
                         weight: FontWeight.w600,
-                        color: scheme.onSurface,
+                        color: scheme.ink,
                       ),
                     );
                   },

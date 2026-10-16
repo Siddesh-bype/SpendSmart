@@ -1,9 +1,12 @@
 ﻿import 'dart:io';
 import 'package:csv/csv.dart';
+import 'package:hive/hive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import '../models/category.dart';
+import '../models/custom_category.dart';
+import 'expense_category_resolver.dart';
+import 'storage_service.dart';
 
 class ExportService {
   /// Prefixes Excel and Sheets treat as the start of a formula.
@@ -18,7 +21,11 @@ class ExportService {
   static String sanitizeCell(String value) =>
       _formulaStart.hasMatch(value) ? "'$value" : value;
 
-  static Future<String> exportToCSV(List<Expense> expenses) async {
+  static Future<String> exportToCSV(
+    List<Expense> expenses, {
+    Iterable<CustomCategory>? customCategories,
+  }) async {
+    final catalog = _catalog(customCategories);
     List<List<dynamic>> rows = [];
     rows.add([
       "ID",
@@ -38,7 +45,7 @@ class ExportService {
         DateFormat('yyyy-MM-dd HH:mm:ss').format(exp.date),
         sanitizeCell(exp.title),
         exp.amount,
-        exp.category.displayName,
+        sanitizeCell(catalog.labelOf(exp)),
         sanitizeCell(exp.source),
         exp.isManual,
         exp.isUncategorized,
@@ -54,6 +61,20 @@ class ExportService {
     await file.writeAsString(csv);
     
     return path;
+  }
+
+  static ExpenseCategoryCatalog _catalog(
+    Iterable<CustomCategory>? customCategories,
+  ) {
+    if (customCategories != null) {
+      return ExpenseCategoryCatalog(customCategories);
+    }
+    if (Hive.isBoxOpen(StorageService.customCategoryBoxName)) {
+      return ExpenseCategoryCatalog(
+        Hive.box<CustomCategory>(StorageService.customCategoryBoxName).values,
+      );
+    }
+    return const ExpenseCategoryCatalog.empty();
   }
 }
 

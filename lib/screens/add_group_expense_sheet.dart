@@ -32,6 +32,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   late DateTime _date;
   late Map<String, TextEditingController> _shareCtrls;
   String? _errorMessage;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -74,10 +75,13 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   }
 
   Future<void> _save() async {
+    if (_saving) return;
     final desc = _descCtrl.text.trim();
     final amount = parsePositiveAmount(_amountCtrl.text);
     if (desc.isEmpty || amount == null) {
-      setState(() => _errorMessage = 'Please enter a valid description and amount');
+      setState(
+        () => _errorMessage = 'Please enter a valid description and amount',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a valid description and amount'),
@@ -94,7 +98,10 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
     }).toList();
 
     if (shares.any((share) => share.amount <= 0)) {
-      setState(() => _errorMessage = 'Every participant share must be greater than zero');
+      setState(
+        () =>
+            _errorMessage = 'Every participant share must be greater than zero',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Every participant share must be greater than zero'),
@@ -105,8 +112,10 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
 
     final diff = (amount - _totalShares).abs();
     if (diff > 0.02) {
-      setState(() => _errorMessage =
-          'Shares must sum to total (difference: ${diff.toStringAsFixed(2)})');
+      setState(
+        () => _errorMessage =
+            'Shares must sum to total (difference: ${diff.toStringAsFixed(2)})',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -128,12 +137,25 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
       note: _noteCtrl.text.trim(),
     );
 
+    setState(() {
+      _saving = true;
+      _errorMessage = null;
+    });
     try {
       await ref.read(groupExpenseProvider.notifier).addExpense(expense);
-      if (mounted) Navigator.pop(context);
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
       HapticFeedback.mediumImpact();
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Group expense added')),
+      );
     } catch (_) {
       if (mounted) {
+        setState(() {
+          _saving = false;
+          _errorMessage = 'Could not save the group expense. Try again.';
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not save the group expense. Try again.'),
@@ -223,9 +245,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: _equalSplit
-                            ? scheme.ctaFill
-                            : scheme.tint,
+                        color: _equalSplit ? scheme.ctaFill : scheme.tint,
                         borderRadius: const BorderRadius.horizontal(
                           left: Radius.circular(12),
                         ),
@@ -235,9 +255,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                           'Equal Split',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: _equalSplit
-                                ? scheme.ctaText
-                                : scheme.ink,
+                            color: _equalSplit ? scheme.ctaText : scheme.ink,
                             fontSize: AppType.label,
                           ),
                         ),
@@ -252,9 +270,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       decoration: BoxDecoration(
-                        color: !_equalSplit
-                            ? scheme.ctaFill
-                            : scheme.tint,
+                        color: !_equalSplit ? scheme.ctaFill : scheme.tint,
                         borderRadius: const BorderRadius.horizontal(
                           right: Radius.circular(12),
                         ),
@@ -264,9 +280,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                           'Custom',
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
-                            color: !_equalSplit
-                                ? scheme.ctaText
-                                : scheme.ink,
+                            color: !_equalSplit ? scheme.ctaText : scheme.ink,
                             fontSize: AppType.label,
                           ),
                         ),
@@ -364,17 +378,18 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               width: double.infinity,
               height: 50,
               child: ElevatedButton(
-                onPressed: _save,
+                onPressed: _saving ? null : _save,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: scheme.ctaFill,
                   foregroundColor: scheme.ctaText,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: AppRadius.mdAll,
-                  ),
+                  shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                 ),
-                child: const Text(
-                  'Add Expense',
-                  style: TextStyle(fontSize: AppType.headline, fontWeight: FontWeight.bold),
+                child: Text(
+                  _saving ? 'Saving…' : 'Add Expense',
+                  style: const TextStyle(
+                    fontSize: AppType.headline,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),

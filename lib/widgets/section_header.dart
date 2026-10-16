@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../utils/design.dart';
+import '../utils/theme.dart';
 
 /// A section title with optional subtitle and trailing action.
 /// Replaces the repeated "bold Text + SizedBox" pattern across screens —
@@ -28,6 +29,7 @@ class SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final scheme = SchemeTheme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: AppSpacing.md),
       child: Row(
@@ -47,9 +49,7 @@ class SectionHeader extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurface.withValues(
-                        alpha: 0.58,
-                      ),
+                      color: scheme.muted,
                     ),
                   ),
                 ],

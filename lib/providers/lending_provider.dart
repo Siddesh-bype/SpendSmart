@@ -20,6 +20,12 @@ class LendingNotifier extends Notifier<List<Lending>> {
     _reload();
   }
 
+  Future<void> updateLending(Lending lending) async {
+    if (state.every((entry) => entry.id != lending.id)) return;
+    await ref.read(storageServiceProvider).saveLending(lending);
+    _reload();
+  }
+
   Future<void> settle(String id) async {
     final index = state.indexWhere((e) => e.id == id);
     if (index == -1) return; // already deleted
@@ -28,8 +34,34 @@ class LendingNotifier extends Notifier<List<Lending>> {
     _reload();
   }
 
-  Future<void> deleteLending(String id) async {
+  Future<Lending?> deleteLending(String id) async {
+    Lending? deleted;
+    for (final entry in state) {
+      if (entry.id == id) {
+        deleted = entry;
+        break;
+      }
+    }
+    if (deleted == null) return null;
     await ref.read(storageServiceProvider).deleteLending(id);
     _reload();
+    return deleted;
+  }
+
+  Future<void> restoreLending(Lending lending) async {
+    await ref.read(storageServiceProvider).saveLending(lending);
+    _reload();
+  }
+
+  Future<int> settleAllForFriend(String friendName) async {
+    final entries = state
+        .where((entry) => entry.friendName == friendName && !entry.isSettled)
+        .map((entry) => entry.copyWith(isSettled: true))
+        .toList();
+    for (final entry in entries) {
+      await ref.read(storageServiceProvider).saveLending(entry);
+    }
+    if (entries.isNotEmpty) _reload();
+    return entries.length;
   }
 }

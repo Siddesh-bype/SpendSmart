@@ -1,10 +1,13 @@
 import 'dart:io';
 import 'dart:ui' show Rect, Offset;
+import 'package:hive/hive.dart';
 import 'package:syncfusion_flutter_pdf/pdf.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import '../models/category.dart';
+import '../models/custom_category.dart';
+import 'expense_category_resolver.dart';
+import 'storage_service.dart';
 
 class PdfExportService {
   /// Generates a PDF statement of expenses and returns the file path
@@ -12,7 +15,9 @@ class PdfExportService {
     List<Expense> expenses, {
     String currency = '₹',
     String title = 'SpendSmart - Expense Report',
+    Iterable<CustomCategory>? customCategories,
   }) async {
+    final catalog = _catalog(customCategories);
     // Create PDF document
     final document = PdfDocument();
     final page = document.pages.add();
@@ -63,10 +68,19 @@ class PdfExportService {
     final totalSpent = sorted.fold(0.0, (a, b) => a + b.amount);
 
     // Category breakdown
+    final grouped = catalog.sumByCategory(sorted, includeUncategorized: true);
+    final labelCounts = <String, int>{};
+    for (final key in grouped.keys) {
+      final label = catalog.resolveKey(key)!.label;
+      labelCounts[label] = (labelCounts[label] ?? 0) + 1;
+    }
     final catSums = <String, double>{};
-    for (final e in sorted) {
-      catSums[e.category.displayName] =
-          (catSums[e.category.displayName] ?? 0) + e.amount;
+    for (final entry in grouped.entries) {
+      final resolved = catalog.resolveKey(entry.key)!;
+      final label = labelCounts[resolved.label]! > 1 && resolved.isCustom
+          ? '${resolved.label} (custom)'
+          : resolved.label;
+      catSums[label] = (catSums[label] ?? 0) + entry.value;
     }
     final topCats = catSums.entries.toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -235,7 +249,7 @@ class PdfExportService {
         bounds: Rect.fromLTWH(85, y + 3, 160, 14),
       );
       currentGraphics.drawString(
-        e.category.displayName,
+        catalog.labelOf(e),
         normalFont,
         brush: PdfSolidBrush(grayText),
         bounds: Rect.fromLTWH(250, y + 3, 100, 14),
@@ -273,5 +287,19 @@ class PdfExportService {
     await file.writeAsBytes(await document.save());
     document.dispose();
     return path;
+  }
+
+  static ExpenseCategoryCatalog _catalog(
+    Iterable<CustomCategory>? customCategories,
+  ) {
+    if (customCategories != null) {
+      return ExpenseCategoryCatalog(customCategories);
+    }
+    if (Hive.isBoxOpen(StorageService.customCategoryBoxName)) {
+      return ExpenseCategoryCatalog(
+        Hive.box<CustomCategory>(StorageService.customCategoryBoxName).values,
+      );
+    }
+    return const ExpenseCategoryCatalog.empty();
   }
 }

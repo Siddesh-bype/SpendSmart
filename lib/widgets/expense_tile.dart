@@ -4,10 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:intl/intl.dart';
 import '../models/expense.dart';
-import '../models/category.dart';
 import '../providers/app_settings_provider.dart';
-import '../utils/constants.dart';
+import '../providers/expense_category_provider.dart';
 import '../utils/design.dart';
+import '../utils/theme.dart';
 import 'money_text.dart';
 
 /// A single ledger entry.
@@ -38,9 +38,12 @@ class ExpenseTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final cur = ref.watch(appSettingsProvider).currency;
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = SchemeTheme.of(context);
     final hairline = theme.dividerTheme.thickness ?? 1;
+    final category = catalog.resolve(expense);
+    final categoryColor = category.color;
 
     return Stack(
       children: [
@@ -51,7 +54,7 @@ class ExpenseTile extends ConsumerWidget {
           bottom: 0,
           left: _railX - hairline / 2,
           width: hairline,
-          child: ColoredBox(color: scheme.outlineVariant),
+          child: ColoredBox(color: scheme.border),
         ),
         Slidable(
           key: ValueKey(expense.id),
@@ -67,8 +70,8 @@ class ExpenseTile extends ConsumerWidget {
                   Slidable.of(context)?.close();
                   Future.microtask(() => onEdit?.call());
                 },
-                backgroundColor: AppColors.secondary,
-                foregroundColor: Colors.white,
+                backgroundColor: scheme.primary,
+                foregroundColor: scheme.ctaText,
                 icon: Icons.edit_outlined,
                 label: 'Edit',
               ),
@@ -90,8 +93,8 @@ class ExpenseTile extends ConsumerWidget {
                   HapticFeedback.mediumImpact();
                   onDelete?.call();
                 },
-                backgroundColor: AppColors.error,
-                foregroundColor: Colors.white,
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.ctaText,
                 icon: Icons.delete_outline,
                 label: 'Delete',
               ),
@@ -119,17 +122,17 @@ class ExpenseTile extends ConsumerWidget {
                           width: 3,
                           height: _tickHeight,
                           decoration: BoxDecoration(
-                            color: expense.category.color,
+                            color: categoryColor,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
                       ),
                     ),
-                    Icon(
-                      expense.category.icon,
-                      size: 18,
-                      color: scheme.onSurfaceVariant,
-                    ),
+                     Icon(
+                        category.icon,
+                       size: 18,
+                       color: scheme.muted,
+                     ),
                     const SizedBox(width: AppSpacing.md),
                     // Expanded, so the amount (non-flex) is measured at its
                     // intrinsic width first and the title yields instead.
@@ -163,7 +166,7 @@ class ExpenseTile extends ConsumerWidget {
                       decimals: true,
                       size: AppType.headline,
                       weight: FontWeight.w700,
-                      color: scheme.onSurface,
+                      color: scheme.ink,
                       textAlign: TextAlign.right,
                     ),
                   ],

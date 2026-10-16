@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../models/expense.dart';
-import '../utils/constants.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
+import '../utils/theme.dart';
 
 /// A grid showing how much was spent each day of a [FinancialPeriod].
 ///
@@ -55,7 +55,7 @@ class SpendingCalendar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final scheme = theme.colorScheme;
+    final scheme = SchemeTheme.of(context);
 
     // DateTime.weekday is 1=Mon..7=Sun, and the grid starts on Monday.
     final leadingBlanks = period.start.weekday - 1;
@@ -99,7 +99,7 @@ class SpendingCalendar extends StatelessWidget {
                   child: Text(
                     label,
                     style: theme.textTheme.labelSmall?.copyWith(
-                      color: scheme.onSurfaceVariant,
+                      color: scheme.muted,
                     ),
                   ),
                 ),
@@ -123,12 +123,13 @@ class SpendingCalendar extends StatelessWidget {
   Widget _dayCell(
     BuildContext context,
     ThemeData theme,
-    ColorScheme scheme,
+    SchemeTheme scheme,
     DateTime date,
     double spent,
     double busiest,
   ) {
-    final isSelected = date.year == selectedDay.year &&
+    final isSelected =
+        date.year == selectedDay.year &&
         date.month == selectedDay.month &&
         date.day == selectedDay.day;
     final isFuture =
@@ -138,24 +139,27 @@ class SpendingCalendar extends StatelessWidget {
     final overGoal = goal != null && spent > goal;
 
     // Floor at 0.10 so any spending is visible, not just near-peak days.
-    final intensity = busiest > 0 && spent > 0 ? 0.10 + (spent / busiest) * 0.55 : 0.0;
+    final intensity = busiest > 0 && spent > 0
+        ? 0.10 + (spent / busiest) * 0.55
+        : 0.0;
     final background = isSelected
         ? scheme.primary
         : overGoal
-            ? AppColors.error.withValues(alpha: 0.18)
-            : spent > 0
-                ? AppColors.accent.withValues(alpha: intensity)
-                : Colors.transparent;
+        ? scheme.error.withValues(alpha: 0.18)
+        : spent > 0
+        ? scheme.primary.withValues(alpha: intensity)
+        : Colors.transparent;
     final foreground = isSelected
-        ? scheme.onPrimary
+        ? scheme.ctaText
         : isFuture
-            ? scheme.onSurfaceVariant.withValues(alpha: 0.4)
-            : scheme.onSurface;
+        ? scheme.muted.withValues(alpha: 0.4)
+        : scheme.ink;
 
     return Semantics(
       button: !isFuture,
       selected: isSelected,
-      label: '${date.day} ${_monthName(date.month)}, '
+      label:
+          '${date.day} ${_monthName(date.month)}, '
           '${spent > 0 ? '$currency${spent.round()} spent' : 'nothing spent'}',
       child: InkWell(
         onTap: isFuture
@@ -173,8 +177,8 @@ class SpendingCalendar extends StatelessWidget {
                 ? null
                 : Border.all(
                     color: overGoal
-                        ? AppColors.error.withValues(alpha: 0.5)
-                        : scheme.outlineVariant,
+                        ? scheme.error.withValues(alpha: 0.5)
+                        : scheme.border,
                     width: overGoal ? 1 : 0.5,
                   ),
           ),
@@ -188,10 +192,10 @@ class SpendingCalendar extends StatelessWidget {
                     Icons.flag,
                     size: 8,
                     color: isSelected
-                        ? scheme.onPrimary
+                        ? scheme.ctaText
                         : overGoal
-                            ? AppColors.error
-                            : scheme.onSurfaceVariant,
+                        ? scheme.error
+                        : scheme.muted,
                   ),
                 ),
               Column(
@@ -235,17 +239,17 @@ class SpendingCalendar extends StatelessWidget {
   }
 
   static String _monthName(int month) => const [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December',
-      ][month - 1];
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
+  ][month - 1];
 }

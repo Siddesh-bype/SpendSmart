@@ -7,6 +7,7 @@ import 'package:hive/hive.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:spendsmart/models/budget.dart';
 import 'package:spendsmart/models/category.dart';
+import 'package:spendsmart/models/custom_category.dart';
 import 'package:spendsmart/models/expense.dart';
 import 'package:spendsmart/models/group_expense.dart';
 import 'package:spendsmart/models/income.dart';
@@ -18,7 +19,9 @@ import 'package:spendsmart/providers/app_settings_provider.dart';
 import 'package:spendsmart/providers/service_provider.dart';
 import 'package:spendsmart/screens/add_expense_screen.dart';
 import 'package:spendsmart/screens/analytics_screen.dart';
+import 'package:spendsmart/screens/backup_screen.dart';
 import 'package:spendsmart/screens/budget_screen.dart';
+import 'package:spendsmart/screens/category_manager_screen.dart';
 import 'package:spendsmart/screens/groups_screen.dart';
 import 'package:spendsmart/screens/home_screen.dart';
 import 'package:spendsmart/screens/income_screen.dart';
@@ -30,11 +33,18 @@ import 'package:spendsmart/screens/onboarding_screen.dart';
 import 'package:spendsmart/screens/pdf_import_screen.dart';
 import 'package:spendsmart/screens/pending_screen.dart';
 import 'package:spendsmart/screens/recurring_expense_screen.dart';
+import 'package:spendsmart/screens/report_screen.dart';
 import 'package:spendsmart/screens/settings_screen.dart';
+import 'package:spendsmart/screens/splash_screen.dart';
 import 'package:spendsmart/screens/spending_goals_screen.dart';
 import 'package:spendsmart/screens/transactions_screen.dart';
 import 'package:spendsmart/services/storage_service.dart';
 import 'package:spendsmart/utils/theme.dart';
+
+class _NoopStorageService extends StorageService {
+  @override
+  Future<void> init() async {}
+}
 
 void main() {
   late Directory tempDir;
@@ -52,6 +62,7 @@ void main() {
     Hive.registerAdapter(RecurringExpenseAdapter());
     Hive.registerAdapter(SplitGroupAdapter());
     Hive.registerAdapter(GroupExpenseAdapter());
+    Hive.registerAdapter(CustomCategoryAdapter());
     await Hive.openBox<Expense>(StorageService.expenseBoxName);
     await Hive.openBox<MerchantMemory>(StorageService.merchantBoxName);
     await Hive.openBox<Budget>(StorageService.budgetBoxName);
@@ -60,6 +71,7 @@ void main() {
     await Hive.openBox<RecurringExpense>(StorageService.recurringBoxName);
     await Hive.openBox<SplitGroup>(StorageService.splitGroupBoxName);
     await Hive.openBox<GroupExpense>(StorageService.groupExpenseBoxName);
+    await Hive.openBox<CustomCategory>(StorageService.customCategoryBoxName);
     storage = StorageService();
   });
 
@@ -96,6 +108,9 @@ void main() {
       'PDF import': const PdfImportScreen(),
       'pending': const PendingScreen(),
       'notifications': const NotificationsScreen(),
+      'report': const ReportScreen(),
+      'backup': const BackupScreen(),
+      'category manager': const CategoryManagerScreen(),
       'onboarding': const OnboardingScreen(),
     };
 
@@ -138,5 +153,31 @@ void main() {
 
     expect(find.text('Track Every Expense'), findsOneWidget);
     expect(find.textContaining('read SMS'), findsNothing);
+  });
+
+  testWidgets('splash navigates when reduced motion is disabled', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({'onboardingDone': true});
+    final prefs = await SharedPreferences.getInstance();
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          storageServiceProvider.overrideWithValue(_NoopStorageService()),
+          sharedPreferencesProvider.overrideWithValue(prefs),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const SplashScreen(),
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byType(SplashScreen), findsNothing);
   });
 }

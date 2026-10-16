@@ -30,7 +30,9 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
 
   Future<void> _pickAndParse() async {
     // Captured before the picker await — ref is unsafe once this State is gone.
-    final memoryLookup = ref.read(storageServiceProvider).lookupMerchantCategory;
+    final memoryLookup = ref
+        .read(storageServiceProvider)
+        .lookupMerchantCategory;
     setState(() {
       _loading = true;
       _error = null;
@@ -237,12 +239,19 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.warning_amber_rounded, color: scheme.error, size: 18),
+                      Icon(
+                        Icons.warning_amber_rounded,
+                        color: scheme.error,
+                        size: 18,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           _error!,
-                          style: TextStyle(color: scheme.error, fontSize: AppType.label),
+                          style: TextStyle(
+                            color: scheme.error,
+                            fontSize: AppType.label,
+                          ),
                         ),
                       ),
                     ],
@@ -255,7 +264,10 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                   backgroundColor: scheme.ctaFill,
                   foregroundColor: scheme.ctaText,
                   minimumSize: const Size(200, 48),
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
                 ),
                 icon: Icon(Icons.upload_file, color: scheme.ctaText),
@@ -272,7 +284,10 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
               const SizedBox(height: 16),
               Text(
                 'PDF must be text-based (not scanned image)',
-                style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
+                style: TextStyle(
+                  color: scheme.muted,
+                  fontSize: AppType.caption,
+                ),
               ),
             ],
           ),
@@ -310,11 +325,17 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                   children: [
                     Text(
                       _fileName ?? 'Statement',
-                      style: TextStyle(fontWeight: FontWeight.bold, color: scheme.ink),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: scheme.ink,
+                      ),
                     ),
                     Text(
                       'Found ${_parsed.length} debit transactions - ${_selected.length} selected',
-                      style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
+                      style: TextStyle(
+                        color: scheme.muted,
+                        fontSize: AppType.caption,
+                      ),
                     ),
                   ],
                 ),
@@ -383,13 +404,14 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: e.category.color.withValues(alpha: 0.12),
+                              color: scheme.categoryColors[e.category.index]
+                                  .withValues(alpha: 0.12),
                               shape: BoxShape.circle,
                             ),
                             child: Icon(
                               e.category.icon,
                               size: 16,
-                              color: e.category.color,
+                              color: scheme.categoryColors[e.category.index],
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -423,14 +445,16 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                color: e.category.color.withValues(alpha: 0.1),
+                                color: scheme.categoryColors[e.category.index]
+                                    .withValues(alpha: 0.1),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Text(
                                 e.category.displayName,
                                 style: TextStyle(
                                   fontSize: AppType.micro,
-                                  color: e.category.color,
+                                  color:
+                                      scheme.categoryColors[e.category.index],
                                 ),
                               ),
                             ),

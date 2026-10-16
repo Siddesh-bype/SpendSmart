@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/budget_provider.dart';
 import '../providers/expense_provider.dart';
 import '../providers/app_settings_provider.dart';
+import '../providers/expense_category_provider.dart';
 import '../models/budget.dart';
 import '../models/category.dart';
+import '../services/expense_category_resolver.dart';
 import '../widgets/money_text.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
@@ -26,6 +28,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   Widget build(BuildContext context) {
     final ref = this.ref;
     final budgets = ref.watch(budgetProvider);
+    final catalog = ref.watch(expenseCategoryCatalogProvider);
     final expenses = ref
         .watch(expenseProvider)
         .where((e) => !e.isUncategorized)
@@ -99,27 +102,35 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
             child: ListView(
               padding: const EdgeInsets.all(AppSpacing.lg),
               children: () {
-                final withActivity = <Category>[];
-                final rest = <Category>[];
-                for (final cat in Category.values) {
+                final withActivity = <ResolvedExpenseCategory>[];
+                final rest = <ResolvedExpenseCategory>[];
+                for (final cat in catalog.selectableCategories) {
                   final limit = budgets
                       .firstWhere(
-                        (b) => b.category == cat,
-                        orElse: () => Budget(category: cat, monthlyLimit: 0),
+                        (b) => _budgetMatches(b, cat.key),
+                        orElse: () => Budget(
+                          category: cat.builtInCategory ?? Category.other,
+                          customCategoryId: cat.customCategoryId,
+                          monthlyLimit: 0,
+                        ),
                       )
                       .monthlyLimit;
                   final spent = monthlyExpenses
-                      .where((e) => e.category == cat)
+                      .where((e) => catalog.keyOf(e) == cat.key)
                       .fold(0.0, (a, b) => a + b.amount);
                   (spent > 0 || limit > 0 ? withActivity : rest).add(cat);
                 }
-                Widget cardFor(Category cat) {
+                Widget cardFor(ResolvedExpenseCategory cat) {
                   final budget = budgets.firstWhere(
-                    (b) => b.category == cat,
-                    orElse: () => Budget(category: cat, monthlyLimit: 0),
+                    (b) => _budgetMatches(b, cat.key),
+                    orElse: () => Budget(
+                      category: cat.builtInCategory ?? Category.other,
+                      customCategoryId: cat.customCategoryId,
+                      monthlyLimit: 0,
+                    ),
                   );
                   final spent = monthlyExpenses
-                      .where((e) => e.category == cat)
+                      .where((e) => catalog.keyOf(e) == cat.key)
                       .fold(0.0, (a, b) => a + b.amount);
                   return _buildBudgetCard(
                     context,
@@ -284,10 +295,14 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     );
   }
 
+  bool _budgetMatches(Budget budget, ExpenseCategoryKey key) =>
+      budget.customCategoryId == key.customCategoryId &&
+      (budget.customCategoryId != null || budget.category == key.builtIn);
+
   Widget _buildBudgetCard(
     BuildContext context,
     WidgetRef ref,
-    Category cat,
+    ResolvedExpenseCategory cat,
     Budget budget,
     double spent,
     String currency,
@@ -297,7 +312,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
     final isOverBudget = hasLimit && spent > budget.monthlyLimit;
     final theme = Theme.of(context);
     final scheme = SchemeTheme.of(context);
-    final catColor = scheme.categoryColors[cat.index];
+    final catColor = cat.color;
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSpacing.md),
@@ -332,7 +347,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              cat.displayName,
+                               cat.label,
                               style: theme.textTheme.titleSmall?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -364,7 +379,7 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit ${cat.displayName} budget',
+                   tooltip: 'Edit ${cat.label} budget',
                   constraints: const BoxConstraints.tightFor(width: 44, height: 44),
                   onPressed: () =>
                       _showAddBudget(context, ref, existing: budget),
@@ -458,9 +473,13 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
   }
 
   void _showAddBudget(BuildContext context, WidgetRef ref, {Budget? existing}) {
-    final catController = ValueNotifier<Category>(
-      existing?.category ?? Category.food,
-    );
+    final catalog = ref.read(expenseCategoryCatalogProvider);
+    final requestedKey = existing?.customCategoryId == null
+        ? ExpenseCategoryKey.builtIn(existing?.category ?? Category.food)
+        : ExpenseCategoryKey.custom(existing!.customCategoryId!);
+    final initialKey = catalog.resolveKey(requestedKey)?.key ??
+        ExpenseCategoryKey.builtIn(existing?.category ?? Category.food);
+    final catController = ValueNotifier<ExpenseCategoryKey>(initialKey);
     final amountController = TextEditingController(
       text: existing?.monthlyLimit.toStringAsFixed(0) ?? '',
     );
@@ -488,26 +507,24 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               ),
             ),
             const SizedBox(height: AppSpacing.lg),
-            ValueListenableBuilder<Category>(
+            ValueListenableBuilder<ExpenseCategoryKey>(
               valueListenable: catController,
-              builder: (ctx, cat, child) => DropdownButtonFormField<Category>(
+              builder: (ctx, cat, child) => DropdownButtonFormField<ExpenseCategoryKey>(
                 initialValue: cat,
                 decoration: const InputDecoration(labelText: 'Category'),
-                items: Category.values
+                items: catalog.selectableCategories
                     .map(
-                      (c) => DropdownMenuItem(
-                        value: c,
+                      (c) => DropdownMenuItem<ExpenseCategoryKey>(
+                        value: c.key,
                         child: Row(
                           children: [
                             Icon(
                               c.icon,
-                              color: SchemeTheme.of(
-                                ctx,
-                              ).categoryColors[c.index],
+                              color: c.color,
                               size: 18,
                             ),
                             const SizedBox(width: AppSpacing.sm),
-                            Text(c.displayName),
+                            Text(c.label),
                           ],
                         ),
                       ),
@@ -553,7 +570,9 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
                       .read(budgetProvider.notifier)
                       .setBudget(
                         Budget(
-                          category: catController.value,
+                          category: catController.value.builtIn ?? Category.other,
+                          customCategoryId:
+                              catController.value.customCategoryId,
                           monthlyLimit: amount,
                         ),
                       );

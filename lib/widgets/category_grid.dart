@@ -1,6 +1,7 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import '../models/category.dart';
-import '../utils/constants.dart';
+import '../utils/design.dart';
+import '../utils/theme.dart';
 
 class CategoryGrid extends StatelessWidget {
   final Category? selectedCategory;
@@ -14,6 +15,8 @@ class CategoryGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scheme = SchemeTheme.of(context);
+
     return GridView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -27,29 +30,33 @@ class CategoryGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final category = Category.values[index];
         final isSelected = selectedCategory == category;
+        final categoryColor = scheme.categoryColors[index];
         return InkWell(
           onTap: () => onSelect(category),
-          borderRadius: BorderRadius.circular(AppConstants.buttonRadius),
-          child: Container(
+          borderRadius: AppRadius.mdAll,
+          child: AnimatedContainer(
+            duration: AppMotion.duration(context, AppDuration.base),
+            curve: AppMotion.curve(context, Curves.easeOutCubic),
             decoration: BoxDecoration(
-              color: isSelected ? category.color.withValues(alpha: 0.2) : Colors.transparent,
-              borderRadius: BorderRadius.circular(AppConstants.buttonRadius),
+              color: isSelected
+                  ? categoryColor.withValues(alpha: 0.16)
+                  : scheme.surface,
+              borderRadius: AppRadius.mdAll,
               border: Border.all(
-                color: isSelected ? category.color : Colors.grey.withValues(alpha: 0.3),
+                color: isSelected ? categoryColor : scheme.border,
                 width: isSelected ? 2 : 1,
               ),
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(category.icon, color: category.color, size: 28),
-                const SizedBox(height: 4),
+                Icon(category.icon, color: categoryColor, size: 28),
+                const SizedBox(height: AppSpacing.xs),
                 Text(
                   category.displayName,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                    color: isSelected ? category.color : null,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    color: isSelected ? categoryColor : scheme.ink,
                   ),
                   textAlign: TextAlign.center,
                 ),
@@ -61,4 +68,3 @@ class CategoryGrid extends StatelessWidget {
     );
   }
 }
-

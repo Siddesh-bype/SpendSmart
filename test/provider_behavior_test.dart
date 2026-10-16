@@ -15,7 +15,9 @@ import 'package:spendsmart/providers/expense_provider.dart';
 import 'package:spendsmart/providers/group_provider.dart';
 import 'package:spendsmart/providers/notification_provider.dart';
 import 'package:spendsmart/providers/service_provider.dart';
+import 'package:spendsmart/services/expense_category_resolver.dart';
 import 'package:spendsmart/services/storage_service.dart';
+import 'package:spendsmart/utils/financial_period.dart';
 
 Expense _expense(String id, String title) => Expense(
   id: id,
@@ -51,28 +53,34 @@ void main() {
     },
   );
 
-  test('an imported id that collides with a stored one is regenerated', () async {
-    final existing = _expense('shared-id', 'Coffee');
-    final storage = _FakeStorage(expenses: [existing]);
-    final container = ProviderContainer(
-      overrides: [storageServiceProvider.overrideWithValue(storage)],
-    );
-    addTearDown(container.dispose);
+  test(
+    'an imported id that collides with a stored one is regenerated',
+    () async {
+      final existing = _expense('shared-id', 'Coffee');
+      final storage = _FakeStorage(expenses: [existing]);
+      final container = ProviderContainer(
+        overrides: [storageServiceProvider.overrideWithValue(storage)],
+      );
+      addTearDown(container.dispose);
 
-    // Same id, different content: a hand-edited or re-exported CSV. Storage is
-    // keyed by id, so without the guard this overwrites the coffee expense.
-    final inserted = await container
-        .read(expenseProvider.notifier)
-        .importExpenses([_expense('shared-id', 'Lunch')]);
+      // Same id, different content: a hand-edited or re-exported CSV. Storage is
+      // keyed by id, so without the guard this overwrites the coffee expense.
+      final inserted = await container
+          .read(expenseProvider.notifier)
+          .importExpenses([_expense('shared-id', 'Lunch')]);
 
-    expect(inserted, 1);
-    expect(storage.expenses.length, 2);
-    expect(
-      storage.expenses.singleWhere((e) => e.id == 'shared-id').title,
-      'Coffee',
-    );
-    expect(storage.expenses.map((e) => e.title), containsAll(['Coffee', 'Lunch']));
-  });
+      expect(inserted, 1);
+      expect(storage.expenses.length, 2);
+      expect(
+        storage.expenses.singleWhere((e) => e.id == 'shared-id').title,
+        'Coffee',
+      );
+      expect(
+        storage.expenses.map((e) => e.title),
+        containsAll(['Coffee', 'Lunch']),
+      );
+    },
+  );
 
   test('regenerating a recurring occurrence is a no-op', () async {
     final storage = _FakeStorage();
@@ -156,6 +164,91 @@ void main() {
       expect(container.read(notificationProvider), hasLength(2));
     },
   );
+
+  test(
+    'budget warning from a previous financial period does not block a new one',
+    () async {
+      final now = DateTime.now();
+      final activePeriod = FinancialPeriod.containing(now, 10);
+      final previousPeriod = activePeriod.previous;
+      SharedPreferences.setMockInitialValues({
+        'app_notifications_v1': jsonEncode([
+          {
+            'id': 'old-cycle',
+            'title': 'Budget Warning: Food',
+            'body': 'Old cycle warning',
+            'time': previousPeriod.start
+                .add(const Duration(days: 1))
+                .toIso8601String(),
+            'type': 0,
+            'isRead': true,
+          },
+        ]),
+      });
+      final prefs = await SharedPreferences.getInstance();
+      final container = ProviderContainer(
+        overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      );
+      addTearDown(container.dispose);
+
+      container
+          .read(notificationProvider.notifier)
+          .checkBudgets(
+            [Budget(category: Category.food, monthlyLimit: 100)],
+            {Category.food: 90},
+            period: activePeriod,
+          );
+
+      expect(container.read(notificationProvider), hasLength(2));
+    },
+  );
+
+  test('built-in budget alerts fire for category-key spending', () async {
+    SharedPreferences.setMockInitialValues({});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(notificationProvider.notifier)
+        .checkBudgets(
+          [Budget(category: Category.food, monthlyLimit: 100)],
+          {const ExpenseCategoryKey.builtIn(Category.food): 90.0},
+        );
+
+    expect(container.read(notificationProvider), hasLength(1));
+  });
+
+  test('a pre-upgrade warning without categoryKey still dedupes', () async {
+    SharedPreferences.setMockInitialValues({
+      'app_notifications_v1': jsonEncode([
+        {
+          'id': 'legacy-warning',
+          'title': '⚠️ Budget Warning: Food',
+          'body': 'Legacy warning',
+          'time': DateTime.now().toIso8601String(),
+          'type': 0,
+          'isRead': false,
+        },
+      ]),
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+
+    container
+        .read(notificationProvider.notifier)
+        .checkBudgets(
+          [Budget(category: Category.food, monthlyLimit: 100)],
+          {const ExpenseCategoryKey.builtIn(Category.food): 90.0},
+        );
+
+    expect(container.read(notificationProvider), hasLength(1));
+  });
 
   test(
     'a legacy spendingMilestone payload decodes to tip instead of throwing',
@@ -282,13 +375,17 @@ void main() {
       final date = DateTime(2026);
       final legacy = _StubReader([
         4,
-        0, 'trip',
-        1, 'Trip',
-        2, [
+        0,
+        'trip',
+        1,
+        'Trip',
+        2,
+        [
           {'id': 'a', 'name': 'Asha', 'avatarColorValue': 0xFF123B5D},
           {'id': 'b', 'name': 'Ben', 'avatarColorValue': 0xFF0F766E},
         ],
-        3, date,
+        3,
+        date,
       ]);
       final g = SplitGroupAdapter().read(legacy);
       expect(g.myParticipantId, isNull);
@@ -300,14 +397,19 @@ void main() {
       final date = DateTime(2026);
       final reader = _StubReader([
         5,
-        0, 'trip',
-        1, 'Trip',
-        2, [
+        0,
+        'trip',
+        1,
+        'Trip',
+        2,
+        [
           {'id': 'a', 'name': 'Asha', 'avatarColorValue': 0xFF123B5D},
           {'id': 'b', 'name': 'Ben', 'avatarColorValue': 0xFF0F766E},
         ],
-        3, date,
-        4, 'b',
+        3,
+        date,
+        4,
+        'b',
       ]);
       final g = SplitGroupAdapter().read(reader);
       expect(g.myParticipantId, 'b');
@@ -384,6 +486,5 @@ class _StubReader implements BinaryReader {
   dynamic read([int? typeId]) => tokens[_i++];
 
   @override
-  dynamic noSuchMethod(Invocation invocation) =>
-      super.noSuchMethod(invocation);
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
