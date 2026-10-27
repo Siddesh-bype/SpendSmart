@@ -55,9 +55,10 @@ class PdfImportService {
         r'(\d{1,2}\s+\w{3}\s+\d{4})\s+(.+?)\s+(\d+(?:[,.]\d+)?)\s+Dr',
         caseSensitive: false,
       ),
-      // Amount with debit marker
+      // Amount with debit marker. The amount also accepts 4+ ungrouped digits
+      // ("5000.00"), which the old 3-digit-plus-commas shape silently dropped.
       RegExp(
-        r'(\d{2}[/-]\d{2}[/-]\d{2,4})\s+(.+?)\s+(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s+(?:D|Dr|Debit|DR)',
+        r'(\d{2}[/-]\d{2}[/-]\d{2,4})\s+(.+?)\s+(\d[\d,]*(?:\.\d{2})?)\s+(?:D|Dr|Debit|DR)',
         caseSensitive: false,
       ),
     ];
@@ -136,6 +137,14 @@ class PdfImportService {
   static bool _isCredit(String line, String desc) {
     final lower = line.toLowerCase();
     final descLower = desc.toLowerCase();
+    // A debit marker wins over the word "credit": paying a credit-card bill
+    // ("Credit Card Payment 5000.00 Dr") is a real expense, not income.
+    final hasDebitMarker =
+        lower.endsWith(' dr') ||
+        lower.contains(' dr ') ||
+        lower.contains('debit') ||
+        lower.contains('withdrawal');
+    if (hasDebitMarker) return false;
     return lower.contains(' cr') ||
         lower.contains('credit') ||
         descLower.contains('salary') ||

@@ -210,12 +210,15 @@ class CsvImportService {
           RegExp(r'^(?:rs\.?|inr|₹|\$|€|£|¥)\s*', caseSensitive: false),
           '',
         );
-        final amount = parsePositiveAmount(rawAmount);
-        if (amount == null) {
+        // Signed exports mark debits as negative (or in parentheses); they are
+        // expenses all the same, so import the magnitude instead of skipping.
+        final signedAmount = parseSignedAmount(rawAmount);
+        if (signedAmount == null) {
           skipped++;
           errors.add('Row ${i + 1}: invalid amount');
           continue;
         }
+        final amount = signedAmount.abs();
 
         final title = _unescapeCell(row[titleIdx].toString().trim());
         if (title.isEmpty) {

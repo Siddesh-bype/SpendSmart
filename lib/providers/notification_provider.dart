@@ -146,10 +146,13 @@ class NotificationNotifier extends Notifier<List<AppNotification>> {
     _persist();
   }
 
-  void _persist() {
+  Future<void> _persist() async {
     try {
       final prefs = ref.read(sharedPreferencesProvider);
-      prefs.setString(_prefsKey, jsonEncode(state.map(_notifToJson).toList()));
+      await prefs.setString(
+        _prefsKey,
+        jsonEncode(state.map(_notifToJson).toList()),
+      );
     } catch (_) {
       // Non-critical — skip if prefs unavailable
     }

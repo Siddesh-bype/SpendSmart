@@ -148,6 +148,11 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                   onPressed: () {
                     HapticFeedback.lightImpact();
                     ref.read(spendingGoalProvider.notifier).disableGoal();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Daily goal disabled'),
+                      ),
+                    );
                   },
                 ),
               ),
@@ -572,7 +577,7 @@ class _SpendingGoalsScreenState extends ConsumerState<SpendingGoalsScreen> {
                       await ref
                           .read(spendingGoalProvider.notifier)
                           .setGoal(val);
-                      if (mounted) Navigator.pop(context);
+                      if (sheetContext.mounted) Navigator.pop(sheetContext);
                     } else {
                       amountError.value = 'Enter a valid monthly limit';
                     }

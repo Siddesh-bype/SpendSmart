@@ -81,6 +81,16 @@ class CustomCategoryNotifier extends Notifier<List<CustomCategory>> {
     if (isReferenced) {
       throw StateError('Archive this category instead of deleting it.');
     }
+    // A budget pointing at a deleted category would permanently fail backup
+    // validation, so block deletion the same way expenses do.
+    final isBudgeted = storage
+        .getAllBudgets()
+        .any((budget) => budget.customCategoryId == category.id);
+    if (isBudgeted) {
+      throw StateError(
+        'Remove or reassign this category\'s budget before deleting it.',
+      );
+    }
     await storage.deleteCustomCategory(category.id);
     _reload();
   }

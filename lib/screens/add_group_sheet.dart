@@ -237,26 +237,36 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          p.colorIndex =
-                              (p.colorIndex + 1) % groupAvatarColors.length;
-                        });
-                      },
-                      child: CircleAvatar(
-                        radius: 16,
-                        backgroundColor: groupAvatarColors[p.colorIndex],
-                        child: Text(
-                          p.nameCtrl.text.isEmpty
-                              ? '?'
-                              : p.nameCtrl.text[0].toUpperCase(),
-                          style: TextStyle(
-                            color: Scheme.onAvatar(
-                              groupAvatarColors[p.colorIndex],
+                    Semantics(
+                      button: true,
+                      label: 'Change avatar color for ${p.nameCtrl.text}',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            p.colorIndex =
+                                (p.colorIndex + 1) % groupAvatarColors.length;
+                          });
+                        },
+                        // Extra padding lifts the 32px avatar to a ~44px
+                        // touch target.
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: CircleAvatar(
+                            radius: 16,
+                            backgroundColor: groupAvatarColors[p.colorIndex],
+                            child: Text(
+                              p.nameCtrl.text.isEmpty
+                                  ? '?'
+                                  : p.nameCtrl.text[0].toUpperCase(),
+                              style: TextStyle(
+                                color: Scheme.onAvatar(
+                                  groupAvatarColors[p.colorIndex],
+                                ),
+                                fontWeight: FontWeight.bold,
+                                fontSize: AppType.label,
+                              ),
                             ),
-                            fontWeight: FontWeight.bold,
-                            fontSize: AppType.label,
                           ),
                         ),
                       ),
@@ -279,6 +289,7 @@ class _AddGroupSheetState extends ConsumerState<AddGroupSheet> {
                     ),
                     if (_participants.length > 2)
                       IconButton(
+                        tooltip: 'Remove participant',
                         onPressed: () => _removeParticipant(i),
                         icon: Icon(Icons.close, size: 18, color: scheme.muted),
                       ),

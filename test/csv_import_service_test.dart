@@ -79,4 +79,21 @@ Update,Paid By,Total
     expect(result.imported.single.category, Category.bills);
     expect(result.imported.single.isUncategorized, isFalse);
   });
+
+  test('signed and parenthesised debit amounts import as expenses', () {
+    // The regression: bank exports that mark debits negative (or in
+    // accounting parentheses) were all rejected as "invalid amount".
+    final result = CsvImportService.parse('''
+Date,Title,Amount
+2026-07-10,Coffee Shop,-250.50
+2026-07-11,Groceries,(350.00)
+2026-07-12,Top Up,100
+''');
+
+    expect(result.errors, isEmpty);
+    expect(result.imported, hasLength(3));
+    expect(result.imported[0].amount, 250.50);
+    expect(result.imported[1].amount, 350.00);
+    expect(result.imported[2].amount, 100);
+  });
 }

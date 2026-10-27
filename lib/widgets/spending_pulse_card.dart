@@ -102,6 +102,18 @@ class SpendingPulseCard extends StatelessWidget {
     );
   }
 
+  /// What is left of the budget divided by the days left in the *actual*
+  /// cycle. Replaces the old hardcoded `/30` arithmetic, which divided by zero
+  /// on the 30th ("NaN/day") and went negative on the 31st.
+  String _dailyCeilingLabel() {
+    final now = DateTime.now();
+    final period = FinancialPeriod.containing(now, startingDayOfMonth);
+    final spent = monthlyExpenses.fold(0.0, (s, e) => s + e.amount);
+    final remaining = (monthlyBudget - spent).clamp(0.0, monthlyBudget);
+    final perDay = remaining / period.daysRemaining(now);
+    return 'Recommended daily ceiling: $currency${perDay.toStringAsFixed(0)}/day';
+  }
+
   Widget _projectionRow(BuildContext context, _Projection projection) {
     final theme = Theme.of(context);
     final scheme = SchemeTheme.of(context);
@@ -149,7 +161,7 @@ class SpendingPulseCard extends StatelessWidget {
               if (monthlyBudget > 0 && !overBudget) ...[
                 const SizedBox(height: 2),
                 Text(
-                  'Recommended daily ceiling: $currency${((monthlyBudget - (projection.amount * (DateTime.now().day / 30))) / (30 - DateTime.now().day)).clamp(0, monthlyBudget).toStringAsFixed(0)}/day',
+                  _dailyCeilingLabel(),
                   style: theme.textTheme.labelSmall?.copyWith(color: scheme.success),
                 ),
               ],

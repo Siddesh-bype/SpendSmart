@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import '../models/expense.dart';
 import '../models/category.dart';
 import '../providers/expense_provider.dart';
@@ -10,6 +9,7 @@ import '../providers/merchant_memory_provider.dart';
 import '../providers/custom_category_provider.dart';
 import '../widgets/category_grid.dart';
 import '../utils/design.dart';
+import '../utils/date_extension.dart';
 import '../utils/theme.dart';
 import '../utils/validation.dart';
 
@@ -29,6 +29,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
   late Category _selectedCategory;
   String? _selectedCustomCategoryId;
   late DateTime _selectedDate;
+  bool _saving = false;
 
   @override
   void initState() {
@@ -79,6 +80,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                 Text('Edit Expense', style: theme.textTheme.titleLarge),
                 IconButton(
                   icon: const Icon(Icons.close),
+                  tooltip: 'Close',
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -88,6 +90,8 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             // Amount
             TextField(
               controller: _amountCtrl,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -109,6 +113,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             // Title
             TextField(
               controller: _titleCtrl,
+              textInputAction: TextInputAction.next,
               decoration: InputDecoration(
                 labelText: 'Merchant / Title',
                 border: OutlineInputBorder(borderRadius: AppRadius.mdAll),
@@ -156,10 +161,13 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                        avatar: Icon(category.icon, size: 16, color: category.color),
                        label: Text(category.name),
                        selected: _selectedCustomCategoryId == category.id,
-                       onSelected: (selected) => setState(() {
-                         _selectedCustomCategoryId = selected ? category.id : null;
-                         if (selected) _selectedCategory = Category.other;
-                       }),
+                       onSelected: (selected) {
+                         HapticFeedback.selectionClick();
+                         setState(() {
+                           _selectedCustomCategoryId = selected ? category.id : null;
+                           if (selected) _selectedCategory = Category.other;
+                         });
+                       },
                      ),
                  ],
                ),
@@ -170,7 +178,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
             OutlinedButton.icon(
               icon: Icon(Icons.calendar_today, size: 16, color: scheme.focus),
               label: Text(
-                DateFormat('dd MMM yyyy').format(_selectedDate),
+                displayDateFormat.format(_selectedDate),
                 style: TextStyle(color: scheme.primary),
               ),
               style: OutlinedButton.styleFrom(
@@ -185,7 +193,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                   firstDate: DateTime(2000),
                   lastDate: DateTime.now(),
                 );
-                if (dt != null) {
+                if (dt != null && mounted) {
                   setState(
                     () => _selectedDate = dt.copyWith(
                       hour: _selectedDate.hour,
@@ -205,8 +213,14 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
                 foregroundColor: scheme.ctaText,
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
               ),
-              onPressed: _save,
-              child: Text('Save Changes', style: theme.textTheme.labelLarge),
+              onPressed: _saving ? null : _save,
+              child: _saving
+                  ? const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2.5),
+                    )
+                  : Text('Save Changes', style: theme.textTheme.labelLarge),
             ),
             const SizedBox(height: AppSpacing.xl),
           ],
@@ -226,6 +240,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       return;
     }
     HapticFeedback.mediumImpact();
+    setState(() => _saving = true);
     final categoryChanged =
         _selectedCategory != widget.expense.category ||
         _selectedCustomCategoryId != widget.expense.customCategoryId;
@@ -243,6 +258,7 @@ class _EditExpenseSheetState extends ConsumerState<EditExpenseSheet> {
       await ref.read(expenseProvider.notifier).updateExpense(updated);
     } catch (_) {
       if (mounted) {
+        setState(() => _saving = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Could not update the expense. Try again.'),

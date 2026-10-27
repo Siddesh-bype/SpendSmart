@@ -11,6 +11,7 @@ import '../models/expense.dart';
 import '../models/category.dart';
 import '../utils/theme.dart';
 import '../utils/design.dart';
+import '../utils/date_extension.dart';
 import '../widgets/empty_state.dart';
 
 class PdfImportScreen extends ConsumerStatefulWidget {
@@ -48,24 +49,28 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
       );
 
       if (result == null || result.files.isEmpty) {
-        setState(() => _loading = false);
+        if (mounted) setState(() => _loading = false);
         return;
       }
 
       final picked = result.files.single;
       final path = picked.path;
       if (path == null || path.isEmpty) {
-        setState(() {
-          _loading = false;
-          _error = 'Could not read the selected PDF.';
-        });
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'Could not read the selected PDF.';
+          });
+        }
         return;
       }
       if (picked.size > PdfImportService.maxPdfBytes) {
-        setState(() {
-          _loading = false;
-          _error = 'PDF is too large. Choose a file under 10 MB.';
-        });
+        if (mounted) {
+          setState(() {
+            _loading = false;
+            _error = 'PDF is too large. Choose a file under 10 MB.';
+          });
+        }
         return;
       }
 
@@ -432,7 +437,7 @@ class _PdfImportScreenState extends ConsumerState<PdfImportScreen> {
                         child: Row(
                           children: [
                             Text(
-                              DateFormat('dd MMM yyyy').format(e.date),
+                              displayDateFormat.format(e.date),
                               style: TextStyle(
                                 fontSize: AppType.caption,
                                 color: scheme.muted,

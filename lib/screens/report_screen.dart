@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../models/category.dart';
@@ -12,7 +11,9 @@ import '../providers/expense_category_provider.dart';
 import '../services/expense_category_resolver.dart';
 import '../services/report_service.dart';
 import '../utils/design.dart';
+import '../utils/date_extension.dart';
 import '../utils/theme.dart';
+import '../widgets/money_text.dart';
 
 class ReportScreen extends ConsumerStatefulWidget {
   const ReportScreen({super.key});
@@ -250,7 +251,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
               Expanded(
                 child: _metric(
                   'Total',
-                  '$currency${report.total.toStringAsFixed(2)}',
+                  formatMoney(report.total, currency: currency, decimals: true),
                   scheme,
                 ),
               ),
@@ -319,7 +320,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
       initialDate: initialEnd,
       helpText: 'Select end date',
     );
-    if (end == null) return;
+    if (end == null || !mounted) return;
     setState(() {
       _preset = ReportPreset.custom;
       _range = ReportDateRange(start: start, endInclusive: end);
@@ -377,8 +378,8 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
   }
 
   String _rangeLabel(ReportDateRange range) =>
-      '${DateFormat('dd MMM yyyy').format(range.start)} – '
-      '${DateFormat('dd MMM yyyy').format(range.endInclusive)}';
+      '${displayDateFormat.format(range.start)} – '
+      '${displayDateFormat.format(range.endInclusive)}';
 
   String _selectedCategoryValue(ExpenseCategoryCatalog catalog) {
     if (_customCategoryId != null &&

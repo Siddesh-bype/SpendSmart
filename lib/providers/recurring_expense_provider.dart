@@ -56,6 +56,7 @@ class RecurringExpenseNotifier extends Notifier<List<RecurringExpense>> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final due = <Expense>[];
+    final advanced = <RecurringExpense, DateTime>{};
 
     for (final r in _box.values) {
       if (!r.isActive) continue;
@@ -81,13 +82,18 @@ class RecurringExpenseNotifier extends Notifier<List<RecurringExpense>> {
         cursor = next;
         generated++;
       }
-      if (cursor != r.nextDue) {
-        r.nextDue = cursor;
-        await r.save();
-      }
+      if (cursor != r.nextDue) advanced[r] = cursor;
     }
 
+    // Expenses must land before nextDue advances: occurrence ids are
+    // deterministic, so an app kill after the expense write but before the
+    // cursor save regenerates the same ids next launch and dedup drops them.
+    // The reverse order would silently skip the occurrences forever.
     if (due.isNotEmpty) await expenseNotifier.addMissingById(due);
+    for (final entry in advanced.entries) {
+      entry.key.nextDue = entry.value;
+      await entry.key.save();
+    }
     _refresh();
   }
 

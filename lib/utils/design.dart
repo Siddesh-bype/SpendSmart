@@ -42,19 +42,6 @@ class AppElevation {
   static const double glassBlur = 20.0;
 }
 
-/// Focus-ring geometry (plan §2 inputs/sheets: visible keyboard focus).
-/// Color comes from [SchemeTheme.focus]; width/offset live here.
-class AppFocusRing {
-  static const double width = 2.0;
-  static const double offset = 2.0;
-}
-
-/// Scrim alpha for sheets/dialogs — sits inside the plan's 40–60% black band.
-/// (Actual color lives in [Scheme.scrim].)
-class AppScrim {
-  static const double alpha = 0.5;
-}
-
 class AppType {
   /// Hook for a bundled face later; null = platform default.
   static const String? fontFamily = null;

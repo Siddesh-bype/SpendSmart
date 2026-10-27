@@ -70,7 +70,7 @@ void main() {
             reason: '$day was not in its own period (start $startingDay)',
           );
           expect(period.previous.contains(day), isFalse);
-          expect(period.next.contains(day), isFalse);
+          expect(period.shifted(1).contains(day), isFalse);
         }
       }
     });
@@ -90,7 +90,7 @@ void main() {
     test('adjacent periods meet without a gap or an overlap', () {
       final period = FinancialPeriod.startingIn(2026, 3, 10);
 
-      expect(period.next.start, period.endExclusive);
+      expect(period.shifted(1).start, period.endExclusive);
       expect(period.previous.endExclusive, period.start);
     });
   });
@@ -142,7 +142,7 @@ void main() {
     final period = FinancialPeriod.startingIn(2026, 3, 10);
 
     expect(period.shifted(-1), period.previous);
-    expect(period.shifted(1), period.next);
+    expect(period.shifted(1), FinancialPeriod.startingIn(2026, 4, 10));
     expect(period.shifted(-3).start, DateTime(2025, 12, 10));
   });
 }

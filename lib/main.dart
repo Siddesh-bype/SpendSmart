@@ -6,7 +6,6 @@ import 'providers/app_settings_provider.dart';
 import 'providers/service_provider.dart';
 import 'screens/splash_screen.dart';
 import 'services/storage_service.dart';
-import 'utils/globals.dart';
 import 'utils/theme.dart';
 
 void main() async {
@@ -44,7 +43,6 @@ class SpendSmartApp extends ConsumerWidget {
     return MaterialApp(
       title: 'SpendSmart',
       debugShowCheckedModeBanner: false,
-      navigatorKey: navigatorKey,
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeMode,

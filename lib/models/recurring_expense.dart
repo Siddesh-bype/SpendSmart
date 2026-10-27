@@ -29,18 +29,25 @@ class RecurringExpense extends HiveObject {
       case 'weekly':
         return from.add(const Duration(days: 7));
       case 'yearly':
-        return DateTime(from.year + 1, from.month, from.day);
+        // Anchor to the start date so Feb 29 stays in February (clamped to 28
+        // in common years) instead of overflowing into March.
+        final anchorDay = startDate.day;
+        final targetYear = from.year + 1;
+        final lastDay = DateTime(targetYear, startDate.month + 1, 0).day;
+        return DateTime(targetYear, startDate.month, anchorDay.clamp(1, lastDay));
       case 'monthly':
       default:
+        // Anchor to the rule's start day, not the cursor's: Jan 31 must recur
+        // as Feb 28 then return to Mar 31, never drift to the 28th forever.
+        final anchorDay = startDate.day;
         var nextMonth = from.month + 1;
         var nextYear = from.year;
         if (nextMonth > 12) {
           nextMonth = 1;
           nextYear++;
         }
-        // Clamp day to last day of target month to prevent overflow (e.g. Jan 31 → Feb 28)
         final lastDayOfMonth = DateTime(nextYear, nextMonth + 1, 0).day;
-        return DateTime(nextYear, nextMonth, from.day.clamp(1, lastDayOfMonth));
+        return DateTime(nextYear, nextMonth, anchorDay.clamp(1, lastDayOfMonth));
     }
   }
 }

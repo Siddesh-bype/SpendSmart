@@ -132,4 +132,33 @@ void main() {
       throwsA(isA<ArgumentError>()),
     );
   });
+
+  test('delete is blocked while a budget references the category', () async {
+    // The regression: deleting left a dangling budget.customCategoryId, and
+    // backup validation then failed on every subsequent backup attempt.
+    final c = category('cat', 'Budgeted');
+    await storage.saveCustomCategory(c);
+    await storage.saveBudget(
+      Budget(
+        category: Category.other,
+        customCategoryId: c.id,
+        monthlyLimit: 100,
+      ),
+    );
+
+    final ref = container();
+    addTearDown(ref.dispose);
+    await expectLater(
+      ref.read(customCategoryProvider.notifier).delete(c),
+      throwsA(isA<StateError>()),
+    );
+    // Nothing was deleted.
+    expect(storage.customCategoryBox.get(c.id), isNotNull);
+    expect(storage.getAllBudgets(), hasLength(1));
+
+    // Once the budget is gone, deletion succeeds.
+    await storage.deleteBudget(storage.getAllBudgets().single);
+    await ref.read(customCategoryProvider.notifier).delete(c);
+    expect(storage.customCategoryBox.get(c.id), isNull);
+  });
 }

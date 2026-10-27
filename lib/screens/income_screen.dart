@@ -58,10 +58,11 @@ class IncomeScreen extends ConsumerWidget {
               borderRadius: AppRadius.mdAll,
               child: InkWell(
                 borderRadius: AppRadius.mdAll,
-                onTap: () => _showAddSheet(context, ref),
+                onTap: () => _showAddSheet(context),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm + 2,
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -227,7 +228,7 @@ class IncomeScreen extends ConsumerWidget {
     );
   }
 
-  void _showAddSheet(BuildContext context, WidgetRef ref) {
+  void _showAddSheet(BuildContext context) {
     HapticFeedback.lightImpact();
     showModalBottomSheet(
       context: context,
@@ -235,7 +236,7 @@ class IncomeScreen extends ConsumerWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _AddIncomeSheet(ref: ref),
+      builder: (_) => const _AddIncomeSheet(),
     );
   }
 }
@@ -282,21 +283,58 @@ class _IncomeTile extends ConsumerWidget {
             ),
           ),
           const SizedBox(width: 4),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.mediumImpact();
-              ref.read(incomeProvider.notifier).deleteIncome(income.id);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: const Text('Income entry deleted'),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              );
+          IconButton(
+            icon: Icon(Icons.close, size: 18, color: scheme.muted),
+            tooltip: 'Delete income',
+            onPressed: () => _delete(context, ref),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Deletes with an UNDO banner, matching the expense-delete pattern on
+  /// home/transactions.
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    HapticFeedback.mediumImpact();
+    final messenger = ScaffoldMessenger.of(context);
+    final scheme = SchemeTheme.of(context);
+    try {
+      await ref.read(incomeProvider.notifier).deleteIncome(income.id);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Could not delete this income entry.')),
+      );
+      return;
+    }
+    messenger.clearMaterialBanners();
+    messenger.showMaterialBanner(
+      MaterialBanner(
+        content: Text('Deleted "${income.source}" entry'),
+        leading: Icon(Icons.delete_outline, color: scheme.error),
+        backgroundColor: scheme.surface,
+        forceActionsBelow: true,
+        actions: [
+          TextButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              messenger.hideCurrentMaterialBanner();
+              ref
+                  .read(incomeProvider.notifier)
+                  .addIncome(income)
+                  .catchError(
+                    (_) => messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Could not restore the entry.'),
+                      ),
+                    ),
+                  );
             },
-            child: Icon(Icons.close, size: 16, color: scheme.muted),
+            child: const Text('UNDO'),
+          ),
+          TextButton(
+            onPressed: messenger.hideCurrentMaterialBanner,
+            child: const Text('DISMISS'),
           ),
         ],
       ),
@@ -306,15 +344,14 @@ class _IncomeTile extends ConsumerWidget {
 
 // ── Add income bottom sheet ───────────────────────────────────────────────────
 
-class _AddIncomeSheet extends StatefulWidget {
-  final WidgetRef ref;
-  const _AddIncomeSheet({required this.ref});
+class _AddIncomeSheet extends ConsumerStatefulWidget {
+  const _AddIncomeSheet();
 
   @override
-  State<_AddIncomeSheet> createState() => _AddIncomeSheetState();
+  ConsumerState<_AddIncomeSheet> createState() => _AddIncomeSheetState();
 }
 
-class _AddIncomeSheetState extends State<_AddIncomeSheet> {
+class _AddIncomeSheetState extends ConsumerState<_AddIncomeSheet> {
   final _amountCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
   String _selectedSource = 'Salary';
@@ -347,7 +384,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
       _saving = true;
     });
     try {
-      await widget.ref
+      await ref
           .read(incomeProvider.notifier)
           .addIncome(
             Income(
@@ -374,7 +411,7 @@ class _AddIncomeSheetState extends State<_AddIncomeSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = SchemeTheme.of(context);
-    final currency = widget.ref.read(appSettingsProvider).currency;
+    final currency = ref.read(appSettingsProvider).currency;
 
     return Padding(
       padding: EdgeInsets.only(

@@ -56,7 +56,9 @@ class ExportService {
     String csv = const CsvEncoder().convert(rows);
 
     final directory = await getApplicationDocumentsDirectory();
-    final path = "${directory.path}/SpendSmart_Export_${DateFormat('yyyyMMdd').format(DateTime.now())}.csv";
+    // Time-stamped so exporting twice in one day never overwrites the first file.
+    final path =
+        "${directory.path}/SpendSmart_Export_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv";
     final file = File(path);
     await file.writeAsString(csv);
     

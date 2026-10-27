@@ -46,13 +46,16 @@ class DailyGoalNotifier extends Notifier<Map<String, double>> {
     } else {
       next[keyFor(day)] = limit;
     }
-    await _persist(next);
-  }
-
-  Future<void> _persist(Map<String, double> next) async {
-    await ref
-        .read(sharedPreferencesProvider)
-        .setString(_key, jsonEncode(next));
+    // Publish synchronously so an overlapping setGoal clones the latest map;
+    // assigning after the await would let the second call silently drop the
+    // first one's day (last writer wins on the whole blob).
     state = next;
+    try {
+      await ref
+          .read(sharedPreferencesProvider)
+          .setString(_key, jsonEncode(next));
+    } catch (_) {
+      // In-memory state stays correct; the blob is rewritten on next change.
+    }
   }
 }

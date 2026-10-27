@@ -152,7 +152,9 @@ class SpendingCalendar extends StatelessWidget {
     final foreground = isSelected
         ? scheme.ctaText
         : isFuture
-        ? scheme.muted.withValues(alpha: 0.4)
+        // 55% keeps future days clearly secondary while staying readable;
+        // 40% dropped to ~1.3:1 contrast.
+        ? scheme.muted.withValues(alpha: 0.55)
         : scheme.ink;
 
     return Semantics(

@@ -1,14 +1,13 @@
 name: spendsmart
 description: "A new Flutter project."
 publish_to: 'none'
-version: 2.2.0+220
+version: 2.2.1+221
 
 environment:
   sdk: ^3.10.7
 
 dependencies:
   csv: ^7.2.0
-  crypto: ^3.0.7
   file_picker: ^8.0.7
   fl_chart: ^1.1.1
   flutter:

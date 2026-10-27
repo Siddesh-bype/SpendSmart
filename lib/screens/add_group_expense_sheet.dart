@@ -10,6 +10,7 @@ import '../utils/constants.dart';
 import '../utils/theme.dart';
 import '../utils/design.dart';
 import '../utils/validation.dart';
+import '../widgets/money_text.dart';
 
 class AddGroupExpenseSheet extends ConsumerStatefulWidget {
   final SplitGroup group;
@@ -37,7 +38,9 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   @override
   void initState() {
     super.initState();
-    _paidBy = widget.group.participants.first.id;
+    _paidBy = widget.group.participants.isEmpty
+        ? ''
+        : widget.group.participants.first.id;
     _date = DateTime.now();
     _shareCtrls = {
       for (final p in widget.group.participants) p.id: TextEditingController(),
@@ -58,10 +61,11 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
   void _onAmountChanged() {
     if (!_equalSplit) return;
     final amount = parsePositiveAmount(_amountCtrl.text) ?? 0;
-    if (amount > 0 && widget.group.participants.isNotEmpty) {
-      final share = amount / widget.group.participants.length;
-      for (final c in _shareCtrls.values) {
-        c.text = share.toStringAsFixed(2);
+    final participants = widget.group.participants;
+    if (amount > 0 && participants.isNotEmpty) {
+      final shares = splitEvenly(amount, participants.length);
+      for (var i = 0; i < participants.length; i++) {
+        _shareCtrls[participants[i].id]!.text = shares[i].toStringAsFixed(2);
       }
     }
   }
@@ -301,7 +305,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
                       radius: 14,
                       backgroundColor: color,
                       child: Text(
-                        p.name[0].toUpperCase(),
+                        p.name.isEmpty ? '?' : p.name[0].toUpperCase(),
                         style: TextStyle(
                           color: Scheme.onAvatar(color),
                           fontWeight: FontWeight.bold,
@@ -343,7 +347,7 @@ class _AddGroupExpenseSheetState extends ConsumerState<AddGroupExpenseSheet> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Total: $currencySymbol${_totalShares.toStringAsFixed(2)} / $currencySymbol${double.tryParse(_amountCtrl.text.trim()) ?? 0}',
+                  'Total: ${formatMoney(_totalShares, currency: currencySymbol, decimals: true)} / ${formatMoney(double.tryParse(_amountCtrl.text.trim()) ?? 0, currency: currencySymbol, decimals: true)}',
                   style: TextStyle(
                     fontSize: AppType.caption,
                     color:

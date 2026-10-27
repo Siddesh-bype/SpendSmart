@@ -1,18 +1,9 @@
 import 'package:intl/intl.dart';
 
-extension CustomDateExtension on DateTime {
-  /// Whether this date falls in the custom month starting on [startingDay] of
-  /// [targetMonth]/[targetYear].
-  ///
-  /// Half-open: `[start, nextStart)`. Every screen filters whole expense lists
-  /// through here on each rebuild, so this stays allocation-light — two
-  /// DateTimes, no Durations.
-  bool isTargetCustomMonth(int targetMonth, int targetYear, int startingDay) {
-    final start = DateTime(targetYear, targetMonth, startingDay);
-    final nextStart = DateTime(targetYear, targetMonth + 1, startingDay);
-    return !isBefore(start) && isBefore(nextStart);
-  }
-}
+/// Shared display format for standalone dates ('28 Oct 2026'). Reuse this
+/// instance instead of building `DateFormat('dd MMM yyyy')` per call — intl
+/// construction is not free and the pattern is app-wide.
+final DateFormat displayDateFormat = DateFormat('dd MMM yyyy');
 
 /// Groups a list of items by calendar month label ('January 2026').
 ///

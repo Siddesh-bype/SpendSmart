@@ -3,6 +3,23 @@ import 'package:intl/intl.dart';
 
 import '../utils/design.dart';
 
+/// The string form of [MoneyText]: grouped digits, sign prefix, currency.
+/// Use it wherever money is embedded in a longer sentence; use the widget
+/// wherever the amount stands alone. (`decimals` uses `#,##0.##`, so trailing
+/// zeros are trimmed — generated documents that need fixed columns keep their
+/// own `#,##0.00` formatting.)
+String formatMoney(
+  double amount, {
+  String currency = '',
+  bool decimals = false,
+  bool signed = false,
+}) {
+  final digits = NumberFormat(decimals ? '#,##0.##' : '#,##0')
+      .format(amount.abs());
+  final sign = amount < 0 ? '-' : (signed ? '+' : '');
+  return '$sign$currency$digits';
+}
+
 /// The single place money is rendered. Always uses tabular figures so digits
 /// are fixed-width and amounts line up in columns.
 ///
@@ -56,12 +73,8 @@ class MoneyText extends StatelessWidget {
     this.textAlign,
   });
 
-  String get formatted {
-    final digits = NumberFormat(decimals ? '#,##0.##' : '#,##0')
-        .format(amount.abs());
-    final sign = amount < 0 ? '-' : (signed ? '+' : '');
-    return '$sign$currency$digits';
-  }
+  String get formatted =>
+      formatMoney(amount, currency: currency, decimals: decimals, signed: signed);
 
   @override
   Widget build(BuildContext context) {
