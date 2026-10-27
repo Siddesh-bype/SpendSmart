@@ -215,7 +215,9 @@ class GroupsScreen extends ConsumerWidget {
                                         radius: 16,
                                         backgroundColor: Color(group.participants[j].avatarColorValue),
                                         child: Text(
-                                          group.participants[j].name[0].toUpperCase(),
+                                          group.participants[j].name.isEmpty
+                                              ? '?'
+                                              : group.participants[j].name[0].toUpperCase(),
                                           style: TextStyle(
                                             color: Scheme.onAvatar(
                                               Color(group.participants[j].avatarColorValue),

@@ -11,6 +11,7 @@ import '../services/lending_pdf_service.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/validation.dart';
+import '../widgets/money_text.dart';
 
 enum _LendingFilter { active, settled, all }
 
@@ -322,8 +323,8 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
     final balanceLabel = activeEntries.isEmpty
         ? 'Settled'
         : isOwed
-            ? 'Owed to you ${_money(net, currency)}'
-            : 'You owe ${_money(net.abs(), currency)}';
+            ? 'Owed to you ${formatMoney(net, currency: currency)}'
+            : 'You owe ${formatMoney(net.abs(), currency: currency)}';
     final balanceColor = activeEntries.isEmpty
         ? scheme.muted
         : isOwed
@@ -394,8 +395,8 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       ),
       title: Text(
         lending.isIGave
-            ? 'You gave ${_money(lending.amount, currency)}'
-            : 'You owe ${_money(lending.amount, currency)}',
+            ? 'You gave ${formatMoney(lending.amount, currency: currency)}'
+            : 'You owe ${formatMoney(lending.amount, currency: currency)}',
         style: TextStyle(
           color: entryColor,
           fontWeight: FontWeight.w600,
@@ -449,9 +450,6 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       ),
     );
   }
-
-  String _money(double amount, String currency) =>
-      '$currency${NumberFormat('#,##0').format(amount)}';
 
   Widget _emptyState({
     required bool hasRecords,
@@ -579,7 +577,7 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       builder: (dialogContext) => AlertDialog(
         title: const Text('Delete lending entry?'),
         content: Text(
-          'Remove the ${_money(lending.amount, ref.read(appSettingsProvider).currency)} '
+          'Remove the ${formatMoney(lending.amount, currency: ref.read(appSettingsProvider).currency)} '
           'entry with ${lending.friendName}?',
         ),
         actions: [
@@ -652,22 +650,21 @@ class _LendingScreenState extends ConsumerState<LendingScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => _LendingSheet(ref: ref, initial: lending),
+      builder: (_) => _LendingSheet(initial: lending),
     );
   }
 }
 
-class _LendingSheet extends StatefulWidget {
-  const _LendingSheet({required this.ref, this.initial});
+class _LendingSheet extends ConsumerStatefulWidget {
+  const _LendingSheet({this.initial});
 
-  final WidgetRef ref;
   final Lending? initial;
 
   @override
-  State<_LendingSheet> createState() => _LendingSheetState();
+  ConsumerState<_LendingSheet> createState() => _LendingSheetState();
 }
 
-class _LendingSheetState extends State<_LendingSheet> {
+class _LendingSheetState extends ConsumerState<_LendingSheet> {
   late final TextEditingController _nameController;
   late final TextEditingController _amountController;
   late final TextEditingController _noteController;
@@ -719,7 +716,7 @@ class _LendingSheetState extends State<_LendingSheet> {
       isSettled: initial?.isSettled ?? false,
     );
     try {
-      final notifier = widget.ref.read(lendingProvider.notifier);
+      final notifier = ref.read(lendingProvider.notifier);
       if (_editing) {
         await notifier.updateLending(lending);
       } else {
@@ -746,7 +743,7 @@ class _LendingSheetState extends State<_LendingSheet> {
   @override
   Widget build(BuildContext context) {
     final scheme = SchemeTheme.of(context);
-    final currency = widget.ref.read(appSettingsProvider).currency;
+    final currency = ref.read(appSettingsProvider).currency;
     return Padding(
       padding: EdgeInsets.only(
         left: AppSpacing.lg,

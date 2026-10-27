@@ -19,10 +19,12 @@ import '../widgets/edit_expense_sheet.dart';
 import '../widgets/money_text.dart';
 import '../widgets/spending_calendar.dart';
 import '../widgets/spending_pulse_card.dart';
+import '../widgets/stat_chip.dart';
 import '../utils/theme.dart';
 import '../utils/design.dart';
 import '../utils/financial_period.dart';
 import 'pending_screen.dart';
+import 'lending_screen.dart';
 import 'transactions_screen.dart';
 import 'notifications_screen.dart';
 import 'income_screen.dart';
@@ -441,19 +443,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       Row(
                         children: [
                           Expanded(
-                            child: _statChip(
-                              scheme,
-                              'Budget',
-                              '${settings.currency}${NumberFormat('#,##0').format(settings.monthlyBudget)}',
+                            child: StatChip(
+                              label: 'Budget',
+                              value: formatMoney(
+                                settings.monthlyBudget,
+                                currency: settings.currency,
+                              ),
                             ),
                           ),
                           if (hasIncome) ...[
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _statChip(
-                                scheme,
-                                'Income',
-                                '${settings.currency}${NumberFormat('#,##0').format(monthlyIncome)}',
+                              child: StatChip(
+                                label: 'Income',
+                                value: formatMoney(
+                                  monthlyIncome,
+                                  currency: settings.currency,
+                                ),
                               ),
                             ),
                           ],
@@ -461,12 +467,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               dailyLeft.isFinite) ...[
                             const SizedBox(width: 8),
                             Expanded(
-                              child: _statChip(
-                                scheme,
-                                'Daily left',
-                                dailyLeft >= 0
-                                    ? '${settings.currency}${NumberFormat('#,##0').format(dailyLeft)}'
-                                    : '-${settings.currency}${NumberFormat('#,##0').format(dailyLeft.abs())}',
+                              child: StatChip(
+                                label: 'Daily left',
+                                value: formatMoney(
+                                  dailyLeft,
+                                  currency: settings.currency,
+                                ),
                               ),
                             ),
                           ],
@@ -571,6 +577,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         MaterialPageRoute(
                           builder: (_) => const RecurringExpenseScreen(),
                         ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    _linkedRow(
+                      scheme,
+                      icon: Icons.handshake_outlined,
+                      tone: scheme.warning,
+                      title: 'Lending',
+                      subtitle: 'Track money you lent or borrowed',
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const LendingScreen()),
                       ),
                     ),
                   ],
@@ -767,37 +785,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _statChip(SchemeTheme scheme, String label, String value) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: scheme.tint,
-        borderRadius: BorderRadius.circular(AppRadius.md),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: TextStyle(color: scheme.muted, fontSize: AppType.caption),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: scheme.ink,
-              fontSize: AppType.body,
-              fontWeight: FontWeight.w600,
-              fontFeatures: AppType.tabular,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _linkedRow(
     SchemeTheme scheme, {
     required IconData icon,
@@ -906,10 +893,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   monthlyLimit: 0,
                 ),
               );
-              final limit = budget.monthlyLimit > 0
-                  ? budget.monthlyLimit
-                  : spent * 1.5;
-              final pct = (spent / limit).clamp(0.0, 1.0);
+              final hasBudget = budget.monthlyLimit > 0;
+              final limit = budget.monthlyLimit;
+              final pct = hasBudget ? (spent / limit).clamp(0.0, 1.0) : 0.0;
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
@@ -943,7 +929,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           ],
                         ),
                         Text(
-                          '$currency${NumberFormat('#,##0').format(spent)} / $currency${NumberFormat('#,##0').format(limit)}',
+                          hasBudget
+                              ? '$currency${NumberFormat('#,##0').format(spent)} / $currency${NumberFormat('#,##0').format(limit)}'
+                              : '$currency${NumberFormat('#,##0').format(spent)}',
                           style: TextStyle(
                             fontSize: AppType.label,
                             color: scheme.muted,
@@ -951,33 +939,37 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(6),
-                      child: TweenAnimationBuilder<double>(
-                        tween: Tween<double>(begin: 0, end: pct),
-                        duration: const Duration(milliseconds: 1000),
-                        curve: Curves.easeOutExpo,
-                        builder: (context, val, _) => LinearProgressIndicator(
-                          value: val,
-                          backgroundColor: scheme.tint,
-                          color: pct > 0.85 ? scheme.error : catColor,
-                          minHeight: 10,
+                    // No budget set: show spend only — a fabricated limit
+                    // ("₹400 / ₹600") implies data the user never entered.
+                    if (hasBudget) ...[
+                      const SizedBox(height: 10),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(6),
+                        child: TweenAnimationBuilder<double>(
+                          tween: Tween<double>(begin: 0, end: pct),
+                          duration: const Duration(milliseconds: 1000),
+                          curve: Curves.easeOutExpo,
+                          builder: (context, val, _) => LinearProgressIndicator(
+                            value: val,
+                            backgroundColor: scheme.tint,
+                            color: pct > 0.85 ? scheme.error : catColor,
+                            minHeight: 10,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        '${(pct * 100).toStringAsFixed(0)}%',
-                        style: TextStyle(
-                          fontSize: AppType.caption,
-                          fontWeight: FontWeight.bold,
-                          color: pct > 0.85 ? scheme.error : scheme.muted,
+                      const SizedBox(height: 4),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: Text(
+                          '${(pct * 100).toStringAsFixed(0)}%',
+                          style: TextStyle(
+                            fontSize: AppType.caption,
+                            fontWeight: FontWeight.bold,
+                            color: pct > 0.85 ? scheme.error : scheme.muted,
+                          ),
                         ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               );

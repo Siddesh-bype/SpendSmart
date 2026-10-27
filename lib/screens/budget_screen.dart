@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/budget_provider.dart';
 import '../providers/expense_provider.dart';
@@ -566,17 +567,33 @@ class _BudgetScreenState extends ConsumerState<BudgetScreen> {
               onPressed: () async {
                 final amount = parsePositiveAmount(amountController.text);
                 if (amount != null) {
-                  await ref
-                      .read(budgetProvider.notifier)
-                      .setBudget(
-                        Budget(
-                          category: catController.value.builtIn ?? Category.other,
-                          customCategoryId:
-                              catController.value.customCategoryId,
-                          monthlyLimit: amount,
+                  HapticFeedback.mediumImpact();
+                  final messenger = ScaffoldMessenger.of(sheetContext);
+                  try {
+                    await ref
+                        .read(budgetProvider.notifier)
+                        .setBudget(
+                          Budget(
+                            category: catController.value.builtIn ?? Category.other,
+                            customCategoryId:
+                                catController.value.customCategoryId,
+                            monthlyLimit: amount,
+                          ),
+                        );
+                  } catch (_) {
+                    if (sheetContext.mounted) {
+                      ScaffoldMessenger.of(sheetContext).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not save the budget. Try again.'),
                         ),
                       );
-                  if (context.mounted) Navigator.pop(context);
+                    }
+                    return;
+                  }
+                  if (sheetContext.mounted) Navigator.pop(sheetContext);
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Budget saved')),
+                  );
                 } else {
                   amountError.value = 'Enter a valid monthly limit';
                   // Snackbar kept as backup; the inline error is the

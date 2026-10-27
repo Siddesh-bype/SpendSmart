@@ -169,7 +169,7 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                                 radius: 18,
                                 backgroundColor: color,
                                 child: Text(
-                                  p.name[0].toUpperCase(),
+                                  p.name.isEmpty ? '?' : p.name[0].toUpperCase(),
                                   style: TextStyle(
                                     color: Scheme.onAvatar(color),
                                     fontWeight: FontWeight.bold,
@@ -322,20 +322,18 @@ class _GroupDetailScreenState extends ConsumerState<GroupDetailScreen> {
                 itemCount: expenses.length,
                 itemBuilder: (context, i) {
                   final expense = expenses[i];
-                  final paidByName = view.participants
-                      .firstWhere(
-                        (p) => p.id == expense.paidBy,
-                        orElse: () => view.participants.first,
-                      )
-                      .name;
-                  final paidByColor = Color(
-                    view.participants
-                        .firstWhere(
+                  // A restored/corrupt group can have no participants at all;
+                  // firstWhere's orElse would crash on an empty list.
+                  final paidBy = view.participants.isEmpty
+                      ? null
+                      : view.participants.firstWhere(
                           (p) => p.id == expense.paidBy,
                           orElse: () => view.participants.first,
-                        )
-                        .avatarColorValue,
-                  );
+                        );
+                  final paidByName = paidBy?.name ?? '?';
+                  final paidByColor = paidBy == null
+                      ? scheme.primary
+                      : Color(paidBy.avatarColorValue);
 
                   return Dismissible(
                     key: Key(expense.id),

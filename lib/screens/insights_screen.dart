@@ -16,6 +16,7 @@ import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/financial_period.dart';
 import '../widgets/money_text.dart';
+import '../widgets/empty_state.dart';
 import '../widgets/section_header.dart';
 
 class InsightsScreen extends ConsumerWidget {
@@ -81,11 +82,11 @@ class InsightsScreen extends ConsumerWidget {
         ],
       ),
       body: expenses.isEmpty
-          ? Center(
-              child: Text(
-                'Add some expenses to see insights!',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+          ? EmptyState(
+              icon: Icons.insights_outlined,
+              title: 'No insights yet',
+              subtitle: 'Add a few expenses and patterns, health scores and '
+                  'spending trends will show up here.',
             )
           : ListView(
               padding: EdgeInsets.fromLTRB(
@@ -550,7 +551,7 @@ class InsightsScreen extends ConsumerWidget {
         ),
         title: Text(r['name']),
         subtitle: Text(
-          '~${r['frequency']} - Monthly ~$currency${NumberFormat('#,##0').format(r['amount'])}',
+          '~${r['frequency']} · ~$currency${NumberFormat('#,##0').format(r['amount'])} each',
         ),
         trailing: Icon(
           Icons.repeat,
@@ -561,22 +562,32 @@ class InsightsScreen extends ConsumerWidget {
     );
   }
 
+  /// Titles appearing repeatedly inside the recent window. "Recurring" means
+  /// what the reader thinks — a charge that keeps showing up — so a merchant
+  /// met twice a decade ago must not surface, and frequency follows how many
+  /// calendar months the charges span rather than the raw count (12 yearly
+  /// insurance premiums were labelled "Monthly" before).
   List<Map<String, dynamic>> _detectRecurring(List expenses) {
+    final cutoff = DateTime.now().subtract(const Duration(days: 90));
     final titleCount = <String, int>{};
     final titleAmount = <String, double>{};
+    final titleMonths = <String, Set<String>>{};
     for (final e in expenses) {
+      if (e.date.isBefore(cutoff)) continue;
       final key = e.title.toLowerCase().trim();
       titleCount[key] = (titleCount[key] ?? 0) + 1;
       titleAmount[key] = (titleAmount[key] ?? 0) + e.amount;
+      (titleMonths[key] ??= {}).add('${e.date.year}-${e.date.month}');
     }
     final recurring = <Map<String, dynamic>>[];
     titleCount.forEach((key, count) {
       if (count >= 2) {
         final avg = titleAmount[key]! / count;
-        String freq = count >= 12
+        final months = titleMonths[key]!.length;
+        String freq = months >= 3
             ? 'Monthly'
-            : count >= 4
-            ? 'Quarterly'
+            : months >= 2
+            ? 'Recurring'
             : 'Occasional';
         recurring.add({
           'name': _capitalize(key),

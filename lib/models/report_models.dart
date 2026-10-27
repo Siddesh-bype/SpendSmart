@@ -106,24 +106,6 @@ class ReportConfiguration {
   final String? customCategoryId;
   final bool includeUncategorized;
   final ReportSortOrder sortOrder;
-
-  ReportConfiguration copyWith({
-    ReportDateRange? range,
-    Category? category,
-    bool clearCategory = false,
-    String? customCategoryId,
-    bool clearCustomCategory = false,
-    bool? includeUncategorized,
-    ReportSortOrder? sortOrder,
-  }) => ReportConfiguration(
-    range: range ?? this.range,
-    category: clearCategory ? null : (category ?? this.category),
-    customCategoryId: clearCustomCategory
-        ? null
-        : (customCategoryId ?? this.customCategoryId),
-    includeUncategorized: includeUncategorized ?? this.includeUncategorized,
-    sortOrder: sortOrder ?? this.sortOrder,
-  );
 }
 
 class ReportData {

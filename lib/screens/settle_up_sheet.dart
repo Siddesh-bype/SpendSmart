@@ -7,6 +7,7 @@ import '../providers/group_expense_provider.dart';
 import '../providers/app_settings_provider.dart';
 import '../utils/theme.dart';
 import '../utils/design.dart';
+import '../widgets/money_text.dart';
 
 class SettleUpSheet extends ConsumerStatefulWidget {
   final GroupExpense expense;
@@ -113,7 +114,11 @@ class _SettleUpSheetState extends ConsumerState<SettleUpSheet> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '$currency${expense.totalAmount.toStringAsFixed(2)}',
+                  formatMoney(
+                    expense.totalAmount,
+                    currency: currency,
+                    decimals: true,
+                  ),
                   style: TextStyle(
                     fontSize: AppType.display,
                     fontWeight: FontWeight.bold,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/custom_category.dart';
@@ -139,6 +140,7 @@ class CategoryManagerScreen extends ConsumerWidget {
     );
     if (value == null || !context.mounted) return;
     try {
+      HapticFeedback.lightImpact();
       await ref.read(customCategoryProvider.notifier).rename(category, value);
     } catch (error) {
       if (context.mounted) _error(context, error.toString());
@@ -187,6 +189,7 @@ class CategoryManagerScreen extends ConsumerWidget {
     );
     if (confirmed != true || !context.mounted) return;
     try {
+      HapticFeedback.mediumImpact();
       await ref.read(customCategoryProvider.notifier).merge(source, destination);
     } catch (error) {
       if (context.mounted) _error(context, 'Could not combine categories: $error');
@@ -210,6 +213,7 @@ class CategoryManagerScreen extends ConsumerWidget {
       ),
     );
     if (confirmed == true && context.mounted) {
+      HapticFeedback.mediumImpact();
       await ref.read(customCategoryProvider.notifier).archive(category);
     }
   }

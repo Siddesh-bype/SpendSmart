@@ -9,6 +9,7 @@ import 'package:syncfusion_flutter_pdf/pdf.dart';
 import '../models/expense.dart';
 import '../models/report_models.dart';
 import '../utils/financial_period.dart';
+import '../utils/date_extension.dart';
 import 'expense_category_resolver.dart';
 import 'export_service.dart';
 
@@ -361,7 +362,7 @@ class ReportService {
     for (var i = 0; i < days.length; i++) {
       final entry = days[i];
       final row = grid.rows.add();
-      row.cells[0].value = DateFormat('dd MMM yyyy').format(entry.key);
+      row.cells[0].value = displayDateFormat.format(entry.key);
       row.cells[1].value = '$currency${_money(entry.value)}';
       row.style = PdfGridRowStyle(
         backgroundBrush: PdfSolidBrush(
@@ -453,8 +454,8 @@ class ReportService {
   }
 
   static String _rangeLabel(ReportDateRange range) =>
-      '${DateFormat('dd MMM yyyy').format(range.start)} – '
-      '${DateFormat('dd MMM yyyy').format(range.endInclusive)}';
+      '${displayDateFormat.format(range.start)} – '
+      '${displayDateFormat.format(range.endInclusive)}';
 
   static String _money(double value) => NumberFormat('#,##0.00').format(value);
 

@@ -238,7 +238,6 @@ class SchemeTheme {
       categoryBills,
       categoryOther;
   final Color focus;
-  Color get scrim => Scheme.scrim;
 
   /// Categories in the same order as [AppColors.categoryColors].
   List<Color> get categoryColors => [

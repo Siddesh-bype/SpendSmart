@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../models/recurring_expense.dart';
@@ -164,6 +165,7 @@ class _RecurringTile extends ConsumerWidget {
             PopupMenuButton<String>(
               onSelected: (v) {
                 if (v == 'toggle') {
+                  HapticFeedback.selectionClick();
                   ref
                       .read(recurringExpenseProvider.notifier)
                       .toggleActive(item.id);
@@ -220,9 +222,25 @@ class _RecurringTile extends ConsumerWidget {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              ref.read(recurringExpenseProvider.notifier).delete(item.id);
+              HapticFeedback.mediumImpact();
+              try {
+                await ref
+                    .read(recurringExpenseProvider.notifier)
+                    .delete(item.id);
+              } catch (_) {
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('Could not delete the rule. Try again.'),
+                  ),
+                );
+                return;
+              }
+              messenger.showSnackBar(
+                SnackBar(content: Text('"${item.title}" removed')),
+              );
             },
             child: Text('Delete', style: TextStyle(color: scheme.error)),
           ),
@@ -281,12 +299,22 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
       frequency: _frequency,
       startDate: _startDate,
     );
-    await ref.read(recurringExpenseProvider.notifier).add(r);
-    if (mounted) {
-      Navigator.pop(context);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Recurring expense added')));
+    try {
+      await ref.read(recurringExpenseProvider.notifier).add(r);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Recurring expense added')));
+      }
+    } catch (_) {
+      // Reset so the save button recovers instead of spinning forever.
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = 'Could not save. Try again.';
+        });
+      }
     }
   }
 
@@ -429,7 +457,9 @@ class _AddRecurringSheetState extends ConsumerState<_AddRecurringSheet> {
                       firstDate: DateTime(2020),
                       lastDate: DateTime(2030),
                     );
-                    if (picked != null) setState(() => _startDate = picked);
+                    if (picked != null && mounted) {
+                      setState(() => _startDate = picked);
+                    }
                   },
                 ),
               ],

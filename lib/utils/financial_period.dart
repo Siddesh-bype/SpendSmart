@@ -58,10 +58,6 @@ class FinancialPeriod {
     startingDay,
   );
 
-  FinancialPeriod get next =>
-      FinancialPeriod._(endExclusive, _addMonth(endExclusive, startingDay),
-          startingDay);
-
   /// Shifted by [months]; negative goes back.
   FinancialPeriod shifted(int months) => FinancialPeriod.startingIn(
     start.year,

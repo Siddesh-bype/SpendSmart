@@ -199,17 +199,24 @@ class _PendingScreenState extends ConsumerState<PendingScreen> {
             final merchantsNotifier = ref.read(merchantNotifierProvider.notifier);
 
             int applied = 0;
+            var failed = 0;
             for (final s in confidentSuggestions) {
               try {
                 await expensesNotifier.categorizeExpense(s.expenseId, s.category);
                 await merchantsNotifier.correctMerchant(s.merchant, s.category);
                 applied++;
-              } catch (_) {}
+              } catch (_) {
+                failed++;
+              }
             }
 
             messenger.showSnackBar(
               SnackBar(
-                content: Text('Successfully auto-categorized $applied transaction${applied == 1 ? '' : 's'}!'),
+                content: Text(
+                  failed == 0
+                      ? 'Successfully auto-categorized $applied transaction${applied == 1 ? '' : 's'}!'
+                      : '$applied categorized, $failed could not be saved. Try again for the rest.',
+                ),
               ),
             );
           },
@@ -459,8 +466,8 @@ class _PendingTile extends ConsumerWidget {
                         onTap: () => _categorize(context, ref, cat),
                         child: Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 8,
+                            horizontal: 14,
+                            vertical: 12,
                           ),
                           decoration: BoxDecoration(
                             color: catColor.withValues(alpha: 0.12),

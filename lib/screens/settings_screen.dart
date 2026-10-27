@@ -32,11 +32,20 @@ import 'report_screen.dart';
 import 'backup_screen.dart';
 import 'category_manager_screen.dart';
 
-class SettingsScreen extends ConsumerWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends ConsumerState<SettingsScreen> {
+  /// Guards the CSV/PDF import-export handlers against double-taps: a second
+  /// tap mid-operation would re-open the picker or re-run an export.
+  bool _dataBusy = false;
+
+  @override
+  Widget build(BuildContext context) {
     final settings = ref.watch(appSettingsProvider);
 
     return Scaffold(
@@ -162,7 +171,7 @@ class SettingsScreen extends ConsumerWidget {
               'Import expenses from a SpendSmart or custom CSV file',
             ),
             color: SchemeTheme.of(context).primary,
-            onTap: () => _importCSV(context, ref),
+            onTap: _dataBusy ? null : () => _importCSV(context, ref),
           ),
           _tile(
             icon: Icons.backup_outlined,
@@ -204,31 +213,32 @@ class SettingsScreen extends ConsumerWidget {
             title: 'Export to PDF',
             subtitle: const Text('Professional expense report with charts'),
             color: SchemeTheme.of(context).muted,
-            onTap: () => _exportPDF(context, ref, settings.currency),
+            onTap: _dataBusy ? null : () => _exportPDF(context, ref, settings.currency),
           ),
           _tile(
             icon: Icons.table_chart,
             title: 'Export to CSV',
             subtitle: const Text('Save expenses as a spreadsheet'),
             color: SchemeTheme.of(context).muted,
-            onTap: () => _exportCSV(context, ref),
+            onTap: _dataBusy ? null : () => _exportCSV(context, ref),
           ),
           _tile(
             icon: Icons.share_rounded,
             title: 'Share CSV Report',
             subtitle: const Text('Send expense data via WhatsApp, email, etc.'),
             color: SchemeTheme.of(context).muted,
-            onTap: () => _shareCSV(context, ref),
+            onTap: _dataBusy ? null : () => _shareCSV(context, ref),
           ),
 
           // Safe-area padding replaces the old 160px FAB spacer.
           const SizedBox(height: 16),
           _sectionTitle('Danger Zone'),
-          _dangerTile(
+          _tile(
             icon: Icons.delete_forever_outlined,
             title: 'Erase all data',
             subtitle: const Text('Permanently delete all local data'),
             onTap: () => _confirmEraseAll(context, ref),
+            danger: true,
           ),
           SizedBox(height: 16 + MediaQuery.of(context).padding.bottom),
         ],
@@ -254,25 +264,33 @@ class SettingsScreen extends ConsumerWidget {
     },
   );
 
+  /// Settings list tile. [danger] is the destructive variant: error-tinted
+  /// outline plus error text AND icon, so the danger is never carried by
+  /// color alone.
   Widget _tile({
     required IconData icon,
     required String title,
     Widget? subtitle,
     VoidCallback? onTap,
     Color? color,
+    bool danger = false,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Builder(
         builder: (context) {
           final scheme = SchemeTheme.of(context);
-          final iconColor = color ?? scheme.primary;
+          final iconColor = danger ? scheme.error : (color ?? scheme.primary);
 
           return Container(
             decoration: BoxDecoration(
               color: scheme.surface,
               borderRadius: AppRadius.mdAll,
-              border: Border.all(color: scheme.border),
+              border: Border.all(
+                color: danger
+                    ? scheme.error.withValues(alpha: 0.6)
+                    : scheme.border,
+              ),
             ),
             child: Material(
               color: Colors.transparent,
@@ -281,7 +299,9 @@ class SettingsScreen extends ConsumerWidget {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: scheme.tint,
+                    color: danger
+                        ? scheme.error.withValues(alpha: 0.12)
+                        : scheme.tint,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(icon, color: iconColor, size: 22),
@@ -290,7 +310,7 @@ class SettingsScreen extends ConsumerWidget {
                   title,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: scheme.ink,
+                    color: danger ? scheme.error : scheme.ink,
                   ),
                 ),
                 subtitle: subtitle != null
@@ -303,67 +323,10 @@ class SettingsScreen extends ConsumerWidget {
                       )
                     : null,
                 trailing: onTap != null
-                    ? Icon(Icons.chevron_right, color: scheme.muted)
-                    : null,
-                onTap: onTap,
-                shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
-              ),
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  /// Destructive twin of [_tile]: error-tinted outline plus error
-  /// text AND icon, so the danger is never carried by color alone.
-  Widget _dangerTile({
-    required IconData icon,
-    required String title,
-    Widget? subtitle,
-    VoidCallback? onTap,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Builder(
-        builder: (context) {
-          final scheme = SchemeTheme.of(context);
-          return Container(
-            decoration: BoxDecoration(
-              color: scheme.surface,
-              borderRadius: AppRadius.mdAll,
-              border: Border.all(color: scheme.error.withValues(alpha: 0.6)),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: ListTile(
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: scheme.error.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, color: scheme.error, size: 22),
-                ),
-                title: Text(
-                  title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    color: scheme.error,
-                  ),
-                ),
-                subtitle: subtitle != null
-                    ? DefaultTextStyle(
-                        style: TextStyle(
-                          color: scheme.muted,
-                          fontSize: AppType.caption,
-                        ),
-                        child: subtitle,
+                    ? Icon(
+                        Icons.chevron_right,
+                        color: danger ? scheme.error : scheme.muted,
                       )
-                    : null,
-                trailing: onTap != null
-                    ? Icon(Icons.chevron_right, color: scheme.error)
                     : null,
                 onTap: onTap,
                 shape: RoundedRectangleBorder(borderRadius: AppRadius.mdAll),
@@ -529,6 +492,16 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _importCSV(BuildContext context, WidgetRef ref) async {
+    if (_dataBusy) return;
+    setState(() => _dataBusy = true);
+    try {
+      await _runCsvImport(context, ref);
+    } finally {
+      if (mounted) setState(() => _dataBusy = false);
+    }
+  }
+
+  Future<void> _runCsvImport(BuildContext context, WidgetRef ref) async {
     final memoryLookup = ref
         .read(storageServiceProvider)
         .lookupMerchantCategory;
@@ -654,6 +627,20 @@ class SettingsScreen extends ConsumerWidget {
     WidgetRef ref,
     String currency,
   ) async {
+    if (_dataBusy) return;
+    setState(() => _dataBusy = true);
+    try {
+      await _runPdfExport(context, ref, currency);
+    } finally {
+      if (mounted) setState(() => _dataBusy = false);
+    }
+  }
+
+  Future<void> _runPdfExport(
+    BuildContext context,
+    WidgetRef ref,
+    String currency,
+  ) async {
     final expenses = ref
         .read(expenseProvider)
         .where((e) => !e.isUncategorized)
@@ -683,6 +670,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _exportCSV(BuildContext context, WidgetRef ref) async {
+    if (_dataBusy) return;
+    setState(() => _dataBusy = true);
     try {
       final expenses = ref.read(expenseProvider);
       final path = await ExportService.exportToCSV(expenses);
@@ -693,10 +682,22 @@ class SettingsScreen extends ConsumerWidget {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('CSV export failed. Try again.')),
       );
+    } finally {
+      if (mounted) setState(() => _dataBusy = false);
     }
   }
 
   Future<void> _shareCSV(BuildContext context, WidgetRef ref) async {
+    if (_dataBusy) return;
+    setState(() => _dataBusy = true);
+    try {
+      await _runCsvShare(context, ref);
+    } finally {
+      if (mounted) setState(() => _dataBusy = false);
+    }
+  }
+
+  Future<void> _runCsvShare(BuildContext context, WidgetRef ref) async {
     final expenses = ref.read(expenseProvider);
     if (expenses.isEmpty) {
       ScaffoldMessenger.of(
@@ -723,8 +724,17 @@ class SettingsScreen extends ConsumerWidget {
     }
   }
 
-  void _editCurrency(BuildContext context, WidgetRef ref, String current) {
-    showModalBottomSheet(
+  /// Shared scaffold for the settings edit sheets: padded column with a bold
+  /// title, sheet-specific [content], and a full-width CTA. The CTA runs
+  /// [onConfirm] (if given) and then pops; without one it just pops.
+  Future<void> _showEditSheet(
+    BuildContext context, {
+    required String title,
+    required Widget Function(BuildContext sheetContext) content,
+    String buttonLabel = 'Done',
+    Future<void> Function()? onConfirm,
+  }) {
+    return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       builder: (sheetContext) {
@@ -741,24 +751,13 @@ class SettingsScreen extends ConsumerWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Select Currency',
+                title,
                 style: Theme.of(
                   sheetContext,
                 ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: AppSpacing.lg),
-              for (final c in ['₹', '\$', '€', '£', '¥'])
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(c),
-                  trailing: c == current
-                      ? Icon(Icons.check, color: scheme.primary)
-                      : null,
-                  onTap: () {
-                    ref.read(appSettingsProvider.notifier).updateCurrency(c);
-                    Navigator.pop(sheetContext);
-                  },
-                ),
+              content(sheetContext),
               const SizedBox(height: AppSpacing.md),
               SizedBox(
                 width: double.infinity,
@@ -768,9 +767,16 @@ class SettingsScreen extends ConsumerWidget {
                     backgroundColor: scheme.ctaFill,
                     foregroundColor: scheme.ctaText,
                   ),
-                  onPressed: () => Navigator.pop(sheetContext),
+                  onPressed: onConfirm == null
+                      ? () => Navigator.pop(sheetContext)
+                      : () async {
+                          await onConfirm();
+                          if (sheetContext.mounted) {
+                            Navigator.pop(sheetContext);
+                          }
+                        },
                   child: Text(
-                    'Done',
+                    buttonLabel,
                     style: TextStyle(
                       color: scheme.ctaText,
                       fontWeight: FontWeight.bold,
@@ -783,6 +789,30 @@ class SettingsScreen extends ConsumerWidget {
           ),
         );
       },
+    );
+  }
+
+  void _editCurrency(BuildContext context, WidgetRef ref, String current) {
+    _showEditSheet(
+      context,
+      title: 'Select Currency',
+      content: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final c in ['₹', '\$', '€', '£', '¥'])
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(c),
+              trailing: c == current
+                  ? Icon(Icons.check, color: SchemeTheme.of(sheetContext).primary)
+                  : null,
+              onTap: () {
+                ref.read(appSettingsProvider.notifier).updateCurrency(c);
+                Navigator.pop(sheetContext);
+              },
+            ),
+        ],
+      ),
     );
   }
 
@@ -795,85 +825,38 @@ class SettingsScreen extends ConsumerWidget {
       text: current > 0 ? current.toStringAsFixed(0) : '',
     );
     final amountError = ValueNotifier<String?>(null);
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        final scheme = SchemeTheme.of(sheetContext);
-        return Padding(
-          padding: EdgeInsets.only(
-            bottom: MediaQuery.of(sheetContext).viewInsets.bottom,
-            left: AppSpacing.xl,
-            right: AppSpacing.xl,
-            top: AppSpacing.xl,
+    _showEditSheet(
+      context,
+      title: 'Monthly Budget',
+      buttonLabel: 'Save',
+      content: (sheetContext) => ValueListenableBuilder<String?>(
+        valueListenable: amountError,
+        builder: (ctx, error, _) => TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          onChanged: (v) {
+            amountError.value = v.trim().isEmpty
+                ? null
+                : (parsePositiveAmount(v) == null
+                      ? 'Enter a valid monthly budget'
+                      : null);
+          },
+          decoration: InputDecoration(
+            labelText: 'Total monthly budget',
+            prefixText: '${ref.read(appSettingsProvider).currency} ',
+            errorText: error,
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Monthly Budget',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              ValueListenableBuilder<String?>(
-                valueListenable: amountError,
-                builder: (ctx, error, _) => TextField(
-                  controller: ctrl,
-                  autofocus: true,
-                  keyboardType: TextInputType.number,
-                  onChanged: (v) {
-                    if (v.trim().isEmpty) {
-                      amountError.value = null;
-                    } else {
-                      amountError.value = parsePositiveAmount(v) == null
-                          ? 'Enter a valid monthly budget'
-                          : null;
-                    }
-                  },
-                  decoration: InputDecoration(
-                    labelText: 'Total monthly budget',
-                    prefixText: '${ref.read(appSettingsProvider).currency} ',
-                    errorText: error,
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: scheme.ctaFill,
-                    foregroundColor: scheme.ctaText,
-                  ),
-                  onPressed: () async {
-                    final val = parsePositiveAmount(ctrl.text);
-                    if (val == null) {
-                      amountError.value = 'Enter a valid monthly budget';
-                      return;
-                    }
-                    HapticFeedback.mediumImpact();
-                    await ref
-                        .read(appSettingsProvider.notifier)
-                        .updateBudget(val);
-                    if (context.mounted) Navigator.pop(sheetContext);
-                  },
-                  child: Text(
-                    'Save',
-                    style: TextStyle(
-                      color: scheme.ctaText,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-          ),
-        );
+        ),
+      ),
+      onConfirm: () async {
+        final val = parsePositiveAmount(ctrl.text);
+        if (val == null) {
+          amountError.value = 'Enter a valid monthly budget';
+          return;
+        }
+        HapticFeedback.mediumImpact();
+        await ref.read(appSettingsProvider.notifier).updateBudget(val);
       },
     ).whenComplete(() {
       ctrl.dispose();
@@ -882,143 +865,71 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   void _editStartingDay(BuildContext context, WidgetRef ref, int current) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        final scheme = SchemeTheme.of(sheetContext);
-        return Padding(
-          padding: const EdgeInsets.only(
-            left: AppSpacing.xl,
-            right: AppSpacing.xl,
-            top: AppSpacing.xl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Starting Day of Month',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-              SizedBox(
-                height: 240,
-                width: double.maxFinite,
-                child: ListView.builder(
-                  itemCount: 28,
-                  itemBuilder: (context, index) {
-                    final day = index + 1;
-                    return ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: Text('Day $day'),
-                      trailing: day == current
-                          ? Icon(Icons.check, color: scheme.primary)
-                          : null,
-                      onTap: () {
-                        ref
-                            .read(appSettingsProvider.notifier)
-                            .updateStartingDay(day);
-                        Navigator.pop(sheetContext);
-                      },
-                    );
-                  },
-                ),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: scheme.ctaFill,
-                    foregroundColor: scheme.ctaText,
-                  ),
-                  onPressed: () => Navigator.pop(sheetContext),
-                  child: Text(
-                    'Done',
-                    style: TextStyle(
-                      color: scheme.ctaText,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-          ),
-        );
-      },
+    _showEditSheet(
+      context,
+      title: 'Starting Day of Month',
+      content: (sheetContext) => SizedBox(
+        height: 240,
+        width: double.maxFinite,
+        child: ListView.builder(
+          itemCount: 28,
+          itemBuilder: (context, index) {
+            final day = index + 1;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('Day $day'),
+              trailing: day == current
+                  ? Icon(
+                      Icons.check,
+                      color: SchemeTheme.of(sheetContext).primary,
+                    )
+                  : null,
+              onTap: () {
+                ref
+                    .read(appSettingsProvider.notifier)
+                    .updateStartingDay(day);
+                Navigator.pop(sheetContext);
+              },
+            );
+          },
+        ),
+      ),
     );
   }
 
   void _editTheme(BuildContext context, WidgetRef ref, String current) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) {
-        final scheme = SchemeTheme.of(sheetContext);
-        const options = [
-          ('light', 'Light', Icons.wb_sunny_outlined),
-          ('dark', 'Dark', Icons.nightlight_outlined),
-          ('system', 'System Default', Icons.brightness_auto),
-        ];
-        return Padding(
-          padding: const EdgeInsets.only(
-            left: AppSpacing.xl,
-            right: AppSpacing.xl,
-            top: AppSpacing.xl,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Select Theme',
-                style: Theme.of(
-                  sheetContext,
-                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+    const options = [
+      ('light', 'Light', Icons.wb_sunny_outlined),
+      ('dark', 'Dark', Icons.nightlight_outlined),
+      ('system', 'System Default', Icons.brightness_auto),
+    ];
+    _showEditSheet(
+      context,
+      title: 'Select Theme',
+      content: (sheetContext) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final t in options)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(
+                t.$3,
+                color: SchemeTheme.of(sheetContext).primary,
               ),
-              const SizedBox(height: AppSpacing.lg),
-              for (final t in options)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(t.$3, color: scheme.primary),
-                  title: Text(t.$2),
-                  trailing: current == t.$1
-                      ? Icon(Icons.check, color: scheme.primary)
-                      : null,
-                  onTap: () {
-                    ref.read(appSettingsProvider.notifier).updateTheme(t.$1);
-                    Navigator.pop(sheetContext);
-                  },
-                ),
-              const SizedBox(height: AppSpacing.md),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: const Size.fromHeight(48),
-                    backgroundColor: scheme.ctaFill,
-                    foregroundColor: scheme.ctaText,
-                  ),
-                  onPressed: () => Navigator.pop(sheetContext),
-                  child: Text(
-                    'Done',
-                    style: TextStyle(
-                      color: scheme.ctaText,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
-          ),
-        );
-      },
+              title: Text(t.$2),
+              trailing: current == t.$1
+                  ? Icon(
+                      Icons.check,
+                      color: SchemeTheme.of(sheetContext).primary,
+                    )
+                  : null,
+              onTap: () {
+                ref.read(appSettingsProvider.notifier).updateTheme(t.$1);
+                Navigator.pop(sheetContext);
+              },
+            ),
+        ],
+      ),
     );
   }
 

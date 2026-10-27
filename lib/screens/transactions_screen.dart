@@ -216,7 +216,7 @@ class _TransactionsScreenState extends ConsumerState<TransactionsScreen> {
                   child: child!,
                 ),
               );
-              if (picked != null) setState(() => _dateRange = picked);
+              if (picked != null && mounted) setState(() => _dateRange = picked);
             },
           ),
           PopupMenuButton<String>(

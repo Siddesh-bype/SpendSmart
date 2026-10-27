@@ -16,6 +16,7 @@ import '../services/category_classifier.dart';
 import '../utils/design.dart';
 import '../utils/theme.dart';
 import '../utils/validation.dart';
+import '../widgets/money_text.dart';
 
 class AddExpenseScreen extends ConsumerStatefulWidget {
   final Category? initialCategory;
@@ -332,6 +333,8 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             // Amount field
             TextField(
               controller: _amountCtrl,
+              autofocus: true,
+              textInputAction: TextInputAction.next,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: true,
               ),
@@ -592,7 +595,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                   firstDate: DateTime(2000),
                   lastDate: DateTime.now(),
                 );
-                if (dt != null) setState(() => _selectedDate = dt);
+                if (dt != null && mounted) setState(() => _selectedDate = dt);
               },
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -600,6 +603,7 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
             // Note
             TextField(
               controller: _noteCtrl,
+              textInputAction: TextInputAction.done,
               style: TextStyle(color: scheme.ink),
               decoration: _inputDecoration(
                 scheme: scheme,
@@ -766,12 +770,17 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                         return;
                       }
 
-                      // Validate split fields if enabled
+                      // Validate and capture split values before any await —
+                      // the fields stay editable while the save round-trips,
+                      // so they must never be re-read (or force-unwrapped)
+                      // afterwards.
+                      final friendName = _splitWithFriend
+                          ? _friendNameCtrl.text.trim()
+                          : '';
+                      final splitAmt = _splitWithFriend
+                          ? parsePositiveAmount(_splitAmountCtrl.text)
+                          : null;
                       if (_splitWithFriend) {
-                        final friendName = _friendNameCtrl.text.trim();
-                        final splitAmt = parsePositiveAmount(
-                          _splitAmountCtrl.text,
-                        );
                         if (friendName.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -814,53 +823,58 @@ class _AddExpenseScreenState extends ConsumerState<AddExpenseScreen> {
                       );
 
                       setState(() => _saving = true);
-                      var expenseSaved = false;
                       try {
                         await ref
                             .read(expenseProvider.notifier)
                             .addExpense(exp);
-                        expenseSaved = true;
-                           if (mounted && _selectedCustomCategoryId == null) {
+                        if (mounted && _selectedCustomCategoryId == null) {
                           ref
                               .read(merchantNotifierProvider.notifier)
                               .correctMerchant(title, exp.category);
                         }
 
-                        if (_splitWithFriend) {
-                          final friendName = _friendNameCtrl.text.trim();
-                          final splitAmt = parsePositiveAmount(
-                            _splitAmountCtrl.text,
-                          )!;
-                          await ref
-                              .read(lendingProvider.notifier)
-                              .addLending(
-                                Lending(
-                                  id: const Uuid().v4(),
-                                  friendName: friendName,
-                                  amount: splitAmt,
-                                  isIGave: true,
-                                  date: _selectedDate,
-                                  note: 'Split from: $title',
+                        if (_splitWithFriend && splitAmt != null) {
+                          var slipFailed = false;
+                          try {
+                            await ref
+                                .read(lendingProvider.notifier)
+                                .addLending(
+                                  Lending(
+                                    id: const Uuid().v4(),
+                                    friendName: friendName,
+                                    amount: splitAmt,
+                                    isIGave: true,
+                                    date: _selectedDate,
+                                    note: 'Split from: $title',
+                                  ),
+                                );
+                          } catch (_) {
+                            // The expense is already persisted; deleting it
+                            // over a failed slip would silently lose data.
+                            slipFailed = true;
+                          }
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  slipFailed
+                                      ? 'Expense saved, but the split slip '
+                                          'could not be added'
+                                      : 'Expense saved and slip added - '
+                                          '$friendName owes you '
+                                          '${settings.currency}'
+                                          '${formatMoney(splitAmt, decimals: true)}',
+                                  style: TextStyle(color: scheme.ctaText),
                                 ),
-                              );
-                          if (!context.mounted) return;
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Expense saved and slip added - $friendName owes you ${settings.currency}${splitAmt.toStringAsFixed(2)}',
-                                style: TextStyle(color: scheme.ctaText),
+                                backgroundColor: slipFailed
+                                    ? scheme.warning
+                                    : scheme.success,
                               ),
-                              backgroundColor: scheme.success,
-                            ),
-                          );
+                            );
+                          }
                         }
                         if (context.mounted) Navigator.pop(context);
                       } catch (_) {
-                        if (expenseSaved && _splitWithFriend) {
-                          await ref
-                              .read(expenseProvider.notifier)
-                              .deleteExpense(exp.id);
-                        }
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(

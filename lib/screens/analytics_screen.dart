@@ -13,6 +13,7 @@ import '../utils/financial_period.dart';
 import '../utils/theme.dart';
 import '../services/expense_category_resolver.dart';
 import '../widgets/money_text.dart';
+import '../widgets/stat_chip.dart';
 import '../widgets/section_header.dart';
 import '../widgets/spending_calendar.dart';
 import 'transactions_screen.dart';
@@ -232,6 +233,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                     children: [
                       IconButton(
                         icon: const Icon(Icons.chevron_left),
+                        tooltip: 'Previous month',
                         onPressed: () => _changeMonth(-1),
                       ),
                       const SizedBox(width: AppSpacing.xs),
@@ -264,6 +266,7 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                         ),
                       const SizedBox(width: AppSpacing.xs),
                       IconButton(
+                        tooltip: 'Next month',
                         icon: Icon(
                           Icons.chevron_right,
                           color: isCurrentMonth
@@ -323,22 +326,26 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                 child: Row(
                                   children: [
                                     Expanded(
-                                      child: _statChip(
+                                      child: StatChip(
                                         icon: Icons.today_rounded,
                                         label: 'Daily Avg',
-                                        amount: dailyAvg,
-                                        currency: settings.currency,
+                                        value: formatMoney(
+                                          dailyAvg,
+                                          currency: settings.currency,
+                                        ),
                                         color: scheme.primary,
                                       ),
                                     ),
                                     const SizedBox(width: AppSpacing.md),
                                     if (biggestExpense != null)
                                       Expanded(
-                                        child: _statChip(
+                                        child: StatChip(
                                           icon: Icons.arrow_upward_rounded,
                                           label: 'Top Expense',
-                                          amount: biggestExpense.amount,
-                                          currency: settings.currency,
+                                          value: formatMoney(
+                                            biggestExpense.amount,
+                                            currency: settings.currency,
+                                          ),
                                           sublabel: biggestExpense.title,
                                           color: scheme.warning,
                                         ),
@@ -348,7 +355,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                               ),
                             ),
 
-                          // Pie Chart
                           // Daily Spending Chart
                           if (monthlyExpenses.isNotEmpty) ...[
                             SliverToBoxAdapter(
@@ -522,8 +528,9 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                       return PieChartSectionData(
                                         value: e.value,
                                         color: slice,
-                                        title:
-                                            '${(e.value / totalSpent * 100).toStringAsFixed(0)}%',
+                                        title: totalSpent > 0
+                                            ? '${(e.value / totalSpent * 100).toStringAsFixed(0)}%'
+                                            : '0%',
                                         titleStyle: TextStyle(
                                           fontSize: AppType.caption,
                                           color: _pieLabelColor(slice, scheme),
@@ -741,24 +748,6 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
                                       BarChartData(
                                         gridData: const FlGridData(show: false),
                                         borderData: FlBorderData(show: false),
-                                        barTouchData: BarTouchData(
-                                          touchCallback: (event, response) {
-                                            if (event is FlTapUpEvent &&
-                                                response != null &&
-                                                response.spot != null) {
-                                              final idx = response
-                                                  .spot!
-                                                  .touchedBarGroupIndex;
-                                              if (idx >= 0 &&
-                                                  idx < sixMonths.length) {
-                                                HapticFeedback.selectionClick();
-                                                _selectMonth(
-                                                  sixMonths[idx].month,
-                                                );
-                                              }
-                                            }
-                                          },
-                                        ),
                                         titlesData: FlTitlesData(
                                           bottomTitles: AxisTitles(
                                             sideTitles: SideTitles(
@@ -1380,61 +1369,4 @@ class _AnalyticsScreenState extends ConsumerState<AnalyticsScreen>
       ],
     ),
   );
-
-  Widget _statChip({
-    required IconData icon,
-    required String label,
-    required double amount,
-    required String currency,
-    String? sublabel,
-    required Color color,
-  }) {
-    final theme = Theme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.md,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: AppRadius.mdAll,
-        border: Border.all(color: color.withValues(alpha: 0.2)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(AppSpacing.xs),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: AppType.headline),
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label, style: theme.textTheme.labelMedium),
-                MoneyText(
-                  amount,
-                  currency: currency,
-                  size: AppType.body,
-                  weight: FontWeight.w800,
-                  color: color,
-                ),
-                if (sublabel != null)
-                  Text(
-                    sublabel,
-                    style: theme.textTheme.labelSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }
